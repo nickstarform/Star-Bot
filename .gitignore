@@ -1,0 +1,13 @@
+# mvn files
+target/classes
+target/generated-sources/
+target/maven-archiver/
+target/maven-status/
+target/orig*
+
+# live run
+*liverun/*
+
+# any logs or testings
+*logs.txt
+*testing
