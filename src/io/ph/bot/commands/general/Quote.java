@@ -117,7 +117,7 @@ public class Quote extends Command {
      */
     private void createQuote() {
         contents = Util.getCommandContents(contents);
-        contents = "Nick testing the create quote commands";
+        //contents = "Nick testing the create quote commands";
         if(contents.equals("") || contents.split(" ").length < 2) {
             em.setTitle("Error", null)
             .setColor(Color.RED)
@@ -208,6 +208,11 @@ public class Quote extends Command {
             int uniq = Integer.parseInt(resolved[0]);
             String userID = Util.resolveMemberFromMessage(resolved[1].split(" ")[0],msg.getGuild()).getUser().getId();
             String newContent = Util.getCommandContents(resolved[1]);
+            // debug
+            System.out.println(uniq);
+            System.out.println(userID);
+            System.out.println(newContent);
+
             QuoteObject m = QuoteObject.forName(uniq, msg.getGuild().getId());
             if(m.edit(msg.getAuthor().getId(), newContent,userID)) {
                 em.setTitle("Success", null)
@@ -376,6 +381,8 @@ public class Quote extends Command {
             toReturn[0] = s.split(" ")[0];
             toReturn[1] = Util.getCommandContents(s);
         }
+        //System.out.println(toReturn[0]);
+        //System.out.println(toReturn[1]);
         return toReturn;
     }
 }

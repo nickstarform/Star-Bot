@@ -220,11 +220,11 @@ public class QuoteObject {
                 }
             }
 
-            sql = "UPDATE `discord_quote` SET quoteContent = ? WHERE uniq = ? AND userID = ?";
+            sql = "UPDATE `discord_quote` SET quoteContent=?,userID=? WHERE uniq = ?";
             stmt = conn.prepareStatement(sql);
             stmt.setString(1, newContent);
-            stmt.setInt(2, this.uniq);
-            stmt.setString(3, userID);
+            stmt.setString(2, userID);
+            stmt.setInt(3, this.uniq);
             stmt.execute();
             return true;
         } catch(SQLException e) {
