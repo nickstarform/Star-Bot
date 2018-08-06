@@ -1,10 +1,8 @@
-# Welcome to Star-Bot, an open source easy-to-host Discord Bot based off of Kagumi's [Star-Bot](https://github.com/paul-io/Star-Bot-2.git) 
-
-**Star-Bot** is a easy-to-use Discord bot based off of [JDA](https://github.com/DV8FromTheWorld/JDA), adapted from Star-Bot by Kagumi. Very robust and will handle many things: from sending Twitch.tv notifications to playing music, to temporarily muting troublemakers, Star-Bot can do a lot for your server.
+# Welcome to Star-Bot, an open source Discord Bot, based off of [JDA](https://github.com/DV8FromTheWorld/JDA), adapted from Momo by Kagumi. Very robust and will handle many things: from sending Twitch.tv notifications to playing music, to temporarily muting troublemakers, Star-Bot can do a lot for your server.
 
 
 ## Can I just add Star-Bot to my server?
-Current Star-Bot is self-hosted for the server [Erect Eggplants] and [OU SRT]. However this code is provide as an effort to further Kagumi's legacy and to provide additional functionalities to the original Star-Bot.
+Current Star-Bot is self-hosted for the server [Erect Eggplants] and [OU SRT]. However this code is provide as an effort to further Kagumi's legacy and to provide additional functionalities to the original Momo.
 
 ### Features? Gimme some info!
 * Reddit, Twitter, & Twitch.tv feeds - Get updates directly to your channel of choice with image/preview configuration
@@ -20,7 +18,6 @@ Current Star-Bot is self-hosted for the server [Erect Eggplants] and [OU SRT]. H
 ---
 
 ## Hosting Star-Bot for yourself
-More descriptive details are at the [repository wiki](https://github.com/nickalaskreynolds/Star-Bot/wiki)
 `you need java 8 to run this bot`
 
 * If you want to host your own instance of the bot, feel free to take a look at the Releases tab and download the package. Fill out the configuration in the `resources/Bot.properties` file, then run `java -jar Star-Bot-x.x.x.jar` where `x.x.x` is the current version. 
@@ -241,5 +238,5 @@ This contains the dependencies and licenses for the entire maven project.
 
 
 
-When you add a command, make sure you populate the change to: resource/config/DefaultGloba..., resource/guilds/template..., and place command in the io.ph.bot.commands directory
+When you add a command, make sure you place command in the io.ph.bot.commands directory
 
