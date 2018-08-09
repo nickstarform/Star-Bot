@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Arrays;
+import java.lang.*;
+import java.util.concurrent.atomic.AtomicInteger ;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -45,6 +47,10 @@ public class Listeners extends ListenerAdapter {
 
     @Override
     public void onReady(ReadyEvent e) {
+
+        String botdevID = Long.toString(Bot.getInstance().getConfig().getbotDeveloperId());
+        String logMsg = null;
+
         e.getJDA().getGuilds().stream()
         .forEach(g -> {
             checkFiles(g);
@@ -52,11 +58,14 @@ public class Listeners extends ListenerAdapter {
             startupChecks(g);
         });
         if (e.getJDA().getShardInfo() != null) {
-            log.info("Bot is now logged on shard {}: {} guilds", e.getJDA().getShardInfo().getShardId(),
-                    e.getJDA().getGuilds().size());
+            logMsg = "Bot is now logged on shard " + e.getJDA().getShardInfo().getShardId() + " with " + e.getJDA().getGuilds().size() + " guilds";
+            log.info(logMsg);
         } else {
-            log.info("Bot is now logged: {} guilds", e.getJDA().getGuilds().size());
+            logMsg = "Bot is now logged: " + e.getJDA().getGuilds().size() + " guilds";
+            log.info(logMsg);
         }
+        // currently only works if the bot is already invited to a guild
+        MessageUtils.sendPrivateMessage(botdevID, logMsg);
     }
 
     /**
@@ -97,37 +106,30 @@ public class Listeners extends ListenerAdapter {
 
     @Override 
     public void onGuildJoin(GuildJoinEvent e) {
-        // 
+        /* 
         if (!e.getGuild().getSelfMember().hasPermission(net.dv8tion.jda.core.Permission.MESSAGE_WRITE)) {
             e.getGuild().leave().queue();
             return;
-        }
+        }*/
         checkFiles(e.getGuild());
         GuildObject g = new GuildObject(e.getGuild());
         GuildObject.guildMap.put(e.getGuild().getId(), g);
-        g.getConfig().setFirstTime(false);
+        // g.getConfig().setFirstTime(false);
         /*
          * If you want a welcome message, set it here!
          */
-        /*if (g.getConfig().isFirstTime()) {
+        if (g.getConfig().isFirstTime()) {
             AtomicInteger guildCount = new AtomicInteger();
             Bot.getInstance().getBots().stream()
             .forEach(j -> guildCount.addAndGet(j.getGuilds().size()));
-            e.getGuild().getPublicChannel().sendMessage("Hi, I'm StarBot! You are my "
+            MessageUtils.sendPrivateMessage(e.getGuild().getOwner().getUser().getId(), "Hi, I'm Star-Bot! You are my "
                     + Util.ordinal(guildCount.get()) + " server.\n"
                     + "If you want a list of commands, use `$help`. If you want some tutorials on my features, "
-                    + "do `$howto` - I suggest doing `$howto setup` immediately.\n"
-                    + "I also feature a web dashboard for my configuration! "
-                    + "Access it here: <https://momobot.io/dash>").queue(success -> {
-                        g.getConfig().setFirstTime(false);
-                    }, failure -> {
-                        g.getConfig().setFirstTime(false);
-                    });
+                    + "do `$howto` - I suggest doing `$howto setup` immediately.");
             if (!e.getGuild().getSelfMember().hasPermission(net.dv8tion.jda.core.Permission.MESSAGE_EMBED_LINKS)) {
-                e.getGuild().getPublicChannel().sendMessage("I require permissions to Embed Links for the"
-                        + " vast majority of my functionality. Please enable it!").queue();
+                MessageUtils.sendPrivateMessage(e.getGuild().getOwner().getUser().getId(),"I require permissions to Embed Links for the vast majority of my functionality. Please enable it!");
             }
-        }*/
+        }
     }
 
     @Override

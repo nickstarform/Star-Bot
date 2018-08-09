@@ -161,15 +161,10 @@ public class Util {
      * @return True if they have permission, false if not
      */
     public static boolean memberHasPermission(Member member, Permission permission) {
-        if (permission.getJdaPerm() == null 
-                && member.getUser().getIdLong() == Bot.getInstance().getConfig().getBotOwnerId()) {
+        if (member.getUser().getIdLong() == Bot.getInstance().getConfig().getBotOwnerId()) {
             return true;
-        } else if (permission.getJdaPerm() == null 
-                && member.getUser().getIdLong() == Bot.getInstance().getConfig().getbotDeveloperId()) {
+        } else if (member.getUser().getIdLong() == Bot.getInstance().getConfig().getbotDeveloperId()) {
             return true;        
-        } else if (permission.getJdaPerm() != null 
-                && member.getUser().getIdLong() == Bot.getInstance().getConfig().getbotDeveloperId()) {
-            return true;
         } else if (permission.getJdaPerm() != null && member.hasPermission(permission.getJdaPerm())) {
             return true;
         } else {

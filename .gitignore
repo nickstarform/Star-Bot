@@ -11,3 +11,4 @@ target/orig*
 # any logs or testings
 *logs.txt
 *testing
+testing/
