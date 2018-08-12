@@ -36,11 +36,11 @@ import net.dv8tion.jda.core.entities.Guild;
         example = "create \"test macro\" contents *This creates a macro named `test macro`*\n"
                 + "delete test macro *This deletes the macro*\n"
                 + "edit \"test macro\" new contents *This edits the macro's contents*\n"
-                + "list \"user\" *lists all macro created by the user*\n"
-                + "showall *lists all macros for server*\n"
+                + "list \"user\" *Lists all macros created by the user*\n"
+                + "showall *Lists all macros for server*\n"
                 + "info test macro *This gives information on the macro*\n"
                 + "test macro *This calls the macro*\n"
-                + "rank *Will rank the top 10 macros*\n"
+                + "rank *Ranks the top 10 macros*\n"
         )
 public class Macro extends Command {
     private EmbedBuilder em;
