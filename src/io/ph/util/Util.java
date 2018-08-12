@@ -18,6 +18,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.List;
+import java.lang.StringBuilder;
+import java.util.stream.Collectors;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -33,10 +37,32 @@ import io.ph.bot.model.Permission;
 import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.core.entities.MessageChannel;
 import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.entities.Guild.Ban;
 
 public class Util {
+     
+    /**
+     * Resolve a messages from a Member/user in a channel.
+     * <p>
+     * If this Message contains a mention, it returns the first. Otherwise, 
+     * username must be the only parameter in the Message
+     * <p>
+     * First checks nicknames then usernames
+     * @param msg String to check
+     * @return Member if found, null if not found
+     */
+     public List<Message> getMessagesByUser(MessageChannel channel, Member member) {
+        return getMessagesByUser(channel,member.getUser());
+     }
+     public List<Message> getMessagesByUser(MessageChannel channel, User user) {
+        return channel.getIterableHistory().stream()
+             .limit(1000)
+             .filter(m-> m.getAuthor().equals(user))
+             .collect(Collectors.toList());
+     }
+
     /**
      * Resolve a Member from a Message.
      * <p>
@@ -44,7 +70,7 @@ public class Util {
      * username must be the only parameter in the Message
      * <p>
      * First checks nicknames then usernames
-     * @param s String to check
+     * @param msg Message to check
      * @return Member if found, null if not found
      */
     public static Member resolveMemberFromMessage(Message msg) {
@@ -80,7 +106,38 @@ public class Util {
         if (toCheck.isEmpty())
             return null;
         return Bot.getInstance().shards.getGuildById(guild).getMemberById(toCheck);
-    }    
+    }  
+
+    /**
+     * Resolve a Member Name from a Member.
+     * <p>
+     * This is made due to the error of returning a Nickname vs username
+     * will attempt a Nickname first then default to username
+     * <p>
+     * @param member Member to check
+     * @param state boolean to force return username
+     * @return String name if found, null if not found
+     */
+    public static String resolveNameFromMember(Member member) {
+        return resolveNameFromMember(member,true);
+    }
+
+    public static String resolveNameFromMember(Member member,boolean state) {
+        String name = member.getNickname();
+        if ((name == null) || name.equals("") || state) {
+            name = member.getUser().getName() + "#" + member.getUser().getDiscriminator();
+        }
+        return name;
+    }
+
+    /**
+     * Resolve a member from a message
+     * @param msg Message to resolve from
+     * @return Member of this guild
+     */
+    public static Member memberFromMessage(Message msg) {
+        return msg.getGuild().getMember(msg.getAuthor());
+    }
 
     /**
      * Resolve a banned user from their name
@@ -100,24 +157,19 @@ public class Util {
     /**
      * Get the contents of a command, if it has arguments
      * Returns everything except the command and its prefix (split among a space)
-     * @param msg Message to parse
+     * @param msg Message to parse or String
      * @return String. Empty if there are no arguments
      */
     public static String getCommandContents(Message msg) {
         return getCommandContents(msg.getContentDisplay());
     }
-    /**
-     * Get the contents of a command, if it has arguments
-     * Returns everything except the first element of a split among a space
-     * @param s String to parse
-     * @return String. Empty if there are no arguments
-     */
+
     public static String getCommandContents(String s) {
         return combineStringArray(removeFirstArrayEntry(s.split(" ")));
     }
 
     /**
-     * Combine a string array into a single String
+     * Combine a string array/ArrayList into a single String
      * @param arr String array
      * @return String of combination
      */
@@ -128,6 +180,16 @@ public class Util {
         }
         return sb.toString().trim();
     }
+
+    public static String combineStringArray(ArrayList<String> arList) {
+        StringBuilder sb = new StringBuilder();
+        for (String s : arList) {
+            sb.append(s);
+            sb.append("\t");
+        }
+        return sb.toString().trim();
+    }
+
     /**
      * Remove the first item from a String array
      * @param arr String array to manipulate
@@ -174,18 +236,13 @@ public class Util {
 
     /**
      * Get the first parameter of a command based on a space split
-     * @param msg {@link Message} to parse
+     * @param msg {@link Message} to parse or String
      * @return String of first parameter based on a space split
      */
     public static String getParam(Message msg) {
         return getParam(msg.getContentDisplay());
     }
 
-    /**
-     * Get the first parameter of a command based on a space split
-     * @param str String to parse
-     * @return String of first parameter based on a space split
-     */
     public static String getParam(String str) {
         return removeFirstArrayEntry(str.split(" "))[0];
     }
@@ -256,6 +313,7 @@ public class Util {
             return false;
         }
     }
+
     /**
      * Check if String input is a valid double through {@link Double#parseInt(String)}
      * @param input String input
@@ -422,8 +480,6 @@ public class Util {
             if (Util.isInteger(s)) {
                 previous = Integer.parseInt(s);
                 continue;
-            } else {
-                previous = 0;
             }
             switch(s) {
             case "w":
@@ -444,24 +500,29 @@ public class Util {
         }
         return nowLDT.atZone(ZoneId.systemDefault()).toInstant();
     }
-
     /**
      * Resolve a user's color with a default fallback
      * @param member Member to check
      * @param fallback Default color to fallback to
+     * @param force Color to use above others
      * @return Color or fallback
      */
     public static Color resolveColor(Member member, Color fallback) {
-        return member.getColor() == null ? fallback : member.getColor();
+        return resolveColor(member,fallback,null);
     }
-
     /**
-     * Resolve a member from a message
-     * @param msg Message to resolve from
-     * @return Member of this guild
+     * Resolve a user's color with a default fallback
+     * @param member Member to check
+     * @param fallback Default color to fallback to
+     * @param force Color to use above others
+     * @return Color or fallback
      */
-    public static Member memberFromMessage(Message msg) {
-        return msg.getGuild().getMember(msg.getAuthor());
+    public static Color resolveColor(Member member, Color fallback, Color force) {
+        if (force == null){
+            return member.getColor() == null ? fallback : member.getColor();
+        } else {
+            return force;
+        }
     }
 
     /**

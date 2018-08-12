@@ -7,6 +7,9 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Arrays;
+import java.lang.Integer;
 import java.lang.*;
 import java.util.Random;
 import java.util.Date;
@@ -73,7 +76,6 @@ public class QuoteObject {
      * Returns top Quote and hits
      * @param guildID
      * @return Object array with index uniq, date_created,quoteContent, hits, userID
-     * @throws NoMacroFoundException
      */
     public static QuoteObject topQuote(String guildID) throws IllegalArgumentException {
         Connection conn = null;
@@ -87,6 +89,36 @@ public class QuoteObject {
                 return null;
             rs.next();
             return new QuoteObject(rs.getInt(1), rs.getString(3), rs.getInt(4), rs.getString(5),guildID, LocalDate.parse(rs.getString(2)));
+        } catch(SQLException e) {
+            e.printStackTrace();
+        } finally {
+            SQLUtils.closeQuietly(rs);
+            SQLUtils.closeQuietly(stmt);
+            SQLUtils.closeQuietly(conn);
+        }
+        return null;
+    }
+
+    /**
+     * Returns top 10 quotes
+     * @param guildID
+     * @return Array of uniq for top 10 quotes
+     */
+    public static ArrayList<String> rankQuote(String guildID) throws IllegalArgumentException {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        ArrayList<String> fin = new ArrayList<String>(1);
+        try {
+            conn = ConnectionPool.getConnectionQuote(guildID);
+            stmt = conn.prepareStatement("SELECT uniq FROM `discord_quote` ORDER BY hits DESC LIMIT 10");
+            rs = stmt.executeQuery();
+            if(!rs.isBeforeFirst())
+                return null;
+            while (rs.next()) {
+                fin.add(Integer.toString(rs.getInt(1)));
+            }
+            return fin;
         } catch(SQLException e) {
             e.printStackTrace();
         } finally {
@@ -274,18 +306,18 @@ public class QuoteObject {
     }
 
     /**
-     * Get Random ID from Result
-     * @param userID userID to search for
+     * Geta random unique quote from the guild
      * @param guildID guildID to search in
-     * @return Null if no results, populated string array of Quote names if results
+     * @return Null if no results, string of random Quote name if true
      */
-    public static int chooseRandom(String guildID) {
+    public static int chooseRandomQuoteUniq(String guildID) {
 
         Random randomGenerator;
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
         int size = 0;
+        ArrayList<String> toReturn = new ArrayList<String>(4);
 
         try {
             conn = ConnectionPool.getConnectionQuote(guildID);
@@ -294,15 +326,15 @@ public class QuoteObject {
             // int uniq, String quoteContent, int hits, String userID, String guildID, LocalDate date)
             rs = stmt.executeQuery();
             if(!rs.isBeforeFirst()) {
-                throw new IllegalArgumentException("No Quote found for user: " 
-                    + Util.resolveUserFromMessage(rs.getString(4),guildID).getEffectiveName()
-                    + " and #" + rs.getString(1));
+                throw new IllegalArgumentException("Error in case choosing random quote");
             }
             while (rs.next()){
                 size++;
+                toReturn.add(Integer.toString(rs.getInt(1)));
             }
             randomGenerator = new Random();
-            return randomGenerator.nextInt(size);
+            int index = randomGenerator.nextInt(size);
+            return Integer.parseInt(toReturn.toArray(new String[0])[index]);
         } catch(SQLException e) {
             e.printStackTrace();
             return 0;
@@ -313,49 +345,16 @@ public class QuoteObject {
         }
     }
 
-
-
     /**
-     * Search for quotes by user and given guild
-     * @param userID userID to search for
+     * This is the main function for getting a random quote
      * @param guildID guildID to search in
-     * @return Null if no results, populated string array of Quote names if results
+     * @return Null if no results, QuoteObject if found
      */
-    public static String[] chooseRandomQuote(String guildID) {
+    public static QuoteObject chooseRandomQuote(String guildID) {
+        
+        int uniq = chooseRandomQuoteUniq(guildID);
 
-        Random randomGenerator;
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-        int index = chooseRandom(guildID);
-        ArrayList<String> toReturn = new ArrayList<String>(4);
-
-        try {
-            conn = ConnectionPool.getConnectionQuote(guildID);
-            String sql = "SELECT uniq,date,userID,quoteContent FROM `discord_quote`";
-            stmt = conn.prepareStatement(sql);
-            // int uniq, String quoteContent, int hits, String userID, String guildID, LocalDate date)
-            rs = stmt.executeQuery();
-            int size = 0;
-            while (rs.next()){
-                if (size == index){
-                    toReturn.add(Integer.toString(rs.getInt(1)));
-                    toReturn.add(rs.getString(2));
-                    toReturn.add(rs.getString(3));
-                    toReturn.add(rs.getString(4));
-                } else {
-                    size++;
-                }
-            }
-            return toReturn.toArray(new String[0]);
-        } catch(SQLException e) {
-            e.printStackTrace();
-            return null;
-        } finally {
-            SQLUtils.closeQuietly(rs);
-            SQLUtils.closeQuietly(stmt);
-            SQLUtils.closeQuietly(conn);
-        }
+        return forName(uniq,guildID,true);
     }
 
     /**
@@ -411,7 +410,7 @@ public class QuoteObject {
         return userID;
     }
     public Member getFallbackUsername() {
-        return Util.resolveUserFromMessage(userID, guildID);
+        return Util.resolveUserFromMessage(userID, guildID); // returns member
     }
 
     public String getGuildID() {

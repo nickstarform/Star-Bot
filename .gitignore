@@ -4,6 +4,7 @@ target/generated-sources/
 target/maven-archiver/
 target/maven-status/
 target/orig*
+target/
 
 # live run
 *liverun/*

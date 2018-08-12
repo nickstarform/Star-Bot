@@ -58,6 +58,11 @@ public class RemindMe extends Command {
         Instant now = Instant.now();
         Instant target = Util.resolveInstantFromString(param);
         
+        //debug
+        //System.out.println("param: "+param);
+        //System.out.println("now: "+now);
+        //System.out.println("target: "+target);
+        
         long months = ChronoUnit.MONTHS.between(LocalDateTime.ofInstant(now, ZoneId.systemDefault()), 
                 LocalDateTime.ofInstant(target, ZoneId.systemDefault()));
         if(months > 5) {

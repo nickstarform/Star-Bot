@@ -22,6 +22,8 @@ import io.ph.bot.listeners.Listeners;
 import io.ph.bot.listeners.ModerationListeners;
 import io.ph.bot.listeners.VoiceChannelListeners;
 import io.ph.bot.scheduler.JobScheduler;
+import io.ph.util.MessageUtils;
+import java.util.concurrent.atomic.AtomicInteger;
 import io.ph.bot.ws.WebsocketServer;
 import net.dv8tion.jda.core.AccountType;
 import net.dv8tion.jda.core.JDA;
@@ -54,7 +56,7 @@ public class Bot {
     // Set to true if you want various debug statements
     public static final boolean DEBUG = false;
     public static final String BOT_VERSION = "1.0";
-    public static final String REPO = "<https://github.com/nickalaskreynolds/Star-Bot.git>";
+    public static final String REPO = "<https://github.com/nickalaskreynolds/Star-Bot>";
     public static boolean isReady = false;
 
     private APIKeys apiKeys = new APIKeys();
@@ -91,6 +93,18 @@ public class Bot {
         State.changeBotPresence(OnlineStatus.ONLINE);
         initialize();
         isReady = true;
+
+        String botdevID = Long.toString(Bot.getInstance().getConfig().getbotDeveloperId());
+        AtomicInteger guildNum = new AtomicInteger(0);
+
+        Bot.getInstance().getBots().forEach(j -> {
+            j.getGuilds().forEach(g -> {
+                guildNum.incrementAndGet();
+            });
+        });
+
+        String logMsg = "Bot is now logged on in: " + guildNum.toString() + " guilds";
+        MessageUtils.sendPrivateMessage(botdevID, logMsg);
     }
 
     /**

@@ -7,7 +7,12 @@ import io.ph.bot.commands.Command;
 import io.ph.bot.model.GuildObject;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.entities.MessageEmbed;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import io.ph.util.Util;
 
 public class MessageUtils {
     /**
@@ -16,7 +21,7 @@ public class MessageUtils {
      * @param e MessageEmbed
      */
     public static void sendMessage(String channelId, MessageEmbed e) {
-        Bot.getInstance().shards.getTextChannelById(channelId).sendMessage(e).queue();
+        sendMessage(channelId,e,-1);
     }
     
     /**
@@ -25,9 +30,59 @@ public class MessageUtils {
      * @param msg String of message
      */
     public static void sendMessage(String channelId, String msg) {
-        Bot.getInstance().shards.getTextChannelById(channelId).sendMessage(msg).queue();        
+        sendMessage(channelId,msg,-1);
+    }
+
+    /**
+     * Send a message embed to a channel and deletes after some time
+     * @param channelId Channel ID
+     * @param e MessageEmbed
+     * @param delete Integer of # seconds to wait before deleting message
+     */
+    public static void sendMessage(String channelId, MessageEmbed e, 
+                                   int delete) {
+
+        String botIDlong = Bot.getInstance().getConfig().getBotInviteBotLink().split("\\=")[1].split("\\&")[0];
+        TextChannel textChannel = Bot.getInstance().shards.getTextChannelById(channelId);
+
+        if (delete == -1) {
+            textChannel.sendMessage(e).queue();
+        } else {
+            Message tM = textChannel.sendMessage(e).complete();
+            try {
+                Thread.sleep(1000*delete);
+                textChannel.deleteMessageById(tM.getId()).queue();
+            } catch(InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
     
+    /**
+     * Send a message to a channel
+     * @param channelId Channel ID
+     * @param msg String of message
+     * @param delete Integer of # seconds to wait before deleting message
+     */
+    public static void sendMessage(String channelId, String msg, 
+                                   int delete) {
+
+        String botIDlong = Bot.getInstance().getConfig().getBotInviteBotLink().split("\\=")[1].split("\\&")[0]; 
+        TextChannel textChannel = Bot.getInstance().shards.getTextChannelById(channelId);  
+
+        if (delete == -1) {
+            textChannel.sendMessage(msg).queue();
+        } else {
+            Message tM = textChannel.sendMessage(msg).complete();
+            try {
+                Thread.sleep(1000*delete);
+                textChannel.deleteMessageById(tM.getId()).queue();
+            } catch(InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
     /**
      * Send a PM to a user
      * @param userId User ID
@@ -82,4 +137,52 @@ public class MessageUtils {
         .setDescription(throwable.getMessage());
         return em.build();
     }
+
+    /**
+     * This helps to split up the quotes just incase there are an excessive amount. 
+     * @param totalString ArrayList of messages to send. Will stagger the message 
+     * @param msg Message object for communications
+     * @param em Embedded Builder
+     */
+    public static void staggerArray(ArrayList<String> totalString,
+                                     Message msg,
+                                     EmbedBuilder em) {
+        staggerArray(totalString,msg,em,null);
+    }
+
+    /**
+     * This helps to split up the quotes just incase there are an excessive amount. 
+     * @param totalString ArrayList of messages to send. Will stagger the message 
+     * @param msg Message object for communications
+     * @param em Embedded Builder
+     * @param cEm Embedded Builder forced color
+     */
+    public static void staggerArray(ArrayList<String> totalString,
+                                     Message msg,
+                                     EmbedBuilder em,
+                                     Color cEm) {
+        AtomicInteger index = new AtomicInteger(0);
+        ArrayList<String> temp = new ArrayList<String>(1);
+        for (int i = 0; i < totalString.size(); i++) {
+            String field = totalString.get(i).toString();
+            // debug
+            //System.out.println("Index: " + index.toString() + "/" + totalString.size());
+            //System.out.println("Field: " + field);
+            if ((index.get() < 35) && (i != totalString.size() - 1)) {
+                temp.add(field + "\n");
+                index.incrementAndGet();
+            } else {
+                em.setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN,cEm));
+                temp.add(field + "\n");
+                // debug
+                //String tempB = Util.combineStringArray(temp);
+                //System.out.println("Field: " + tempB);
+                em.setDescription(Util.combineStringArray(temp));
+                sendMessage(msg.getChannel().getId(),em.build());
+                em.clearFields();
+                temp.clear();  
+                index.set(0);
+            }
+        }  
+    }  
 }
