@@ -7,6 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.List;
 import java.time.LocalDate;
 import java.lang.*;
+import java.util.Random;
 
 import io.ph.bot.commands.Command;
 import io.ph.bot.commands.CommandCategory;
@@ -19,8 +20,10 @@ import io.ph.util.Util;
 import io.ph.bot.Bot;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.Guild;
+import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.core.entities.MessageHistory.MessageRetrieveAction;
+import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
 
 /**
  * Create, delete, search, call information, and call Quotes
@@ -34,16 +37,19 @@ import net.dv8tion.jda.core.entities.Guild;
         category = CommandCategory.FUN,
         permission = Permission.NONE,
         description = "Create, delete, edit, search, or get information on a quote\n"
-                + "Quotes are text from user that are saved to a db to be called later",
-        example = "create \"QuotedUser\" contents *This creates a quote for user `QuotedUser`*\n"
+                + "Quotes are text from user that are saved to a db to be called later\n"
+                + "If user doesn't exist in server, set the quote to the bot\n",
+        example = "------ *If no arg will select random quote*\n"
+                + "previous or p *Makes a quote of the previous message*\n"
+                + "user or u *Pulls random quote from user*\n"
+                + "create \"QuotedUser\" contents *This creates a quote for user `QuotedUser`*\n"
                 + "delete 57 *This deletes the quote 57*\n"
-                + "edit \"57\" new contents *This edits the quote #57's contents*\n"
-                + "list \"QuotedUser\" *lists all quotes created by the QuotedUser*\n"
-                + "showall *lists all quotes for server*\n"
+                + "edit \"57\" username new contents *This edits the quote #57's contents and user*\n"
+                + "list \"QuotedUser\" *Lists all quotes created by the QuotedUser*\n"
+                + "showall *Lists all quotes for server*\n"
                 + "info 57 *This gives information on the quote #57*\n"
-                + "top *Will rank the top quofte*\n"
+                + "top *Ranks the top quote*\n"
                 //+ "rank *Will rank the top 10 quotes*\n"
-                + "if no arg will select random quote \n"
         )
 public class Quote extends Command {
     private EmbedBuilder em;
@@ -67,6 +73,8 @@ public class Quote extends Command {
             createQuote();
         } else if(param.equalsIgnoreCase("delete")) {
             deleteQuote();
+        } else if(param.equalsIgnoreCase("user") || param.equalsIgnoreCase("u")) {
+            userQuote();
         } else if(param.equalsIgnoreCase("edit")) {
             editQuote();
         } else if(param.equalsIgnoreCase("list")) {
@@ -75,6 +83,8 @@ public class Quote extends Command {
             listQuotesAll();
         } else if (param.equalsIgnoreCase("info")) {
             quoteInfo();
+        } else if (param.equalsIgnoreCase("previous") || param.equalsIgnoreCase("p")) {
+            previousMsg();
         } else if(param.equalsIgnoreCase("top")) {
             quoteRank();
         //} else if(param.equalsIgnoreCase("rank")) {
@@ -92,14 +102,14 @@ public class Quote extends Command {
         } else {
             // send random quote
             try {
-                String[] m = QuoteObject.chooseRandomQuote(msg.getGuild().getId());
-                msg.getChannel().sendMessage("#" + m[0] 
-                    + " \"" + m[3] + "\" ~ " 
-                    + Util.resolveUserFromMessage(m[2], msg.getGuild().getId()).getUser().getName() 
+                QuoteObject m = QuoteObject.chooseRandomQuote(msg.getGuild().getId().toString());
+                msg.getChannel().sendMessage("#" + Integer.toString(m.getQuoteUniq()) 
+                    + " \"" + m.getQuoteContent() + "\" ~ " 
+                    + m.getFallbackUsername().getUser().getName() 
                     + "#" 
-                    + Util.resolveUserFromMessage(m[2], msg.getGuild().getId()).getUser().getDiscriminator() 
+                    + m.getFallbackUsername().getUser().getDiscriminator() 
                     + " on " 
-                    + LocalDate.parse(m[1]).toString()).queue(success-> {msg.delete().queue();});
+                    + m.getDate().toString()).queue(success -> {msg.delete().queue();});
                 return;
             } catch (IllegalArgumentException e) {
                 em.setTitle("Error", null)
@@ -110,6 +120,38 @@ public class Quote extends Command {
         // debug
         //System.out.println(param);
         msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+    }
+
+    /**
+     * Create a quote from a previous message
+     */
+    private void previousMsg() {
+        Message nMsg = msg.getChannel().getHistoryBefore(msg, 1).complete().getRetrievedHistory().get(0);
+        String nContents = Util.getParam(nMsg);
+        String nAuthor = msg.getAuthor().getName();
+        this.contents = nAuthor + " " + nContents;
+        createQuote();
+    }
+    /**
+     * Create a quote from a previous message
+     */
+    private void userQuote() {
+
+        Random randomGenerator = new Random();;
+        contents = Util.getCommandContents(contents);
+        String mem = Util.resolveMemberFromMessage(contents,msg.getGuild()).getUser().getId();
+        String[] userUniqs = QuoteObject.searchByUser(mem,msg.getGuild().getId());
+        int size = userUniqs.length;
+        int uniq = Integer.parseInt(userUniqs[randomGenerator.nextInt(size)]);
+        QuoteObject m = QuoteObject.forName(uniq,msg.getGuild().getId(),true);
+        msg.getChannel().sendMessage("#" + Integer.toString(m.getQuoteUniq()) 
+            + " \"" + m.getQuoteContent() + "\" ~ " 
+            + m.getFallbackUsername().getUser().getName() 
+            + "#" 
+            + m.getFallbackUsername().getUser().getDiscriminator() 
+            + " on " 
+            + m.getDate().toString()).queue(success -> {msg.delete().queue();});
+        return;
     }
 
     /**
@@ -209,9 +251,9 @@ public class Quote extends Command {
             String userID = Util.resolveMemberFromMessage(resolved[1].split(" ")[0],msg.getGuild()).getUser().getId();
             String newContent = Util.getCommandContents(resolved[1]);
             // debug
-            System.out.println(uniq);
-            System.out.println(userID);
-            System.out.println(newContent);
+            //System.out.println(uniq);
+            //System.out.println(userID);
+            //System.out.println(newContent);
 
             QuoteObject m = QuoteObject.forName(uniq, msg.getGuild().getId());
             if(m.edit(msg.getAuthor().getId(), newContent,userID)) {
@@ -235,7 +277,7 @@ public class Quote extends Command {
      * List all quotes made by a user
      */
     private void listQuotes() {
-        Member m;
+        Member m ;
         String possibleUser = Util.getCommandContents(this.contents);
         if (possibleUser.isEmpty()) {
             m = msg.getMember();
