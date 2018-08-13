@@ -37,6 +37,7 @@ import net.dv8tion.jda.core.entities.User;
 import net.dv8tion.jda.core.entities.Guild.Ban;
 
 public class Util {
+
     /**
      * Resolve a Member from a Message.
      * <p>
@@ -44,7 +45,7 @@ public class Util {
      * username must be the only parameter in the Message
      * <p>
      * First checks nicknames then usernames
-     * @param s String to check
+     * @param msg String to check
      * @return Member if found, null if not found
      */
     public static Member resolveMemberFromMessage(Message msg) {
