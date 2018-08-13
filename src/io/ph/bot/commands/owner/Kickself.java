@@ -21,12 +21,12 @@ import io.ph.bot.Bot;
  */
 @CommandData (
         defaultSyntax = "kickself",
-        aliases = {""},
+        aliases = {},
         category = CommandCategory.BOT_OWNER,
         permission = Permission.BOT_OWNER,
         description = "Kick the bot from server",
-        example = "@bot ------- *kick the bot from the current server*\n"
-                + "@bot guildID *kick the bot from this server*\n"
+        example = "botUser ------- *kick the bot from the current server*\n"
+                + "botUser guildID *kick the bot from this server*\n"
         )
 
 public class Kickself extends Command {
@@ -43,8 +43,18 @@ public class Kickself extends Command {
             msg.getChannel().sendMessage(em.build()).queue();
             return;
         }
-        Member target = Util.resolveMemberFromMessage(msg);
-        String contents = Util.getCommandContents(Util.getCommandContents(msg));
+        String target = "";
+        String contents = "";
+        String temp = Util.getCommandContents(msg);
+        String[] tempB = temp.split(" ");
+        if (tempB.length > 1){
+            target = tempB[0];
+            contents = tempB[1];
+            System.out.println("Contents: "+contents);
+        } else {
+            target = tempB[0];
+        }
+
         if (target == null) {
             em.setTitle("Error", null)
             .setColor(Color.RED)
@@ -52,22 +62,36 @@ public class Kickself extends Command {
             msg.getChannel().sendMessage(em.build()).queue();
             return;
         }
-        if (target.getUser().getId().equals(botIDlong)) {
+        System.out.println("All contents: "+temp);
+        System.out.println("Target: "+target);
+        System.out.println("ID: "+botIDlong);
+        if (target.equals(botIDlong)) {
             if (!contents.equals("")){
-                Bot.getInstance().shards.getGuildById(contents).getController().kick(target.getUser().getId()).queue(success -> {
-                        em.setTitle("Success", null)
-                        .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
-                        .setDescription(target.getEffectiveName() + " has been kicked");
+
+                Bot.getInstance().shards.getGuildById(contents).leave().queue(
+                success -> {}, failure -> {
+                    em.setTitle("Error", null)
+                    .setColor(Color.RED)
+                    .setDescription(failure.getMessage());
+                    msg.getChannel().sendMessage(em.build()).queue();
                 });
+
             } else {
-                    msg.getGuild().getController().kick(target.getUser().getId()).queue(success -> {
-                        em.setTitle("Success", null)
-                        .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
-                        .setDescription(target.getEffectiveName() + " has been kicked");
-                    });
-                }
+
+                msg.getGuild().leave().queue(
+                success -> {}, failure -> {
+                    em.setTitle("Error", null)
+                    .setColor(Color.RED)
+                    .setDescription(failure.getMessage());
+                    msg.getChannel().sendMessage(em.build()).queue();
+                });
+            }
+        } else {
+            em.setTitle("Can only remove self bot", null)
+            .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
+            .setDescription("Failed to kick bot. Invalid ID");
+            msg.getChannel().sendMessage(em.build()).queue();
         }
-        return;
     }
 
 }
