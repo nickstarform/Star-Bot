@@ -54,7 +54,7 @@ public class Bot {
     // Set to true if you want various debug statements
     public static final boolean DEBUG = false;
     public static final String BOT_VERSION = "1.0";
-    public static final String REPO = "<https://github.com/nickalaskreynolds/Star-Bot.git>";
+    public static final String REPO = "<https://github.com/nickalaskreynolds/Star-Bot>";
     public static boolean isReady = false;
 
     private APIKeys apiKeys = new APIKeys();
