@@ -3,9 +3,9 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>io.ph</groupId>
 	<artifactId>starbot</artifactId>
-	<version>1.0</version>
+	<version>1.0.1.1</version>
 	<name>Star-Bot</name>
-	<description>Discord bot made with Java</description>
+	<description>Discord bot made with JDA</description>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
@@ -172,7 +172,7 @@
 		<dependency>
 			<groupId>com.google.apis</groupId>
 			<artifactId>google-api-services-youtube</artifactId>
-			<version>v3-rev183-1.22.0</version>
+			<version>v3-rev205-1.24.1</version>
 		</dependency>
 		<!-- http://mvnrepository.com/artifact/org.xerial/sqlite-jdbc -->
 		<dependency>
