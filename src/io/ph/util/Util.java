@@ -81,7 +81,47 @@ public class Util {
         if (toCheck.isEmpty())
             return null;
         return Bot.getInstance().shards.getGuildById(guild).getMemberById(toCheck);
-    }    
+    }  
+
+    /**
+     * Resolve a Member Name from a Member.
+     * <p>
+     * This is made due to the error of returning a Nickname vs username
+     * will attempt a Nickname first then default to username
+     * <p>
+     * @param member Member to check
+     * @return String name if found, null if not found
+     */
+    public static String resolveNameFromMember(Member member) {
+        return resolveNameFromMember(member,true);
+    }
+
+    /**
+     * Resolve a Member Name from a Member.
+     * <p>
+     * This is made due to the error of returning a Nickname vs username
+     * will attempt a Nickname first then default to username
+     * <p>
+     * @param member Member to check
+     * @param state boolean to force return username
+     * @return String name if found, null if not found
+     */
+    public static String resolveNameFromMember(Member member,boolean state) {
+        String name = member.getNickname();
+        if ((name == null) || name.equals("") || state) {
+            name = member.getUser().getName() + "#" + member.getUser().getDiscriminator();
+        }
+        return name;
+    }
+
+    /**
+     * Resolve a member from a message
+     * @param msg Message to resolve from
+     * @return Member of this guild
+     */
+    public static Member memberFromMessage(Message msg) {
+        return msg.getGuild().getMember(msg.getAuthor());
+    }
 
     /**
      * Resolve a banned user from their name
@@ -423,8 +463,6 @@ public class Util {
             if (Util.isInteger(s)) {
                 previous = Integer.parseInt(s);
                 continue;
-            } else {
-                previous = 0;
             }
             switch(s) {
             case "w":
@@ -454,15 +492,6 @@ public class Util {
      */
     public static Color resolveColor(Member member, Color fallback) {
         return member.getColor() == null ? fallback : member.getColor();
-    }
-
-    /**
-     * Resolve a member from a message
-     * @param msg Message to resolve from
-     * @return Member of this guild
-     */
-    public static Member memberFromMessage(Message msg) {
-        return msg.getGuild().getMember(msg.getAuthor());
     }
 
     /**
