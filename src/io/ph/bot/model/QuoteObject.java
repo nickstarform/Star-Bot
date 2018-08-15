@@ -378,7 +378,7 @@ public class QuoteObject {
         return userID;
     }
     public Member getFallbackUsername() {
-        return Util.resolveUserFromMessage(userID, guildID);
+        return Util.resolveUserFromMessage(userID, guildID); // returns member
     }
 
     public String getGuildID() {
