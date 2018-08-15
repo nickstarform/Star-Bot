@@ -22,6 +22,8 @@ import io.ph.bot.listeners.Listeners;
 import io.ph.bot.listeners.ModerationListeners;
 import io.ph.bot.listeners.VoiceChannelListeners;
 import io.ph.bot.scheduler.JobScheduler;
+import io.ph.util.MessageUtils;
+import java.util.concurrent.atomic.AtomicInteger;
 import io.ph.bot.ws.WebsocketServer;
 import net.dv8tion.jda.core.AccountType;
 import net.dv8tion.jda.core.JDA;
@@ -91,6 +93,18 @@ public class Bot {
         State.changeBotPresence(OnlineStatus.ONLINE);
         initialize();
         isReady = true;
+
+        String botdevID = Long.toString(Bot.getInstance().getConfig().getbotDeveloperId());
+        AtomicInteger guildNum = new AtomicInteger(0);
+
+        Bot.getInstance().getBots().forEach(j -> {
+            j.getGuilds().forEach(g -> {
+                guildNum.incrementAndGet();
+            });
+        });
+
+        String logMsg = "Bot is now logged on in: " + guildNum.toString() + " guilds";
+        MessageUtils.sendPrivateMessage(botdevID, logMsg);
     }
 
     /**
