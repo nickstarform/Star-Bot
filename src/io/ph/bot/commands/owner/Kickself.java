@@ -25,8 +25,8 @@ import io.ph.bot.Bot;
         category = CommandCategory.BOT_OWNER,
         permission = Permission.BOT_OWNER,
         description = "Kick the bot from server",
-        example = "botUser ------- *kick the bot from the current server*\n"
-                + "botUser guildID *kick the bot from this server*\n"
+        example = "botId ------- *kick the bot from the current server*\n"
+                + "botId guildID *kick the bot from this server*\n"
         )
 
 public class Kickself extends Command {

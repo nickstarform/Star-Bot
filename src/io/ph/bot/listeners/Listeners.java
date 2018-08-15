@@ -23,6 +23,7 @@ import io.ph.util.Util;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Guild;
 import net.dv8tion.jda.core.entities.Role;
+import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.events.ReadyEvent;
 import net.dv8tion.jda.core.events.channel.text.TextChannelCreateEvent;
 import net.dv8tion.jda.core.events.channel.voice.VoiceChannelCreateEvent;
@@ -65,7 +66,9 @@ public class Listeners extends ListenerAdapter {
             log.info(logMsg);
         }
         // currently only works if the bot is already invited to a guild
-        MessageUtils.sendPrivateMessage(botdevID, logMsg);
+        //debug
+        System.out.println("Dev ID: "+botdevID);
+        System.out.println("Message: "+logMsg);
     }
 
     /**
@@ -168,8 +171,15 @@ public class Listeners extends ListenerAdapter {
         if ((!g.getSpecialChannels().getWelcome().equals("") || g.getConfig().isPmWelcomeMessage())
                 && !g.getConfig().getWelcomeMessage().isEmpty()) {
             String msg = g.getConfig().getWelcomeMessage();
+
             msg = msg.replaceAll("\\$user\\$", e.getMember().getAsMention());
             msg = msg.replaceAll("\\$server\\$", e.getGuild().getName());
+
+            TextChannel chanName = e.getGuild().getTextChannelsByName("rules",true).get(0);
+            if (chanName == null) {
+                chanName = e.getGuild().getTextChannelsByName("rule",true).get(0);
+            } 
+            msg = msg.replaceAll("\\$channel\\$", chanName.getAsMention());
             if (!g.getConfig().isPmWelcomeMessage())
                 MessageUtils.sendMessage(g.getSpecialChannels().getWelcome(), msg);
             else

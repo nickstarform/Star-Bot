@@ -23,8 +23,8 @@ import net.dv8tion.jda.core.entities.Message;
         aliases = {"welcomemessage", "changewelcomemessage"},
         category = CommandCategory.ADMINISTRATION,
         permission = Permission.MANAGE_SERVER,
-        description = "Change the server's welcome message. Use $user$ and $server$ to replace with the new user and the server name, respectively",
-        example = "Welcome $user$ to $server$!"
+        description = "Change the server's welcome message. Use $channel$, $user$, and $server$ to replace with the channel, new user and the server name, respectively",
+        example = "Welcome $user$ to $server$!. Refer to $channel$"
         )
 @ProceduralAnnotation (
         title = "Welcome message",
