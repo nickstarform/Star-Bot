@@ -18,6 +18,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.lang.StringBuilder;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -169,6 +171,21 @@ public class Util {
         }
         return sb.toString().trim();
     }
+
+    /**
+     * Combine a string ArrayList into a single String
+     * @param arr String array
+     * @return String of combination
+     */
+    public static String combineStringArray(ArrayList<String> arList) {
+        StringBuilder sb = new StringBuilder();
+        for (String s : arList) {
+            sb.append(s);
+            sb.append("\t");
+        }
+        return sb.toString().trim();
+    }
+
     /**
      * Remove the first item from a String array
      * @param arr String array to manipulate
@@ -483,15 +500,29 @@ public class Util {
         }
         return nowLDT.atZone(ZoneId.systemDefault()).toInstant();
     }
-
     /**
      * Resolve a user's color with a default fallback
      * @param member Member to check
      * @param fallback Default color to fallback to
+     * @param force Color to use above others
      * @return Color or fallback
      */
     public static Color resolveColor(Member member, Color fallback) {
-        return member.getColor() == null ? fallback : member.getColor();
+        return resolveColor(member,fallback,null);
+    }
+    /**
+     * Resolve a user's color with a default fallback
+     * @param member Member to check
+     * @param fallback Default color to fallback to
+     * @param force Color to use above others
+     * @return Color or fallback
+     */
+    public static Color resolveColor(Member member, Color fallback, Color force) {
+        if (force == null){
+            return member.getColor() == null ? fallback : member.getColor();
+        } else {
+            return force;
+        }
     }
 
     /**
