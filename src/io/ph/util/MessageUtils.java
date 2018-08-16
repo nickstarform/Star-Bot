@@ -8,6 +8,9 @@ import io.ph.bot.model.GuildObject;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.MessageEmbed;
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
+import io.ph.util.Util;
 
 public class MessageUtils {
     /**
@@ -82,4 +85,52 @@ public class MessageUtils {
         .setDescription(throwable.getMessage());
         return em.build();
     }
+    
+    /**
+     * This helps to split up the quotes just incase there are an excessive amount. 
+     * @param totalString ArrayList of messages to send. Will stagger the message 
+     * @param msg Message object for communications
+     * @param em Embedded Builder
+     */
+    public static void staggerArray(ArrayList<String> totalString,
+                                     Message msg,
+                                     EmbedBuilder em) {
+        staggerArray(totalString,msg,em,null);
+    }
+
+    /**
+     * This helps to split up the quotes just incase there are an excessive amount. 
+     * @param totalString ArrayList of messages to send. Will stagger the message 
+     * @param msg Message object for communications
+     * @param em Embedded Builder
+     * @param cEm Embedded Builder forced color
+     */
+    public static void staggerArray(ArrayList<String> totalString,
+                                     Message msg,
+                                     EmbedBuilder em,
+                                     Color cEm) {
+        AtomicInteger index = new AtomicInteger(0);
+        ArrayList<String> temp = new ArrayList<String>(1);
+        for (int i = 0; i < totalString.size(); i++) {
+            String field = totalString.get(i).toString();
+            // debug
+            //System.out.println("Index: " + index.toString() + "/" + totalString.size());
+            //System.out.println("Field: " + field);
+            if ((index.get() < 35) && (i != totalString.size() - 1)) {
+                temp.add(field + "\n");
+                index.incrementAndGet();
+            } else {
+                em.setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN,cEm));
+                temp.add(field + "\n");
+                // debug
+                //String tempB = Util.combineStringArray(temp);
+                //System.out.println("Field: " + tempB);
+                em.setDescription(Util.combineStringArray(temp));
+                msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+                em.clearFields();
+                temp.clear();  
+                index.set(0);
+            }
+        }  
+    }  
 }

@@ -6,6 +6,7 @@ import io.ph.bot.commands.CommandData;
 import io.ph.bot.jobs.StatusChangeJob;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
+import io.ph.util.MessageUtils;
 import io.ph.bot.Bot;
 
 import net.dv8tion.jda.core.entities.Message;
@@ -17,6 +18,7 @@ import java.lang.Integer;
 import java.util.Date;
 import java.text.SimpleDateFormat;
 import java.lang.StringBuilder;
+import java.util.ArrayList;
 
 /**
  * Shows all the currently logged in guilds
@@ -38,25 +40,29 @@ public class GuildList extends Command {
     public void executeCommand(Message msg) {
         String timeStamp = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss").format(new Date());
         EmbedBuilder em = new EmbedBuilder();
+        ArrayList<String> totalString = new ArrayList<String>(1);
         em.setTitle("All Guilds", null);
         Bot.getInstance().getBots()
         .forEach(j -> {
             j.getGuilds()
             .forEach(g -> {
-                em.addField("Guild: ",g.getName(), false)
-                .addField("Server ID", g.getId(), true)
-                .addField("Owner: ",Util.resolveNameFromMember(g.getOwner(),true), true)
-                .addField("Users", Integer.toString(g.getMembers().size()), true)
-                .addField("Text Channels", Integer.toString(g.getTextChannels().size()), true)
-                .addField("Voice Channels", Integer.toString(g.getVoiceChannels().size()), true);
+                totalString.add("**Guild: " + g.getName()
+                    + " ... Server ID: " + g.getId()+"**");
+                totalString.add("Owner: " 
+                    + Util.resolveNameFromMember(g.getOwner(),true)
+                    + " ... Users: " 
+                    + Integer.toString(g.getMembers().size()));
+                totalString.add("Text Channels: " 
+                    + Integer.toString(g.getTextChannels().size())
+                    + " ... Voice Channels: " 
+                    + Integer.toString(g.getVoiceChannels().size()));
                 if (g.getJDA().getShardInfo() != null) {
-                    em.addField("Shard ID", g.getJDA().getShardInfo().getShardString(), true);
+                    totalString.add("Shard ID: " 
+                        + g.getJDA().getShardInfo().getShardString());
                 }
             });
         });
 
-        em.setFooter("Message was sent Local time "+timeStamp, null)
-        .setColor(Color.YELLOW);
-        msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+        MessageUtils.staggerArray(totalString,msg,em,Color.YELLOW);
     }
 }

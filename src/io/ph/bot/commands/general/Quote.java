@@ -8,6 +8,8 @@ import java.util.List;
 import java.time.LocalDate;
 import java.lang.*;
 import java.util.Random;
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import io.ph.bot.commands.Command;
 import io.ph.bot.commands.CommandCategory;
@@ -350,29 +352,26 @@ public class Quote extends Command {
     }
 
     /**
-     * List all quotes made
+     * List all quotes made by either the guild or by a user
      */
     private void listQuotesAll() {
         String nContent = Util.getCommandContents(Util.getCommandContents(msg));
-        StringBuilder totalString = new StringBuilder();
+        ArrayList<String> totalString = new ArrayList<String>(1);
         //debug
         //System.out.println("Cont: " + nContent);
         if (!nContent.equals("")) {
             Member qMember = Util.resolveMemberFromMessage(nContent,msg.getGuild());
             String name = Util.resolveNameFromMember(qMember,false);
+            em.setTitle("All Quotes created by: **" + name + "**", null);
             String[] results = QuoteObject.searchByUser(qMember.getUser().getId(),msg.getGuild().getId());
             if (results != null) {
                 for (String s : results) {
                     QuoteObject qO = QuoteObject.forName(Integer.parseInt(s),msg.getGuild().getId());
-                    totalString.append("#" + qO.getQuoteUniq() + " \"" + qO.getQuoteContent() + "\"" + "\n");
+                    totalString.add("**#" + qO.getQuoteUniq() + "** \"" + qO.getQuoteContent() + "\"");
                 }
             }
-            String finalTotal = totalString.toString();
-            em.setTitle("All Quotes created by: " + name, null)
-            .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
-            .setDescription(finalTotal);
-
         } else {
+            em.setTitle("All Quotes created in this guild: ", null);
             List<Member> iteratorion = msg.getGuild().getMembers();
             iteratorion.forEach(j -> {
                 String[] results = QuoteObject.searchByUser(j.getUser().getId(),msg.getGuild().getId());
@@ -382,14 +381,12 @@ public class Quote extends Command {
                         sb.append(s + ", ");
                     }
                     String fin = sb.toString();
-                    totalString.append(Util.resolveNameFromMember(j,false) + ": " + fin.substring(0, fin.length() - 2) + "\n");
+                    totalString.add("**" + Util.resolveNameFromMember(j,false) + ":** " + fin.substring(0, fin.length() - 2));
                 }
             });
-            String finalTotal = totalString.toString();
-            em.setTitle("All Quotes created in this guild: ", null)
-            .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
-            .setDescription(finalTotal);
         }
+        MessageUtils.staggerArray(totalString,msg,em);
+        em.clear();
     }
 
     /**
