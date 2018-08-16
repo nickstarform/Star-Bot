@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.lang.*;
-import java.util.concurrent.atomic.AtomicInteger ;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
