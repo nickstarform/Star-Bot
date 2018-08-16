@@ -131,8 +131,11 @@ public class Quote extends Command {
         Message nMsg = msg.getChannel().getHistoryBefore(msg, 1).complete().getRetrievedHistory().get(0);
         // System.out.println(nMsg);
         String nContents = nMsg.getContentDisplay();
-        String nAuthor = Util.resolveNameFromMember(Util.resolveMemberFromMessage(nMsg),false);
+        String nAuthor = Util.resolveNameFromMember(Util.memberFromMessage(nMsg),false);
         String tContents ="\"" + nAuthor + "\" " + nContents;
+        //debug
+        //System.out.println(nAuthor);
+        //System.out.println(tContents);
         createQuote(tContents);
     }
     /**
@@ -254,7 +257,7 @@ public class Quote extends Command {
             if(m.delete(msg.getAuthor().getId())) {
                 em.setTitle("Success", null)
                 .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
-                .setDescription("Quote ** #$" + contents + "** deleted");
+                .setDescription("Quote ** #" + contents + "** deleted");
             } else {
                 em.setTitle("Error", null)
                 .setColor(Color.RED)
@@ -357,7 +360,6 @@ public class Quote extends Command {
         if (!nContent.equals("")) {
             Member qMember = Util.resolveMemberFromMessage(nContent,msg.getGuild());
             String name = Util.resolveNameFromMember(qMember,false);
-            totalString.append("Quotes from user: " + name + ":\n");
             String[] results = QuoteObject.searchByUser(qMember.getUser().getId(),msg.getGuild().getId());
             if (results != null) {
                 for (String s : results) {
@@ -366,7 +368,7 @@ public class Quote extends Command {
                 }
             }
             String finalTotal = totalString.toString();
-            em.setTitle("All Quotes created in this guild: ", null)
+            em.setTitle("All Quotes created by: " + name, null)
             .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
             .setDescription(finalTotal);
 
@@ -486,6 +488,8 @@ public class Quote extends Command {
             toReturn[0] = s.split(" ")[0];
             toReturn[1] = Util.getCommandContents(s);
         }
+        String temp = Util.combineStringArray(Util.removeLastArrayEntry(toReturn[0].split("#")));
+        toReturn[0] = temp;
         //System.out.println(toReturn[0]);
         //System.out.println(toReturn[1]);
         return toReturn;
