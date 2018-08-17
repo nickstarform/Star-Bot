@@ -12,6 +12,7 @@ import io.ph.bot.commands.CommandHandler;
 import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
+import io.ph.util.MessageUtils;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Message;
 /**
@@ -24,7 +25,9 @@ import net.dv8tion.jda.core.entities.Message;
         category = CommandCategory.UTILITY,
         permission = Permission.NONE,
         description = "Either list all commands or get help for one. Use 'showall' to display inline",
-        example = "(optional command name)"
+        example = "----- *DMs user with command list\n"
+                + "(optional command name) *Shows info on a command\n"
+                + "showall *Shows inline instead of DM"
         )
 public class Help extends Command {
 
@@ -120,7 +123,7 @@ public class Help extends Command {
                     em.setTitle("Success", null)
                     .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
                     .setDescription("Check your PMs!");
-                    msg.getChannel().sendMessage(em.build()).queue();
+                    MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
                 });
             });
          

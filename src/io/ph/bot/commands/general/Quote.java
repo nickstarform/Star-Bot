@@ -124,6 +124,7 @@ public class Quote extends Command {
         if (!em.isEmpty()){
             msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
         }
+        msg.delete().queue();
     }
 
     /**
@@ -133,11 +134,14 @@ public class Quote extends Command {
         Message nMsg = msg.getChannel().getHistoryBefore(msg, 1).complete().getRetrievedHistory().get(0);
         // System.out.println(nMsg);
         String nContents = nMsg.getContentDisplay();
-        String nAuthor = Util.resolveNameFromMember(Util.memberFromMessage(nMsg),false);
+        String nAuthor = Util.combineStringArray(
+                         Util.removeLastArrayEntry(
+                         Util.resolveNameFromMember(
+                         Util.memberFromMessage(nMsg),false).split("\"")));
         String tContents ="\"" + nAuthor + "\" " + nContents;
         //debug
-        //System.out.println(nAuthor);
-        //System.out.println(tContents);
+        System.out.println("nAuthor: "+nAuthor);
+        System.out.println("tContents:"+tContents);
         createQuote(tContents);
     }
     /**
@@ -168,37 +172,7 @@ public class Quote extends Command {
      */
     private void createQuote() {
         contents = Util.getCommandContents(contents);
-        //contents = "Nick testing the create quote commands";
-        if(contents.equals("") || contents.split(" ").length < 2) {
-            em.setTitle("Error", null)
-            .setColor(Color.RED)
-            .addField(GuildObject.guildMap.get(msg.getGuild().getId()).getConfig().getCommandPrefix() 
-                    + "quote create name contents",
-                    "You have designated to create a quote, but your"
-                            + " command does not meet all requirements\n"
-                            + "*name* - Name of the user. If it is multi-worded, "
-                            + "you can surround it in \"quotation marks\"\n"
-                            + "*contents* - Contents of the quote", true);
-            return;
-        }
-        String[] resolved = resolveQuoteUserAndContents(contents);
-        QuoteObject m = new QuoteObject(0, resolved[1], 0, 
-            Util.resolveMemberFromMessage(resolved[0],msg.getGuild()).getUser().getId(), 
-            msg.getGuild().getId());
-        try {
-            String ret = m.create();
-            if(!ret.equals(null)) {
-                em.setTitle("Success", null)
-                .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
-                .setDescription("Quote **" + resolved[0] + " #" + ret + "** created");
-            } else {
-                em.setTitle("Error", null)
-                .setColor(Color.RED)
-                .setDescription("Weird error. Report to the bot dev with `!suggest`");
-            }
-        } catch(SQLException e) {
-            e.printStackTrace();
-        }
+        createQuote(contents);
     }
 
     /**

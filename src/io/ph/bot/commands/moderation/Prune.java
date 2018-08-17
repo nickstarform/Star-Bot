@@ -47,7 +47,7 @@ public class Prune extends Command {
                     em.setTitle("Success", null)
                     .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
                     .setDescription("Pruned " + DEFAULT_PRUNE + " messages");
-                    msg.getChannel().sendMessage(em.build()).queue();
+                    MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
                 }, failure -> {
                     msg.getChannel().sendMessage(MessageUtils.handleFailure(failure)).queue();
                 });
@@ -70,7 +70,7 @@ public class Prune extends Command {
                     em.setTitle("Error", null)
                     .setColor(Color.RED)
                     .setDescription("User " + t.substring(t.indexOf(" ") + 1) + " does not exist");
-                    msg.getChannel().sendMessage(em.build()).queue();
+                    MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
                 }
             }
             if (target == null) {
@@ -81,7 +81,7 @@ public class Prune extends Command {
                         em.setTitle("Success", null)
                         .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
                         .setDescription("Pruned " + (i2) + " messages");
-                        msg.getChannel().sendMessage(em.build()).queue();
+                        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
                     }, failure -> {
                         msg.getChannel().sendMessage(MessageUtils.handleFailure(failure)).queue();
                     });
@@ -110,7 +110,7 @@ public class Prune extends Command {
                         .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
                         .setDescription("Pruned " + tCounter.getVal() + " of **" 
                                 + target2.getEffectiveName() + "**'s messages");
-                        msg.getChannel().sendMessage(em.build()).queue();
+                        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
                     }, failure -> {
                         msg.getChannel().sendMessage(MessageUtils.handleFailure(failure)).queue();
                     });
@@ -141,9 +141,9 @@ public class Prune extends Command {
                 .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
                 .setDescription("Pruned " + targetCounter2 + " of **" 
                         + target2.getEffectiveName() + "**'s messages");
-                msg.getChannel().sendMessage(em.build()).queue();
+                MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
             }, failure -> {
-                msg.getChannel().sendMessage(MessageUtils.handleFailure(failure)).queue();;
+                msg.getChannel().sendMessage(MessageUtils.handleFailure(failure)).queue();
             });
             
         } else if (Util.isInteger(msg.getContentDisplay().split(" ")[msg.getContentDisplay().split(" ").length - 1])) {
@@ -175,9 +175,9 @@ public class Prune extends Command {
                     .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
                     .setDescription("Pruned " + targetCounter2 + " of **" 
                             + target2.getEffectiveName() + "**'s messages");
-                    msg.getChannel().sendMessage(em.build()).queue();
+                    MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
                 }, failure -> {
-                    msg.getChannel().sendMessage(MessageUtils.handleFailure(failure)).queue();;
+                    msg.getChannel().sendMessage(MessageUtils.handleFailure(failure)).queue();
                 });
             }
         }
