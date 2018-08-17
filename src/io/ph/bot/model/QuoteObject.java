@@ -7,6 +7,9 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Arrays;
+import java.lang.Integer;
 import java.lang.*;
 import java.util.Random;
 import java.util.Date;
@@ -73,7 +76,6 @@ public class QuoteObject {
      * Returns top Quote and hits
      * @param guildID
      * @return Object array with index uniq, date_created,quoteContent, hits, userID
-     * @throws NoMacroFoundException
      */
     public static QuoteObject topQuote(String guildID) throws IllegalArgumentException {
         Connection conn = null;
@@ -87,6 +89,36 @@ public class QuoteObject {
                 return null;
             rs.next();
             return new QuoteObject(rs.getInt(1), rs.getString(3), rs.getInt(4), rs.getString(5),guildID, LocalDate.parse(rs.getString(2)));
+        } catch(SQLException e) {
+            e.printStackTrace();
+        } finally {
+            SQLUtils.closeQuietly(rs);
+            SQLUtils.closeQuietly(stmt);
+            SQLUtils.closeQuietly(conn);
+        }
+        return null;
+    }
+
+    /**
+     * Returns top 10 quotes
+     * @param guildID
+     * @return Array of uniq for top 10 quotes
+     */
+    public static ArrayList<String> rankQuote(String guildID) throws IllegalArgumentException {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        ArrayList<String> fin = new ArrayList<String>(1);
+        try {
+            conn = ConnectionPool.getConnectionQuote(guildID);
+            stmt = conn.prepareStatement("SELECT uniq FROM `discord_quote` ORDER BY hits DESC LIMIT 10");
+            rs = stmt.executeQuery();
+            if(!rs.isBeforeFirst())
+                return null;
+            while (rs.next()) {
+                fin.add(Integer.toString(rs.getInt(1)));
+            }
+            return fin;
         } catch(SQLException e) {
             e.printStackTrace();
         } finally {
@@ -278,7 +310,7 @@ public class QuoteObject {
      * @param guildID guildID to search in
      * @return Null if no results, string of random Quote name if true
      */
-    public static int chooseGuildQuotesUniq(String guildID) {
+    public static int chooseRandomQuoteUniq(String guildID) {
 
         Random randomGenerator;
         Connection conn = null;
@@ -320,7 +352,7 @@ public class QuoteObject {
      */
     public static QuoteObject chooseRandomQuote(String guildID) {
         
-        int uniq = chooseGuildQuotesUniq(guildID);
+        int uniq = chooseRandomQuoteUniq(guildID);
 
         return forName(uniq,guildID,true);
     }

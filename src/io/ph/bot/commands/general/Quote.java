@@ -10,6 +10,7 @@ import java.lang.*;
 import java.util.Random;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.lang.Integer;
 
 import io.ph.bot.commands.Command;
 import io.ph.bot.commands.CommandCategory;
@@ -92,9 +93,9 @@ public class Quote extends Command {
         } else if (param.equalsIgnoreCase("previous") || param.equalsIgnoreCase("p")) {
             previousMsg();
         } else if(param.equalsIgnoreCase("top")) {
+            quoteTop();
+        } else if(param.equalsIgnoreCase("rank")) {
             quoteRank();
-        //} else if(param.equalsIgnoreCase("rank")) {
-        //   quoteRank();
         } else if(!contents.equals("")){
                 QuoteObject m = QuoteObject.forName(Integer.parseInt(contents), msg.getGuild().getId().toString(), true);
                 msg.getChannel().sendMessage("#" + Integer.toString(m.getQuoteUniq()) 
@@ -137,10 +138,10 @@ public class Quote extends Command {
         String nAuthor = Util.combineStringArray(
                          Util.removeLastArrayEntry(
                          Util.resolveNameFromMember(
-                         Util.memberFromMessage(nMsg),false).split("\"")));
+                         Util.memberFromMessage(nMsg),true).split("#")));
         String tContents ="\"" + nAuthor + "\" " + nContents;
         //debug
-        System.out.println("nAuthor: "+nAuthor);
+        //System.out.println("nAuthor: "+nAuthor);
         System.out.println("tContents:"+tContents);
         createQuote(tContents);
     }
@@ -425,7 +426,7 @@ public class Quote extends Command {
     /**
      * Send information on a macro
      */
-    private void quoteRank() {
+    private void quoteTop() {
         try {
             QuoteObject m = QuoteObject.topQuote(msg.getGuild().getId());
             em.setTitle("Information on #" + Integer. toString(m.getQuoteUniq()), null)
@@ -440,27 +441,53 @@ public class Quote extends Command {
             .setDescription(e.getMessage());
         }
     }
+
+    /**
+     * Send information on a quote
+     */
+    private void quoteRank() {
+        try {
+            ArrayList<String> rQ = QuoteObject.rankQuote(msg.getGuild().getId());
+            ArrayList<String> message = new ArrayList<String>(10);
+            // debug
+            //System.out.println("rQ: " + rQ);
+            for (int i = 0; i < rQ.size(); i++) {
+                QuoteObject m = QuoteObject.forName(Integer.parseInt(rQ.get(i)),msg.getGuild().getId());
+                message.add("#" + Integer.toString(m.getQuoteUniq()) 
+                    + " \"" + m.getQuoteContent() + "\" ~ " 
+                    + Util.resolveNameFromMember(m.getFallbackUsername(),false)
+                    + " on " 
+                    + m.getDate().toString()
+                    + "\n");
+            }
+            MessageUtils.sendMessage(msg.getChannel().getId(),Util.combineStringArray(message));
+        } catch (IllegalArgumentException e) {
+            em.setTitle("Error", null)
+            .setColor(Color.RED)
+            .setDescription(e.getMessage());
+        }
+    }
+
     /**
      * Resolve Quote Username and contents from a create statement
      * This works to involve quotations around a spaced quote name
      * @param s The parameters of a create statement - The contents past the $quote create bit
-     * @return Multi index array: [0] userid, [1] is the contents
+     * @return Multi index array: [0] username, [1] is the contents
      * Prerequisite: s.split() must have length of >= 2
      */
     private static String[] resolveQuoteUserAndContents(String s) {
         // debug
         //System.out.println(s);
         String[] toReturn = new String[2];
-        if(s.contains("\"") && StringUtils.countMatches(s, "\"") > 1) {
-            int secondIndexOfQuotes = s.indexOf("\"", s.indexOf("\"") + 1);
-            toReturn[0] = s.substring(s.indexOf("\"") + 1, secondIndexOfQuotes);
-            toReturn[1] = s.substring(secondIndexOfQuotes + 2);
+        if(s.contains("\"") && s.split("\"").length > 1) {
+            toReturn[0] = s.split("\"")[1];
+            toReturn[1] = Util.combineStringArray(
+                          Util.removeFirstArrayEntry(
+                            s.split("\"")));
         } else {
             toReturn[0] = s.split(" ")[0];
             toReturn[1] = Util.getCommandContents(s);
         }
-        String temp = Util.combineStringArray(Util.removeLastArrayEntry(toReturn[0].split("#")));
-        toReturn[0] = temp;
         //System.out.println(toReturn[0]);
         //System.out.println(toReturn[1]);
         return toReturn;

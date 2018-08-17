@@ -58,35 +58,6 @@ public class MacroObject {
     }
 
     /**
-     * Returns top macro and hits
-     * @param guildId
-     * @return Object array with index 0: hits 1: macro name 2: userid 3: fallback username
-     * @throws NoMacroFoundException
-     */
-    //    public MacroObject(String fallbackUsername, String macroName, String macroContent, int hits,String userId, String guildId) {
-    public static MacroObject topMacro(String guildId) throws IllegalArgumentException {
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-        try {
-            conn = ConnectionPool.getConnection(guildId);
-            stmt = conn.prepareStatement("SELECT macro, user_created, date_created, content, hits, user_id  FROM `discord_macro` ORDER BY hits DESC LIMIT 1");
-            rs = stmt.executeQuery();
-            if(!rs.isBeforeFirst())
-                return null;
-            rs.next();
-            return new MacroObject(rs.getString(2), rs.getString(1), rs.getString(4), rs.getInt(5), rs.getString(6),guildId, LocalDate.parse(rs.getObject(3).toString()));
-        } catch(SQLException e) {
-            e.printStackTrace();
-        } finally {
-            SQLUtils.closeQuietly(rs);
-            SQLUtils.closeQuietly(stmt);
-            SQLUtils.closeQuietly(conn);
-        }
-        return null;
-    }
-
-    /**
      * Get and return a macro for given macroName
      * If found, increment the hits
      * @param name Macro name to search for
@@ -117,6 +88,65 @@ public class MacroObject {
             }
             return new MacroObject(rs.getString(1), name, rs.getString(3), rs.getInt(4), rs.getString(5),
                     guildId, LocalDate.parse(rs.getObject(2).toString()));
+        } catch(SQLException e) {
+            e.printStackTrace();
+        } finally {
+            SQLUtils.closeQuietly(rs);
+            SQLUtils.closeQuietly(stmt);
+            SQLUtils.closeQuietly(conn);
+        }
+        return null;
+    }
+
+    /**
+     * Returns top macro and hits
+     * @param guildId
+     * @return Object array with index 0: hits 1: macro name 2: userid 3: fallback username
+     * @throws NoMacroFoundException
+     */
+    //    public MacroObject(String fallbackUsername, String macroName, String macroContent, int hits,String userId, String guildId) {
+    public static MacroObject topMacro(String guildId) throws IllegalArgumentException {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            conn = ConnectionPool.getConnection(guildId);
+            stmt = conn.prepareStatement("SELECT macro, user_created, date_created, content, hits, user_id  FROM `discord_macro` ORDER BY hits DESC LIMIT 1");
+            rs = stmt.executeQuery();
+            if(!rs.isBeforeFirst())
+                return null;
+            rs.next();
+            return new MacroObject(rs.getString(2), rs.getString(1), rs.getString(4), rs.getInt(5), rs.getString(6),guildId, LocalDate.parse(rs.getObject(3).toString()));
+        } catch(SQLException e) {
+            e.printStackTrace();
+        } finally {
+            SQLUtils.closeQuietly(rs);
+            SQLUtils.closeQuietly(stmt);
+            SQLUtils.closeQuietly(conn);
+        }
+        return null;
+    }
+
+    /**
+     * Returns top 10 macros
+     * @param guildID
+     * @return Array of uniq for top 10 macros
+     */
+    public static ArrayList<String> rankMacro(String guildID) throws IllegalArgumentException {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        ArrayList<String> fin = new ArrayList<String>(1);
+        try {
+            conn = ConnectionPool.getConnection(guildID);
+            stmt = conn.prepareStatement("SELECT macro FROM `discord_macro` ORDER BY hits DESC LIMIT 10");
+            rs = stmt.executeQuery();
+            if(!rs.isBeforeFirst())
+                return null;
+            while (rs.next()) {
+                fin.add(rs.getString(1));
+            }
+            return fin;
         } catch(SQLException e) {
             e.printStackTrace();
         } finally {
