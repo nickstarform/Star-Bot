@@ -1,4 +1,6 @@
-# Welcome to Star-Bot, an open source Discord Bot, based off of [JDA](https://github.com/DV8FromTheWorld/JDA), adapted from Momo by Kagumi. Very robust and will handle many things: from sending Twitch.tv notifications to playing music, to temporarily muting troublemakers, Star-Bot can do a lot for your server.
+# Star Bot
+
+## Welcome to Star-Bot, an open source Discord Bot, based off of [JDA](https://github.com/DV8FromTheWorld/JDA), adapted from Momo by Kagumi. Very robust and will handle many things: from sending Twitch.tv notifications to playing music, to temporarily muting troublemakers, Star-Bot can do a lot for your server.
 
 
 ## Can I just add Star-Bot to my server?

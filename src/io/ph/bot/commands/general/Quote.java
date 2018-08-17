@@ -123,7 +123,8 @@ public class Quote extends Command {
         // debug
         //System.out.println(param);
         if (!em.isEmpty()){
-            msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5)
+            msg.delete().queue();
         }
         msg.delete().queue();
     }

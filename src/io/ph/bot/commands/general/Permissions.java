@@ -121,7 +121,7 @@ public class Permissions extends Command {
                 em.setTitle("Success", null)
                 .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
                 .setDescription("Check your PMs!");
-                msg.getChannel().sendMessage(em.build()).queue();
+                MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
                 });
             msg.delete().queue();
             });     

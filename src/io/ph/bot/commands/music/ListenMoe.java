@@ -10,6 +10,7 @@ import io.ph.bot.commands.CommandData;
 import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
+import io.ph.util.MessageUtils;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.VoiceChannel;
@@ -54,7 +55,8 @@ public class ListenMoe extends Command {
                 em.setTitle("Error", null)
                 .setColor(Color.RED)
                 .setDescription("You must be in a voice channel so I know where to go!");
-                msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+                MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+                msg.delete().queue();
                 return;
             }
         }
