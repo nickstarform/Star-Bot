@@ -77,7 +77,8 @@ public class Music extends Command {
                 em.setTitle("Error", null)
                 .setColor(Color.RED)
                 .setDescription("You must be in a voice channel so I know where to go!");
-                msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+                MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+                msg.delete().queue();
                 return;
             }
         }
@@ -132,7 +133,8 @@ public class Music extends Command {
                     em.setTitle("Error", null)
                     .setColor(Color.RED)
                     .setDescription("You must be in a voice channel so I know where to go!");
-                    msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+                    MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+                    msg.delete().queue();
                     return;
                 }
             }
@@ -174,21 +176,24 @@ public class Music extends Command {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("You have already voted to skip!");
-            msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
             return;
         }
         if (m.getAudioPlayer().getPlayingTrack() == null) {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("No song is currently playing");
-            msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
             return;
         }
         if (!audio.getConnectedChannel().getMembers().contains(msg.getGuild().getMember(msg.getAuthor()))) {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("You cannot vote if you aren't listening");
-            msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
             return;
         }
         int current = audio.getConnectedChannel().getMembers().size();
@@ -212,14 +217,16 @@ public class Music extends Command {
                 .setDescription("Force skipped by " + msg.getGuild().getMember(msg.getAuthor()).getEffectiveName());
             }
             m.getTrackManager().skipTrack();
-            msg.getChannel().sendMessage(em.build()).queue();
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
             return;
         } else {
             m.getSkipVoters().add(msg.getAuthor().getId());
             em.setTitle("Voted to skip", null)
             .setColor(Util.resolveColor(msg.getMember(), Color.GREEN))
             .setDescription("Votes needed to pass: " + currentVotes + "/" + maxVotes);
-            msg.getChannel().sendMessage(em.build()).queue();
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();        
         }
     }
 
@@ -235,7 +242,8 @@ public class Music extends Command {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("No song currently playing");
-            msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
             return;
         }
         TrackDetails t;
@@ -261,7 +269,8 @@ public class Music extends Command {
                     + "/" + Util.formatTime(m.getAudioPlayer().getPlayingTrack().getDuration()), true)
             .addField("Source", m.getAudioPlayer().getPlayingTrack().getInfo().uri, false);
         }
-        msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
     }
 
     public static void next(Message msg) {
@@ -277,7 +286,8 @@ public class Music extends Command {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("No song currently playing");
-            msg.getChannel().sendMessage(em.build()).queue();
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();            
             return;
         }
         em.setTitle(String.format("Coming up - %d songs | %s total",
@@ -297,7 +307,8 @@ public class Music extends Command {
                                 t.getTitle(),
                                 Util.formatTime(t.getTrack().getDuration())));
         }
-        msg.getChannel().sendMessage(em.build()).queue();
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
     }
 
     public static void stop(Message msg, boolean...bs) {
@@ -313,14 +324,16 @@ public class Music extends Command {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("You need the kick+ permission to stop the queue");
-            msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
             return;
         }
         m.reset();
         em.setTitle("Music stopped", null)
         .setColor(Util.resolveColor(msg.getMember(), Color.GREEN))
         .setDescription("Queue cleared");
-        msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
     }
 
     public static void shuffle(Message msg, boolean...bs) {
@@ -336,14 +349,16 @@ public class Music extends Command {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("You need the kick+ permission to shuffle the queue");
-            msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
             return;
         }
         m.shuffle();
         em.setTitle("Music shuffled", null)
         .setColor(Util.resolveColor(msg.getMember(), Color.GREEN))
         .setDescription("Wow, kerfluffle");
-        msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
     }
 
     public static void volume(Message msg, String volume, boolean...bs) {
@@ -358,7 +373,8 @@ public class Music extends Command {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("You need the kick+ permission to change the volume");
-            msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
             return;
         }
         int input;
@@ -367,13 +383,15 @@ public class Music extends Command {
             em.setTitle("Current Volume", null)
             .setColor(Util.resolveColor(msg.getMember(), Color.GREEN))
             .setDescription(g.getMusicManager().getAudioPlayer().getVolume() + "");
-            msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
             return;
         }
         em.setTitle("Success", null)
         .setColor(Util.resolveColor(msg.getMember(), Color.GREEN))
         .setDescription("Set volume to " + input);
-        msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
         g.getMusicManager().getAudioPlayer().setVolume(input);
     }
 
@@ -389,14 +407,16 @@ public class Music extends Command {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("You need the kick+ permission to edit the queue");
-            msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
             return;
         }
         if (g.getMusicManager().getTrackManager().getQueueSize() <= 1) {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("You don't have anything to remove from your queue");
-            msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
             return;
         }
         int input;
@@ -434,7 +454,8 @@ public class Music extends Command {
         em.setTitle("Success")
         .setColor(Util.resolveColor(msg.getMember(), Color.CYAN))
         .setDescription(String.format("Removed **%s** from your queue", removed.getTrack().getInfo().title));
-        msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
     }
 
 

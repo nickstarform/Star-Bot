@@ -26,6 +26,7 @@ public class Ping extends Command {
         .setDescription("Pong!")
         .setFooter(msg.getJDA().getPing() + "ms", null)
         .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.MAGENTA));
-        msg.getChannel().sendMessage(em.build()).queue();
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
     }
 }

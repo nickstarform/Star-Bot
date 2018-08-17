@@ -22,6 +22,7 @@ import io.ph.bot.exception.NoAPIKeyException;
 import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
+import io.ph.util.MessageUtils;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Message;
 
@@ -50,7 +51,8 @@ public class Youtube extends Command {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("You need to specify a search query");
-            msg.getChannel().sendMessage(em.build()).queue();
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
             return;
         }
         try {
@@ -102,7 +104,8 @@ public class Youtube extends Command {
             .setColor(Color.RED)
             .setDescription("This bot does not have Youtube search setup");
         }
-        msg.getChannel().sendMessage(em.build()).queue();
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
     }
     
     private static YouTube getYoutubeClient() {
@@ -111,6 +114,6 @@ public class Youtube extends Command {
             public void initialize(com.google.api.client.http.HttpRequest request) throws IOException {
 
             }
-        }).setApplicationName("momo discord bot").build();
+        }).setApplicationName("Discord Bot").build();
     }
 }

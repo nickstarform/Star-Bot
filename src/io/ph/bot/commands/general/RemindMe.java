@@ -94,7 +94,8 @@ public class RemindMe extends Command {
         .setDescription("You will be reminded at...");
         em.setTimestamp(target)
         .setFooter("Local time", null);
-        msg.getChannel().sendMessage(em.build()).queue(success -> {msg.delete().queue();});
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
     }
 
 }

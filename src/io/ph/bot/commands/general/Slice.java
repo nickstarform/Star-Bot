@@ -80,13 +80,15 @@ public class Slice extends Command {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("Error finding a valid Emoji to slice");
-            msg.getChannel().sendMessage(em.build()).queue();
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
         } catch (IOException e) {
             e.printStackTrace();
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("Error processing the image");
-            msg.getChannel().sendMessage(em.build()).queue();
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
         }
     }
 
