@@ -90,6 +90,14 @@ public class MessageUtils {
      */
     public static void sendPrivateMessage(String userId, String msg) {
         Bot.getInstance().shards.getUserById(userId).openPrivateChannel().queue(ch -> ch.sendMessage(msg).queue());
+    }    
+    /**
+     * Send a PM to a user
+     * @param userId User ID
+     * @param msg String of message
+     */
+    public static void sendPrivateMessage(String userId, MessageEmbed msg) {
+        Bot.getInstance().shards.getUserById(userId).openPrivateChannel().queue(ch -> ch.sendMessage(msg).queue());
     }
     
     /**
