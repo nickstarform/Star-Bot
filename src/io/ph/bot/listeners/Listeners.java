@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
+import java.util.ArrayList;
 import java.lang.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -22,6 +24,7 @@ import io.ph.util.MessageUtils;
 import io.ph.util.Util;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Guild;
+import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.Role;
 import net.dv8tion.jda.core.entities.TextChannel;
 import net.dv8tion.jda.core.events.ReadyEvent;
@@ -45,11 +48,11 @@ import net.dv8tion.jda.core.hooks.ListenerAdapter;
  */
 public class Listeners extends ListenerAdapter {
     private static Logger log = LoggerFactory.getLogger(Listeners.class);
+    public static String botdevID = Long.toString(Bot.getInstance().getConfig().getbotDeveloperId());
 
     @Override
     public void onReady(ReadyEvent e) {
 
-        String botdevID = Long.toString(Bot.getInstance().getConfig().getbotDeveloperId());
         String logMsg = null;
 
         e.getJDA().getGuilds().stream()
@@ -301,6 +304,12 @@ public class Listeners extends ListenerAdapter {
         ProceduralListener.getInstance().update(e.getMessage());
     }
 
+    /**
+    * Upon recieved event this is what happens: makes sure
+    * it isnt the bots own message(infinite loop check)
+    * Then sees if it is a report -> invalid command -> valid command
+    * @param e PrivateMessageevent
+    */
     @Override
     public void onPrivateMessageReceived(PrivateMessageReceivedEvent e) {
         if (!Bot.isReady)
@@ -311,27 +320,84 @@ public class Listeners extends ListenerAdapter {
 
         EmbedBuilder em = new EmbedBuilder();
         Command c;
-        if((c = CommandHandler.getCommand(e.getMessage().getContentDisplay().toLowerCase())) == null) {
+        String dest = "";
+
+        if (e.getMessage().getContentDisplay().toLowerCase().startsWith("> report")) {
+            String reportAction = e.getMessage().getContentDisplay().substring(9);
+            List<Message.Attachment> mesAttach = e.getMessage().getAttachments();
+            ArrayList<String> mesAttachUrl = new ArrayList<String>(0);
+            String author = e.getMessage().getAuthor().getName() 
+                          + "#" + e.getMessage().getAuthor().getDiscriminator()
+                          + " ID: " + e.getMessage().getAuthor().getId();
+            String param = reportAction.split(" ")[0];
+            reportAction = reportAction.replace(param,"");
+            Guild possibleGuild = Bot.getInstance().shards.getGuildById(param);
+            if (possibleGuild != null) {
+                dest = possibleGuild.getTextChannelsByName("reports",true).get(0).getId();
+                if ((dest == null) || (dest == "")) {
+                    dest = possibleGuild.getOwner().getUser().getId();
+                    possibleGuild = null;
+                }
+            } 
+            if ((dest == null) || (dest == "")) {
+                dest = e.getMessage().getId();
+                reportAction = param + reportAction;
+            }
+
+            if ((mesAttach != null) && (!mesAttach.isEmpty())) {
+                for (int i = 0; i < mesAttach.size(); i++) {
+                    mesAttachUrl.add("<" + mesAttach.get(i).getUrl() + ">");
+                }
+            }
+
+            em.setTitle("Report", null)
+            .setColor(Color.RED)
+            .addField("Message:",reportAction,false)
+            .addField("From user:", author, true)
+            .setTimestamp​(Instant.now());
+            if (!mesAttachUrl.isEmpty()) {
+                em.addField("Attachments:", Util.combineStringArray(mesAttachUrl), true);
+            }
+            if (possibleGuild != null) {
+                em.addField("Guild: ", possibleGuild.getName(), true)
+                .addField("Guild ID: ", possibleGuild.getId(), true)
+                .addField("Owner: ", Util.resolveNameFromMember(possibleGuild.getOwner(),true), true)
+                .addField("Owner ID: ", possibleGuild.getOwner().getUser().getId(), true);
+                MessageUtils.sendMessage(dest,em.build());
+            } else {
+                MessageUtils.sendPrivateMessage(botdevID,em.build());
+            }
+            // debug
+            System.out.println("dest: " + dest);
+            System.out.println("param: " + param);
+            System.out.println("reportAction: " + reportAction);
+            System.out.println("author: " + author);
+
+            e.getChannel().sendMessage("Report successful. Please wait for a reply.").queue();
+            return;
+
+        } else if((c = CommandHandler.getCommand(e.getMessage().getContentDisplay().toLowerCase())) == null) {
             em.setTitle("Invalid command", null)
             .setColor(Color.RED)
             .setDescription(e.getMessage().getContentDisplay() + " is not a valid command");
             e.getChannel().sendMessage(em.build()).queue();
             return;
+        } else {
+            em.setTitle(e.getMessage().getContentDisplay(), null)
+            .setColor(Color.CYAN)
+            .addField("Primary Command", c.getDefaultCommand(), true);
+            String[] aliases = c.getAliases();
+            if(aliases.length > 0) {
+                em.addField("Aliases", 
+                        Arrays.toString(aliases).substring(1, Arrays.toString(aliases).length() - 1) + "\n", true);
+            }
+            em.addField("Permissions", c.getPermission().toString(), true)
+            .addField("Description", c.getDescription(), false)
+            .addField("Example", c.getDefaultCommand() + " " 
+                    + c.getExample().replaceAll("\n", "\n" + c.getDefaultCommand() + " "), false);
+            e.getChannel().sendMessage(em.build()).queue();
+            return;    
         }
-        em.setTitle(e.getMessage().getContentDisplay(), null)
-        .setColor(Color.CYAN)
-        .addField("Primary Command", c.getDefaultCommand(), true);
-        String[] aliases = c.getAliases();
-        if(aliases.length > 0) {
-            em.addField("Aliases", 
-                    Arrays.toString(aliases).substring(1, Arrays.toString(aliases).length() - 1) + "\n", true);
-        }
-        em.addField("Permissions", c.getPermission().toString(), true)
-        .addField("Description", c.getDescription(), false)
-        .addField("Example", c.getDefaultCommand() + " " 
-                + c.getExample().replaceAll("\n", "\n" + c.getDefaultCommand() + " "), false);
-        e.getChannel().sendMessage(em.build()).queue();
-        return;
     }
 
     @Override
