@@ -70,8 +70,8 @@ public class Listeners extends ListenerAdapter {
         }
         // currently only works if the bot is already invited to a guild
         //debug
-        System.out.println("Dev ID: "+botdevID);
-        System.out.println("Message: "+logMsg);
+        //System.out.println("Dev ID: "+botdevID);
+        //System.out.println("Message: "+logMsg);
     }
 
     /**
@@ -368,10 +368,10 @@ public class Listeners extends ListenerAdapter {
                 MessageUtils.sendPrivateMessage(botdevID,em.build());
             }
             // debug
-            System.out.println("dest: " + dest);
-            System.out.println("param: " + param);
-            System.out.println("reportAction: " + reportAction);
-            System.out.println("author: " + author);
+            //System.out.println("dest: " + dest);
+            //System.out.println("param: " + param);
+            //System.out.println("reportAction: " + reportAction);
+            //System.out.println("author: " + author);
 
             e.getChannel().sendMessage("Report successful. Please wait for a reply.").queue();
             return;
