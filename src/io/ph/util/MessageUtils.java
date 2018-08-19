@@ -130,7 +130,7 @@ public class MessageUtils {
         .setDescription(String.format("Incorrect command usage. For more info, use %shelp %s",
                 GuildObject.guildMap.get(msg.getGuild().getId()).getConfig().getCommandPrefix(), 
                 cmd.getDefaultCommand()));
-        msg.getChannel().sendMessage(em.build()).queue();
+        sendMessage(msg.getChannel().getId(),em.build(),10);
     }
     
     /**

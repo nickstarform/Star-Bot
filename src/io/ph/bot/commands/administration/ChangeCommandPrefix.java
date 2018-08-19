@@ -39,7 +39,8 @@ public class ChangeCommandPrefix extends Command {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("Cannot have spaces in your command prefix");
-            msg.getChannel().sendMessage(em.build()).queue();
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
             return;
         }
         GuildObject.guildMap.get(msg.getGuild()
@@ -48,7 +49,8 @@ public class ChangeCommandPrefix extends Command {
         .setColor(Color.GREEN)
         .setDescription("Changed command prefix to " + contents)
         .setTimestamp(Instant.now());
-        msg.getChannel().sendMessage(em.build()).queue();
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
     }
 
 

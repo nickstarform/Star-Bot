@@ -1,6 +1,7 @@
 package io.ph.util;
 
 import java.awt.Color;
+import java.util.Random;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -20,6 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedList;
 import java.lang.StringBuilder;
 import java.util.stream.Collectors;
 
@@ -39,6 +41,7 @@ import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.MessageChannel;
 import net.dv8tion.jda.core.entities.User;
+import net.dv8tion.jda.core.entities.Role;
 import net.dv8tion.jda.core.entities.Guild.Ban;
 
 public class Util {
@@ -137,6 +140,45 @@ public class Util {
      */
     public static Member memberFromMessage(Message msg) {
         return msg.getGuild().getMember(msg.getAuthor());
+    }
+
+    /**
+     * Resolve a roles from member
+     * @param mem Member to resolve from
+     * @return ArrayList names of the roles
+     */
+    public static ArrayList<String> rolesNameFromMember(Member mem) {
+        ArrayList<String> temp = new ArrayList<String>(0);
+        for (Role r: mem.getRoles()){
+            temp.add(r.getName());
+        }
+        return temp;
+    }
+
+    /**
+     * Resolve a roles names from role list
+     * @param roles Roles to resolve from
+     * @return ArrayList names of the roles
+     */
+    public static ArrayList<String> roleNameFromList(List<Role> roles) {
+        ArrayList<String> temp = new ArrayList<String>(0);
+        for (Role r: roles) {
+            temp.add(r.getName());
+        }
+        return temp;
+    }
+
+    /**
+     * Resolve a roles from member
+     * @param mem Member to resolve from
+     * @return ArrayList id of the roles
+     */
+    public static ArrayList<String> rolesIdFromMember(Member mem) {
+        ArrayList<String> temp = new ArrayList<String>(0);
+        for (Role r: mem.getRoles()){
+            temp.add(r.getId());
+        }
+        return temp;
     }
 
     /**
@@ -340,6 +382,68 @@ public class Util {
         } catch (MalformedURLException e) {
             return false;
         }
+    }
+
+    /**
+     * Remove values in list2 from list1
+     * @param list1 ArrayList master list to remove from
+     * @param list2 ArrayList list to compare to
+     * @return list ArrayList of compared lists
+     */
+    public static List removeFromList(ArrayList list1, ArrayList list2) {
+        List<String> list = new LinkedList<String>(list1);
+        for (int i = 0; i < list2.size(); i++) {
+            list.remove(list2.get(i));
+        }
+        return list;
+    }
+    public static List removeFromList(List list1, List list2) {
+        List<String> list = new LinkedList<String>(list1);
+        for (int i = 0; i < list2.size(); i++) {
+            list.remove(list2.get(i));
+        }
+        return list;
+    }
+
+    /**
+     * Convert between hex and long/long to hex
+     * @param input String input of hex
+     * @return int Integer of hexadecimal
+     */
+    public static int hex2Int(String input) {
+        return Integer.parseInt(input, 16);
+    }
+    public static String int2Hex(int input) {
+        return Integer.toHexString(input);
+    } 
+    public static String color2Hex(Color color) {
+        return "#"+Integer.toHexString(color.getRGB()).substring(2);
+    } 
+
+    /**
+     * 
+     * @param colorStr e.g. "#FFFFFF"
+     * @return 
+     */
+    public static Color hex2Rgb(String colorStr) {
+        return new Color(
+            Integer.valueOf( colorStr.substring( 1, 3 ), 16 ),
+            Integer.valueOf( colorStr.substring( 3, 5 ), 16 ),
+            Integer.valueOf( colorStr.substring( 5, 7 ), 16 ) );
+    } 
+
+    /**
+     * Generates a random color
+     * @param colorStr e.g. "#FFFFFF"
+     * @return 
+     */
+    public static Color randomColor() {  
+        Random rand = new Random();
+        // Java 'Color' class takes 3 floats, from 0 to 1.
+        float r = rand.nextFloat();
+        float g = rand.nextFloat();
+        float b = rand.nextFloat();
+        return new Color(r, g, b);
     }
 
     /**

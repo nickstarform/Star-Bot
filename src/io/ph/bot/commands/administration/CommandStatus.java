@@ -22,7 +22,7 @@ import net.dv8tion.jda.core.entities.Message;
         defaultSyntax = "commandstatus",
         aliases = {"status"},
         category = CommandCategory.ADMINISTRATION,
-        permission = Permission.MANAGE_ROLES,
+        permission = Permission.MANAGE_CHANNELS,
         description = "Check all toggleable commands, listing which are enabled and which are disabled",
         example = "(no parameters)"
         )

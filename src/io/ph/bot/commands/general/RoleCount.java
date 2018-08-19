@@ -14,7 +14,7 @@ import net.dv8tion.jda.core.entities.Message;
 
 /**
  * List joinable roles, order by members, and set the color to the most popular role's
- * @author p
+ * @author Nick
  *
  */
 @CommandData (

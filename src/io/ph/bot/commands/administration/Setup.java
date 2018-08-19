@@ -8,6 +8,7 @@ import io.ph.bot.commands.CommandData;
 import io.ph.bot.model.GuildObject;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.Permission;
+import io.ph.util.MessageUtils;
 import net.dv8tion.jda.core.entities.Channel;
 import net.dv8tion.jda.core.entities.Message;
 
@@ -36,7 +37,8 @@ public class Setup extends Command {
                 em.setTitle("Error", null)
                 .setColor(Color.RED)
                 .setDescription("Looks like I'm already setup here...");
-                msg.getChannel().sendMessage(em.build()).queue();
+                MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+                msg.delete().queue();
                 return;
             }
         }
@@ -56,7 +58,8 @@ public class Setup extends Command {
                         em.setTitle("Error", null)
                         .setColor(Color.RED)
                         .setDescription(failure.getMessage());
-                        msg.getChannel().sendMessage(em.build()).queue();
+                        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+                        msg.delete().queue();
                     });
                 }
             });
@@ -64,12 +67,14 @@ public class Setup extends Command {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription(failure.getMessage());
-            msg.getChannel().sendMessage(em.build()).queue();
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
         });
         em.setTitle("Success", null)
         .setColor(Color.GREEN)
         .setDescription("Setup your muted role and saved configuration");
-        msg.getChannel().sendMessage(em.build()).queue();
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
 
 
     }

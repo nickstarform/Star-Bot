@@ -77,7 +77,7 @@ public class Macro extends Command {
             macroTop();
         } else if(param.equalsIgnoreCase("rank")) {
             macroRank();
-        }  else {
+        } else {
             try {
                 MacroObject m = MacroObject.forName(contents, msg.getGuild().getId(), true);
                 MessageUtils.sendMessage(msg.getChannel().getId(),m.getMacroContent());

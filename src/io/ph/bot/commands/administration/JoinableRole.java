@@ -8,6 +8,7 @@ import io.ph.bot.commands.CommandData;
 import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
+import io.ph.util.MessageUtils;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.Role;
@@ -44,7 +45,8 @@ public class JoinableRole extends Command {
                     .setColor(Color.CYAN)
                     .setDescription("**" + roleName + "** is already joinable");
                 }
-                msg.getChannel().sendMessage(em.build()).queue();
+                MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+                msg.delete().queue();
                 return;
             }
         }
@@ -54,7 +56,8 @@ public class JoinableRole extends Command {
             em.setTitle("Created new role", null)
             .setColor(Color.GREEN)
             .setDescription("**" + roleName + "** is now joinable");
-            msg.getChannel().sendMessage(em.build()).queue();
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            msg.delete().queue();
         });
     }
 

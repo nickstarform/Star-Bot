@@ -55,6 +55,7 @@ public class GuildObject {
     private List<PlaylistEntity> musicPlaylist = new ArrayList<>();
     private Set<String> joinableRoles = new HashSet<>();
     private HashMap<String, Boolean> commandStatus = new HashMap<>();
+    private Set<String> colorRoles = new HashSet<>();
 
     private long guildId;
 
@@ -92,7 +93,9 @@ public class GuildObject {
                 config.getBoolean("DisableInvites", false),
                 config.getBoolean("PMWelcomeMessage", false),
                 config.getBoolean("AdvancedLogging", false),
-                config.getString("AutoAssignRoleId", ""));
+                config.getString("AutoAssignRoleId", ""),
+                config.getBoolean("ColorRoleStatus", false),
+                config.getString("ColorTemplate", ""));
         // Load up enabled & disabled commands
         String[] enabledCommands = config.getStringArray("EnabledCommands");
         String[] disabledCommands = config.getStringArray("DisabledCommands");
@@ -112,6 +115,15 @@ public class GuildObject {
             if(g.getRoleById(s) == null)
                 continue;
             this.joinableRoles.add(s);
+        }
+        // Load up color roles
+        String[] colorRolesP = config.getStringArray("ColorRoles");
+        for(String s : colorRolesP) {
+            if(s.equals(""))
+                continue;
+            if(g.getRoleById(s) == null)
+                continue;
+            this.colorRoles.add(s);
         }
 
         // Load up guild playlist
@@ -192,6 +204,58 @@ public class GuildObject {
         return this.joinableRoles;
     }
 
+    /**
+     * Add a Color role by ID
+     * @param roleId Role ID
+     * @return True if success, false if already joinable
+     */
+    public boolean addColorRole(String roleId) {
+        if(this.colorRoles.add(roleId)) {
+            this.config.setProperty("ColorRoles", this.colorRoles);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Remove a Color role by ID
+     * @param roleId Role ID
+     * @return True if success, false if was not already joinable
+     */
+    public boolean removeColorRole(String roleId) {
+        if(this.colorRoles.remove(roleId)) {
+            this.config.setProperty("ColorRoles", this.colorRoles);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Remove a Color role by ID
+     * @param roleId Role ID
+     * @return True if success, false if was not already joinable
+     */
+    public void resetColorRole() {
+        this.config.setProperty("ColorRoles", "");
+        this.colorRoles = new HashSet<>();
+    }
+
+    /**
+     * Check if a role ID is joinable
+     * @param roleId Role ID to check
+     * @return True if joinable, false if not
+     */
+    public boolean isColorJoinableRole(String roleId) {
+        return this.colorRoles.contains(roleId) ? true : false;
+    }
+
+    /**
+     * Get the set of color roles
+     * @return
+     */
+    public Set<String> getColorJoinableRoles() {
+        return this.colorRoles;
+    }
     /**
      * Disable a command on this guild
      * @param s Main name of command to disable
@@ -395,12 +459,14 @@ public class GuildObject {
         private String mutedRoleId;
         private String djRoleId;
         private String autoAssignRoleId;
+        private boolean colorRoleStatus;
+        private String colorTemplateRoleId;
 
         ServerConfiguration(String commandPrefix, int messagesPerFifteen, int commandCooldown,
                 String welcomeMessage, String mutedRoleId, String djRoleId, boolean limitToOneRole,
                 boolean firstTime, boolean disableInvites,
                 boolean pmWelcomeMessage, boolean advancedLogging,
-                String autoAssignRoleId) {
+                String autoAssignRoleId, boolean colorRoleStatus,String colorTemplateRoleId) {
             this.commandPrefix = commandPrefix;
             this.messagesPerFifteen = messagesPerFifteen;
             this.commandCooldown = commandCooldown;
@@ -413,6 +479,8 @@ public class GuildObject {
             this.pmWelcomeMessage = pmWelcomeMessage;
             this.advancedLogging = advancedLogging;
             this.autoAssignRoleId = autoAssignRoleId;
+            this.colorRoleStatus = colorRoleStatus;
+            this.colorTemplateRoleId = colorTemplateRoleId;
         }
 
         public String getCommandPrefix() {
@@ -462,6 +530,14 @@ public class GuildObject {
             config.setProperty("MutedRoleID", mutedRoleId);
         }
 
+        public String getColorTemplateRoleId() {
+            return colorTemplateRoleId;
+        }
+
+        public void setColorTemplateRoleId(String colorTemplateRoleId) {
+            this.colorTemplateRoleId = colorTemplateRoleId;
+            config.setProperty("ColorTemplate", colorTemplateRoleId);
+        }
         public String getDjRoleId() {
             return djRoleId;
         }
@@ -494,6 +570,15 @@ public class GuildObject {
 
         public boolean isLimitToOneRole() {
             return limitToOneRole;
+        }
+
+        public boolean isColorRoleStatus() {
+            return colorRoleStatus;
+        }
+
+        public void setColorRoleStatus(boolean colorRoleStatus) {
+            this.colorRoleStatus = colorRoleStatus;
+            config.setProperty("ColorRoleStatus", colorRoleStatus);
         }
 
         public void setLimitToOneRole(boolean limitToOneRole) {

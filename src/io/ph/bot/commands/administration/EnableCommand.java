@@ -62,7 +62,8 @@ public class EnableCommand extends Command {
             .setDescription("**" + content + "** is not a valid command.\n"
                     + "If you need valid options, do " + g.getConfig().getCommandPrefix() + "commandstatus");
         }
-        msg.getChannel().sendMessage(em.build()).queue();
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
     }
 
 }
