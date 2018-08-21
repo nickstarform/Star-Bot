@@ -9,6 +9,11 @@ import net.dv8tion.jda.core.audio.AudioSendHandler;
  * before every call to provide20MsAudio(), we pull the frame in canProvide() and use the frame we already pulled in
  * provide20MsAudio().
  */
+import com.sedmelluq.discord.lavaplayer.format.OpusAudioDataFormat;
+import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
+import com.sedmelluq.discord.lavaplayer.track.playback.AudioFrame;
+import net.dv8tion.jda.core.audio.AudioSendHandler;
+
 public class AudioPlayerSendHandler implements AudioSendHandler {
   private final AudioPlayer audioPlayer;
   private AudioFrame lastFrame;
@@ -22,27 +27,17 @@ public class AudioPlayerSendHandler implements AudioSendHandler {
 
   @Override
   public boolean canProvide() {
-    if (lastFrame == null) {
-      lastFrame = audioPlayer.provide();
-    }
-
+    lastFrame = audioPlayer.provide();
     return lastFrame != null;
   }
 
   @Override
   public byte[] provide20MsAudio() {
-    if (lastFrame == null) {
-      lastFrame = audioPlayer.provide();
-    }
-
-    byte[] data = lastFrame != null ? lastFrame.data : null;
-    lastFrame = null;
-
-    return data;
+    return lastFrame.getData();
   }
 
   @Override
   public boolean isOpus() {
-    return true;
+    return lastFrame != null && lastFrame.getFormat() instanceof OpusAudioDataFormat;
   }
 }

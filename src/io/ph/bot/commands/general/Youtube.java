@@ -66,7 +66,8 @@ public class Youtube extends Command {
                 em.setTitle("Error", null)
                 .setColor(Color.RED)
                 .setDescription(String.format("No video results for search query **%s**", contents));
-                msg.getChannel().sendMessage(em.build()).queue();
+                MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+                msg.delete().queue();
                 return;
             }
             List<String> idsToQuery = new ArrayList<String>();
@@ -104,7 +105,7 @@ public class Youtube extends Command {
             .setColor(Color.RED)
             .setDescription("This bot does not have Youtube search setup");
         }
-        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),30);
         msg.delete().queue();
     }
     

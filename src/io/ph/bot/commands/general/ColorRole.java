@@ -31,11 +31,12 @@ import net.dv8tion.jda.core.entities.Member;
         category = CommandCategory.UTILITY,
         permission = Permission.NONE,
         description = "Handles color roles for users\n"
-                    + "`#hex` should be 7 characters including '#'",
+                    + "`#hex` should hexcode",
         example = "`#hex` *(creates the role and puts user in it or just puts user in it)\n"
                 + "`showall` *(shows all current color schemes with swatches)\n"
                 + "`random` *(chooses a random color and assigns)\n"
                 + "`remove/leave` *(clears the user from color roles in their name)\n"
+                + "`prune` *(manually prunes the server)\n"
                 + "`remove #hex` *(users with manage role perms can remove this color role altogether)"
         )
 public class ColorRole extends Command {
@@ -76,8 +77,8 @@ public class ColorRole extends Command {
             return;
         }
 
-        this.param = Util.getParam(msg);
-        this.options = contents.replace(param,"").trim();
+        this.param = Util.getParam(msg).toUpperCase();
+        this.options = contents.replace(param,"").trim().toUpperCase();
         // debug
         //System.out.println("param: <" + param + ">");
         //System.out.println("contents: <" + contents + ">");
@@ -133,9 +134,12 @@ public class ColorRole extends Command {
 
         Role finRole = null;
 
-        if(colRole.equals("") || !colRole.startsWith("#") || (colRole.length() != 7)) {
+        if(colRole.equals("") || !((colRole.length() <= 7) && (colRole.length() >= 6))) {
             em.clear();
             return ;
+        }
+        if (colRole.length() == 6) {
+            colRole = "#" + colRole;
         }
 
         while (msg.getGuild().getRolesByName(colRole,true).isEmpty()) {
@@ -161,9 +165,12 @@ public class ColorRole extends Command {
         //System.out.println("joinColor");
         //System.out.println("joinRole: <" + colRole + ">");
 
-        if(colRole.equals("") || !colRole.startsWith("#") || (colRole.length() != 7)) {
+        if(colRole.equals("") || !((colRole.length() <= 7) && (colRole.length() >= 6))) {
             em.clear();
-            return;
+            return ;
+        }
+        if (colRole.length() == 6) {
+            colRole = "#" + colRole;
         }
 
 
@@ -236,8 +243,8 @@ public class ColorRole extends Command {
         /*
         */
         if(!delRole.equals("") 
-            && delRole.startsWith("#") 
-            && (delRole.length() == 7) 
+            && ((delRole.startsWith("#") && (delRole.length() == 7))
+            || (delRole.length() == 6))
             && Util.memberHasPermission(msg.getMember(),Permission.MANAGE_ROLES)) {
             if (!g.isColorJoinableRole(msg.getGuild().getRolesByName(delRole,true).get(0).getId())) {
                 em.setTitle("Not a color role that I have: " + delRole, null)
