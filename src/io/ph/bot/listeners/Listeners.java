@@ -190,6 +190,7 @@ public class Listeners extends ListenerAdapter {
         if ((!g.getSpecialChannels().getWelcome().equals("") || g.getConfig().isPmWelcomeMessage())
                 && !g.getConfig().getWelcomeMessage().isEmpty()) {
             String msg = g.getConfig().getWelcomeMessage();
+            String chanName = "";
 
             msg = msg.replaceAll("\\$user\\$", e.getMember().getAsMention());
             msg = msg.replaceAll("\\$server\\$", e.getGuild().getName());
