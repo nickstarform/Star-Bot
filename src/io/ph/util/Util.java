@@ -21,6 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.LinkedList;
 import java.lang.StringBuilder;
 import java.util.stream.Collectors;
@@ -151,6 +152,19 @@ public class Util {
         ArrayList<String> temp = new ArrayList<String>(0);
         for (Role r: mem.getRoles()){
             temp.add(r.getName());
+        }
+        return temp;
+    }
+
+    /**
+     * Resolve a roles names from role list
+     * @param roles Roles to resolve from
+     * @return ArrayList names of the roles
+     */
+    public static ArrayList<String> channelNameFromList(Guild g, Set<String> channelId) {
+        ArrayList<String> temp = new ArrayList<String>(0);
+        for (String r: channelId) {
+            temp.add(g.getTextChannelById(r).getName());
         }
         return temp;
     }
