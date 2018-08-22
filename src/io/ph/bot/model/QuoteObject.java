@@ -82,7 +82,7 @@ public class QuoteObject {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            conn = ConnectionPool.getConnectionQuote(guildID);
+            conn = ConnectionPool.getConnection(guildID);
             stmt = conn.prepareStatement("SELECT uniq, date,quoteContent, hits, userID FROM `discord_quote` ORDER BY hits DESC LIMIT 1");
             rs = stmt.executeQuery();
             if(!rs.isBeforeFirst())
@@ -110,7 +110,7 @@ public class QuoteObject {
         ResultSet rs = null;
         ArrayList<String> fin = new ArrayList<String>(1);
         try {
-            conn = ConnectionPool.getConnectionQuote(guildID);
+            conn = ConnectionPool.getConnection(guildID);
             stmt = conn.prepareStatement("SELECT uniq FROM `discord_quote` ORDER BY hits DESC LIMIT 10");
             rs = stmt.executeQuery();
             if(!rs.isBeforeFirst())
@@ -142,7 +142,7 @@ public class QuoteObject {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            conn = ConnectionPool.getConnectionQuote(guildID);
+            conn = ConnectionPool.getConnection(guildID);
             // QuoteObject(int uniq, String quoteContent, int hits, String userID, String guildID, LocalDate date)
             String sql = "SELECT * FROM `discord_quote` WHERE uniq = ?";
             stmt = conn.prepareStatement(sql);
@@ -184,7 +184,7 @@ public class QuoteObject {
         ResultSet rs = null;
         try {
             String sql;
-            conn = ConnectionPool.getConnectionQuote(this.guildID);
+            conn = ConnectionPool.getConnection(this.guildID);
             Member m = Bot.getInstance().shards.getGuildById(this.guildID).getMemberById(requesterId);
             //If user isn't a mod, need to check that they made this
             if (!Util.memberHasPermission(m, Permission.KICK)) {
@@ -232,7 +232,7 @@ public class QuoteObject {
         ResultSet rs = null;
         try {
             String sql;
-            conn = ConnectionPool.getConnectionQuote(this.guildID);
+            conn = ConnectionPool.getConnection(this.guildID);
             Member m = Util.resolveUserFromMessage(requesterId,this.guildID);
             //If user isn't a mod, need to check that they made this
             if (!Util.memberHasPermission(m, Permission.KICK)) {
@@ -281,7 +281,7 @@ public class QuoteObject {
 
         try {
             // int uniq, String quoteContent, int hits, String userID, String guildID, LocalDate date)
-            conn = ConnectionPool.getConnectionQuote(this.guildID);
+            conn = ConnectionPool.getConnection(this.guildID);
             String sql = "INSERT INTO `discord_quote` (quoteContent, hits, userID, guildID, date) VALUES (?,?,?,?,?)";
             stmt = conn.prepareStatement(sql);
             stmt.setString(1, this.quoteContent);
@@ -320,7 +320,7 @@ public class QuoteObject {
         ArrayList<String> toReturn = new ArrayList<String>(4);
 
         try {
-            conn = ConnectionPool.getConnectionQuote(guildID);
+            conn = ConnectionPool.getConnection(guildID);
             String sql = "SELECT uniq FROM `discord_quote`";
             stmt = conn.prepareStatement(sql);
             // int uniq, String quoteContent, int hits, String userID, String guildID, LocalDate date)
@@ -369,7 +369,7 @@ public class QuoteObject {
         ResultSet rs = null;
         ArrayList<String> toReturn = new ArrayList<String>(1);
         try {
-            conn = ConnectionPool.getConnectionQuote(guildID);
+            conn = ConnectionPool.getConnection(guildID);
             String sql = "SELECT uniq FROM `discord_quote` WHERE userID = ?";
             stmt = conn.prepareStatement(sql);
             stmt.setString(1, userID);

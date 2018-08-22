@@ -32,6 +32,7 @@ public class MacroObject {
      * @param userId UserID of creator
      * @param guildId guildID of the guild this was created in
      */
+    
     public MacroObject(String fallbackUsername, String macroName, String macroContent, int hits,
             String userId, String guildId) {
         this.fallbackUsername = fallbackUsername;
