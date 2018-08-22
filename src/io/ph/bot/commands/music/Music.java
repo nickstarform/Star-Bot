@@ -226,7 +226,7 @@ public class Music extends Command {
             em.setTitle("Voted to skip", null)
             .setColor(Util.resolveColor(msg.getMember(), Color.GREEN))
             .setDescription("Votes needed to pass: " + currentVotes + "/" + maxVotes);
-            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),10);
             msg.delete().queue();        
         }
     }
@@ -270,7 +270,7 @@ public class Music extends Command {
                     + "/" + Util.formatTime(m.getAudioPlayer().getPlayingTrack().getDuration()), true)
             .addField("Source", m.getAudioPlayer().getPlayingTrack().getInfo().uri, false);
         }
-        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),20);
         msg.delete().queue();
     }
 
@@ -308,7 +308,7 @@ public class Music extends Command {
                                 t.getTitle(),
                                 Util.formatTime(t.getTrack().getDuration())));
         }
-        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),30);
         msg.delete().queue();
     }
 
