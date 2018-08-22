@@ -47,6 +47,7 @@ public class DisableColor extends Command {
         } else {
             g.getConfig().setColorRoleStatus(false);
             g.getConfig().setColorTemplateRoleId("");
+            g.resetColorRole();
             em.setTitle("Disable Color", null)
             .setColor(Color.GREEN)
             .setDescription("Color is now disabled here");

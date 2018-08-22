@@ -9,6 +9,7 @@ import io.ph.bot.commands.CommandCategory;
 import io.ph.bot.commands.CommandData;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
+import io.ph.util.MessageUtils;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Message;
 import net.dv8tion.jda.core.entities.VoiceChannel;
@@ -47,7 +48,8 @@ public class Summon extends Command {
             em.setTitle("Error", null)
             .setColor(Color.RED)
             .setDescription("You must be in a voice channel so I know where to go!");
-            msg.getChannel().sendMessage(em.build()).queue();
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue(); 
             return;
         }
         if (msg.getGuild().getAudioManager().isConnected()
@@ -55,14 +57,16 @@ public class Summon extends Command {
             em.setTitle("Hmm...", null)
             .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.MAGENTA))
             .setDescription("I'm already in your voice channel!");
-            msg.getChannel().sendMessage(em.build()).queue();
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue(); 
             return;
         }
         audio.openAudioConnection(opt.get());
         em.setTitle("Success", null)
         .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
         .setDescription("Joined your voice channel");
-        msg.getChannel().sendMessage(em.build()).queue();
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue(); 
     }
 
 }
