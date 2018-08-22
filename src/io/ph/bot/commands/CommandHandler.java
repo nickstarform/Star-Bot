@@ -85,30 +85,32 @@ public class CommandHandler {
      */
     public static void processCommand(Message msg) {
         GuildObject g = GuildObject.guildMap.get(msg.getGuild().getId());
-        if(msg.getContentDisplay().contains(" ")) {
-            String cmd = aliasToDefaultMap.get(msg.getContentDisplay().substring(g.getConfig().getCommandPrefix().length(),
-                    msg.getContentDisplay().indexOf(" ")));
-            if(cmd == null)
-                return;
-            if(getCommand(cmd).hasPermissions(msg)) {
-                if(g.getCommandStatus(cmd)
-                        || Util.memberHasPermission(msg.getGuild().getMember(msg.getAuthor()), Permission.KICK)) {
-                    Command c = getCommand(cmd);
-                    c.incrementCommandCount();
-                    Util.setTimeout(() -> c.executeCommand(msg), 0, true);
+        if (!g.isIgnoreChannel(msg.getChannel().getId())) {
+            if(msg.getContentDisplay().contains(" ")) {
+                String cmd = aliasToDefaultMap.get(msg.getContentDisplay().substring(g.getConfig().getCommandPrefix().length(),
+                        msg.getContentDisplay().indexOf(" ")));
+                if(cmd == null)
+                    return;
+                if(getCommand(cmd).hasPermissions(msg)) {
+                    if(g.getCommandStatus(cmd)
+                            || Util.memberHasPermission(msg.getGuild().getMember(msg.getAuthor()), Permission.KICK)) {
+                        Command c = getCommand(cmd);
+                        c.incrementCommandCount();
+                        Util.setTimeout(() -> c.executeCommand(msg), 0, true);
+                    }
                 }
-            }
-        } else {
-            String cmd = aliasToDefaultMap.get(msg.getContentDisplay().substring(g.getConfig().getCommandPrefix().length(),
-                    msg.getContentDisplay().length()));
-            if(cmd == null)
-                return;
-            if(getCommand(cmd).hasPermissions(msg)) {
-                if(g.getCommandStatus(cmd)
-                        || Util.memberHasPermission(msg.getGuild().getMember(msg.getAuthor()), Permission.KICK)) {
-                    Command c = getCommand(cmd);
-                    c.incrementCommandCount();
-                    Util.setTimeout(() -> c.executeCommand(msg), 0, true);
+            } else {
+                String cmd = aliasToDefaultMap.get(msg.getContentDisplay().substring(g.getConfig().getCommandPrefix().length(),
+                        msg.getContentDisplay().length()));
+                if(cmd == null)
+                    return;
+                if(getCommand(cmd).hasPermissions(msg)) {
+                    if(g.getCommandStatus(cmd)
+                            || Util.memberHasPermission(msg.getGuild().getMember(msg.getAuthor()), Permission.KICK)) {
+                        Command c = getCommand(cmd);
+                        c.incrementCommandCount();
+                        Util.setTimeout(() -> c.executeCommand(msg), 0, true);
+                    }
                 }
             }
         }
