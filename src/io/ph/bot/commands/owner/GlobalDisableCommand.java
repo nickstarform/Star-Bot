@@ -87,7 +87,9 @@ public class GlobalDisableCommand extends Command {
             .setDescription("Error loading resources/guilds/template.properties");
             e.printStackTrace();
         }
-        msg.getChannel().sendMessage(em.build()).queue();
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
+        em.clear();
     }
 
 }

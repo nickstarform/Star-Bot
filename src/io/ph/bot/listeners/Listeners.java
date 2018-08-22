@@ -89,12 +89,27 @@ public class Listeners extends ListenerAdapter {
             }
         }
 
+        // Color roles
+        for (String id : g.getColorJoinableRoles()) {
+            if (guild.getRoleById(id) == null) {
+                g.removeColorRole(id);
+            }
+        }
+
+        // Color Template role
+        String id = g.getConfig().getColorTemplateRoleId();
+        if (guild.getRoleById(id) == null) {
+            g.getConfig().setColorTemplateRoleId("");
+            g.getConfig().setColorRoleStatus(false);
+        }
+
         // Auto assign
         if (!g.getConfig().getAutoAssignRoleId().isEmpty()) {
             if (guild.getRoleById(g.getConfig().getAutoAssignRoleId()) == null) {
                 g.getConfig().setAutoAssignRoleId("");
             }
         }
+
         // DJ
         if (!g.getConfig().getDjRoleId().isEmpty()) {
             if (guild.getRoleById(g.getConfig().getDjRoleId()) == null) {
@@ -117,6 +132,7 @@ public class Listeners extends ListenerAdapter {
             e.getGuild().leave().queue();
             return;
         }*/
+        // add blacklist server here
         checkFiles(e.getGuild());
         GuildObject g = new GuildObject(e.getGuild());
         GuildObject.guildMap.put(e.getGuild().getId(), g);
@@ -178,11 +194,21 @@ public class Listeners extends ListenerAdapter {
             msg = msg.replaceAll("\\$user\\$", e.getMember().getAsMention());
             msg = msg.replaceAll("\\$server\\$", e.getGuild().getName());
 
-            TextChannel chanName = e.getGuild().getTextChannelsByName("rules",true).get(0);
-            if (chanName == null) {
-                chanName = e.getGuild().getTextChannelsByName("rule",true).get(0);
+            if (msg.contains("\\$channel\\$")) {
+                if (e.getGuild().getTextChannelsByName("rules",true).isEmpty()) {
+                    if (e.getGuild().getTextChannelsByName("rule",true).isEmpty()) {
+                        MessageUtils.sendMessage(msg.getChannel().getId(), "Must have a rule or rules channel to set the $$");
+                    } else {
+                        chanName = e.getGuild().getTextChannelsByName("rule",true).get(0);
+                    }
+                } else {
+                    chanName = e.getGuild().getTextChannelsByName("rules",true).get(0);
+                }
+
+                msg = msg.replaceAll("\\$channel\\$", chanName.getAsMention());
             } 
-            msg = msg.replaceAll("\\$channel\\$", chanName.getAsMention());
+ 
+
             if (!g.getConfig().isPmWelcomeMessage())
                 MessageUtils.sendMessage(g.getSpecialChannels().getWelcome(), msg);
             else
@@ -261,6 +287,25 @@ public class Listeners extends ListenerAdapter {
         // Bot check
         if (e.getAuthor().isBot())
             return;
+        // add blacklist author here
+
+        // emoji counting
+        if (g.getConfig().isEmojiStatus()) {
+            if (e.getMessage().getContentRaw().split(":").size() >= 2) {
+                String rawContent = e.getMessage().getContentRaw();
+                ArrayList<String> emojiList = ArrayList<String>(0);
+                Pattern p = Pattern.compile("\\:(.*?)\\:");
+                Matcher m = p.matcher(input);
+                int index = 0;
+                // maybe have to use modulus
+                while (m.find()) {
+                    String emoji = m.group(1); //is your string. do what you want
+                    // debug
+                    System.out.println("emoji: :" + emoji + ":");
+                }
+            }
+        }
+
         // Requesting prefix
         if (!e.getMessage().mentionsEveryone()
                 && e.getMessage().isMentioned(e.getJDA().getSelfUser())) {
@@ -461,8 +506,6 @@ public class Listeners extends ListenerAdapter {
                         new File("resources/guilds/" + g.getId() + "/GuildProperties.properties"));
                 FileUtils.copyFile(new File("resources/guilds/template.db"), 
                         new File("resources/guilds/" + g.getId() + "/Data.db"));
-                FileUtils.copyFile(new File("resources/guilds/templateQuote.db"), 
-                        new File("resources/guilds/" + g.getId() + "/Quote.db"));
                 FileUtils.copyFile(new File("resources/guilds/template.json"), 
                         new File("resources/guilds/" + g.getId() + "/IdlePlaylist.json"));
                 log.info("Guild file initialized: {}", g.getId());

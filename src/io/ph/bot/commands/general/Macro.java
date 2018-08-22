@@ -316,7 +316,7 @@ public class Macro extends Command {
                     sb.append(s + ", ");
                 }
                 String fin = sb.toString();
-                totalString.append(j.getUser().getName() + ": " + fin.substring(0, fin.length() - 2) + "\n");
+                totalString.append("**" + j.getUser().getName() + ":** " + fin.substring(0, fin.length() - 2) + "\n");
             }
         });
         String finalTotal = totalString.toString();
