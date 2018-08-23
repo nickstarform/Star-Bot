@@ -11,12 +11,9 @@ import io.ph.util.MessageUtils;
 import io.ph.util.Util;
 import net.dv8tion.jda.core.EmbedBuilder;
 import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.MessageHistory;
 import net.dv8tion.jda.core.entities.TextChannel;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.Collections;
 
 
 /**
@@ -42,9 +39,7 @@ public class ClearChat extends Command {
         String t = Util.getCommandContents(msg);
         TextChannel textChannel = msg.getTextChannel();
         List<Message> hist = msg.getTextChannel().getHistory().retrievePast(100).complete();
-        ArrayList<String> deleteIds = new ArrayList<String>(0);    
         AtomicInteger index = new AtomicInteger(0);
-
         String param = "";
 
         try{
@@ -54,19 +49,21 @@ public class ClearChat extends Command {
         }   
 
         while (!hist.isEmpty()){
-            for (int i = 0; i < hist.size(); i++) {
-                deleteIds.add(hist.get(i).getId());
-            }
             index.incrementAndGet();
             // debug
             //System.out.println("deleteIds: " + deleteIds);
-            
-            textChannel.deleteMessagesByIds(deleteIds).complete();
-            deleteIds.clear();
+            try {
+                textChannel.deleteMessages(hist).complete();
+            } catch (IllegalArgumentException ex) {
+                for (int i = 0; i < hist.size(); i++) {
+                    String id = hist.get(i).getId();
+                    textChannel.deleteMessageById(id).complete();
+                }
+            }
             hist.clear();
             hist = msg.getTextChannel().getHistory().retrievePast(100).complete();
             if ((index.get() >= MAX) && (!param.equals("all"))) {
-                hist = null;
+                hist.clear();
             }
         }
 
@@ -74,6 +71,7 @@ public class ClearChat extends Command {
         .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
         .setDescription("Cleared channel");
         MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        msg.delete().queue();
     }
 
 }
