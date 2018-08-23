@@ -37,18 +37,7 @@ public class QuoteObject {
      * @param guildID guildID of the guild this was created in
      * @param date date added
      */
-    /*
-    sqlite> .open Quotes.db
-    sqlite> CREATE TABLE discord_quote (
-       ...> uniq integer PRIMARY KEY autoincrement,
-       ...> quoteContent text NOT NULL,
-       ...> hits integer NOT NULL,
-       ...> userID text NOT NULL,
-       ...> guildID text NOT NULL,
-       ...> date text NOT NULL
-       ...> );
-    sqlite> .quit
-    */
+
     public QuoteObject(int uniq, String quoteContent, int hits,
             String userID, String guildID) {
         this.uniq = uniq;
@@ -68,6 +57,7 @@ public class QuoteObject {
         this.userID = userID;
         this.guildID = guildID;
     }
+    
     public static QuoteObject forName(int uniq, String guildID) throws IllegalArgumentException {
         return forName(uniq, guildID, false);
     }
