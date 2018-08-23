@@ -325,7 +325,7 @@ public class Quote extends Command {
         em.setTitle("Quotes created by " + Util.resolveNameFromMember(m,false), null)
         .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
         .setDescription(finalSb);
-        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build());
         msg.delete().queue();
         em.clear();
     }
@@ -364,7 +364,7 @@ public class Quote extends Command {
                 }
             });
         }
-        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build());
         msg.delete().queue();
         em.clear();
     }
@@ -398,7 +398,7 @@ public class Quote extends Command {
             .setColor(Color.RED)
             .setDescription(e.getMessage());
         }
-        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build());
         msg.delete().queue();
         em.clear();
     }
@@ -429,7 +429,7 @@ public class Quote extends Command {
             .setColor(Color.RED)
             .setDescription(e.getMessage());
         }
-        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build());
         msg.delete().queue();
         em.clear();
     }
@@ -451,7 +451,7 @@ public class Quote extends Command {
             .setColor(Color.RED)
             .setDescription(e.getMessage());
         }
-        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),30);
         msg.delete().queue();
         em.clear();
     }
@@ -480,7 +480,7 @@ public class Quote extends Command {
             .setColor(Color.RED)
             .setDescription(e.getMessage());
         }
-        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),30);
         msg.delete().queue();
         em.clear();
     }
