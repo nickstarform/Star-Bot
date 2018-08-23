@@ -46,9 +46,11 @@ public class Suggestion extends Command {
         if(suggestContents.length() > 500) {
             em.setTitle("Error", null)
             .setColor(Color.RED)
+            .addField("",suggestContents,false)
             .setDescription("Maximum suggestion length is 500 characters. Yours is " 
             + suggestContents.length());
-            msg.getChannel().sendMessage(em.build()).queue();
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),15);
+            msg.delete().queue();
             return;
         }
 
@@ -62,31 +64,28 @@ public class Suggestion extends Command {
             //System.out.println(timeStamp);
 
             // first opens channel to developer then sends success message to channel
-            devel.openPrivateChannel().queue(
-            success -> {
-                em.setTitle("Suggestions", null)
-                .setColor(Color.CYAN)
-                .addField("User: ",msg.getAuthor().getName(),false)
-                .addField("Server: ",msg.getGuild().getName(),false)
-                .addField("Report","\"" + sb + " \"", false)
-                .setFooter("Message was sent Local time " + timeStamp, null);
-                msg.getAuthor().openPrivateChannel().complete()
-                .sendMessage(em.build()).queue(
-                success1 -> {
-                    em.clearFields();
-                    em.setTitle("Success", null)
-                    .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
-                    .setDescription("Your suggestion has been sent!")
-                    .addField("Github: ",Bot.REPO, true);
-                    msg.getChannel().sendMessage(em.build()).queue();
-                });
-            });
+            em.setTitle("Suggestions", null)
+            .setColor(Color.CYAN)
+            .addField("User: ",msg.getAuthor().getName(),false)
+            .addField("Server: ",msg.getGuild().getName(),false)
+            .addField("Report","\"" + sb + " \"", false)
+            .setFooter("Message was sent Local time " + timeStamp, null);
+            MessageUtils.sendPrivateMessage(devel.getId(),em.build());
+            MessageUtils.sendPrivateMessage(msg.getAuthor().getId(),em.build());
+            em.clearFields();
+            em.setTitle("Success", null)
+            .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
+            .setDescription("Your suggestion has been sent!")
+            .addField("Github: ",Bot.REPO, true);
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),15);
+            msg.delete().queue();
         } else{
             em.setTitle("Suggestion Failed", null)
             .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.RED))
             .setDescription("Your suggestion cannot be sent unless you have higher permissions!\n Check out the github.")
             .addField("Github: ",Bot.REPO, true);
-            msg.getChannel().sendMessage(em.build()).queue();
+            MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),15);
+            msg.delete().queue();
         }
     }
 }
