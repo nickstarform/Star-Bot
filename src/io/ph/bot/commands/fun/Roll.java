@@ -22,8 +22,10 @@ import net.dv8tion.jda.core.entities.Message;
         aliases = {"dice"},
         category = CommandCategory.FUN,
         permission = Permission.NONE,
-        description = "Roll a die! (or many dice with the format #d#)",
-        example = "2d6"
+        description = "Roll a die! (or many dice with the format #d# or #d#+#)",
+        example = "2d6\n"
+                + "2d6+4\n"
+                + "2d6-4"
         )
 public class Roll extends Command {
 
@@ -31,17 +33,35 @@ public class Roll extends Command {
     public void executeCommand(Message msg) {
         EmbedBuilder em = new EmbedBuilder();
         String contents = Util.getCommandContents(msg);
+        int mod = 0;
+        /*
+        If blank or just contains integer roll a d6
+        else try to parse the d and or +-
+        */
+        // debug
+        //System.out.println("contents: >" + contents + "<");
         if(contents.isEmpty()) {
             em.setTitle(msg.getGuild().getMember(msg.getAuthor()).getEffectiveName() + " rolled " 
             + (ThreadLocalRandom.current().nextInt(6) + 1) + " out of 6", null)
             .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN));
         } else if(contents.contains("d")) {
+            if (contents.contains("+")) {
+                mod = Integer.parseInt(contents.split("\\+")[1]);
+                contents = contents.split("\\+")[0];
+            } else if (contents.contains("-")) {
+                mod = Integer.parseInt(contents.split("\\-")[1])*(-1);
+                contents = contents.split("\\-")[0];
+            }
+            //debug
+            //System.out.println("mod: >" + mod + "<");
+            //System.out.println("contents: >" + contents + "<");
+
             String[] split = contents.split("d");
             if(split.length == 2 && Util.isInteger(split[0]) && Util.isInteger(split[1])) {
                 int max = Integer.parseInt(split[0]) * Integer.parseInt(split[1]);
-                int roll = ThreadLocalRandom.current().nextInt(Integer.parseInt(split[0]), max + 1);
+                int roll = ThreadLocalRandom.current().nextInt(Integer.parseInt(split[0]), max + 1) + mod;
                 em.setTitle(msg.getGuild().getMember(msg.getAuthor()).getEffectiveName() + " rolled " 
-                        + roll + " with a " + split[0] + "d" + split[1], null)
+                        + roll + " with a " + split[0] + "d" + split[1] + " + " + mod, null)
                 .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN));
                 
             }
@@ -57,6 +77,7 @@ public class Roll extends Command {
             }
         }
         msg.getChannel().sendMessage(em.build()).queue();
+        msg.delete().queue();
     }
 
 }
