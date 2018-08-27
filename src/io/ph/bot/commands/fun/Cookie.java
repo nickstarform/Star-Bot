@@ -29,7 +29,7 @@ public class Cookie extends Command {
             } else
                 target = Util.resolveMemberFromMessage(t, msg.getGuild());
             //String loved = msg.getMentionedUsers().size() > 0 ? msg.getMentionedUsers().get(0).getName() : Util.getCommandContents(msg);
-            msg.getChannel().sendMessage("I, " + lover + ", offer this in peace to " + target.getAsMention() + "\n" + "     (V)" + "\n" + "    (* *)" + "\n" + "    ( > >:cookie:" + "\n" + " C('')('')").queue(success -> {msg.delete().queue();
+            msg.getChannel().sendMessage("\nI, " + lover + ", offer this in peace to " + target.getAsMention() + "\n" + "     (V)" + "\n" + "    (* *)" + "\n" + "    ( > >:cookie:" + "\n" + " C('')('')").queue(success -> {msg.delete().queue();
             });
         
     }
