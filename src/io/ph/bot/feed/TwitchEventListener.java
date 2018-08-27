@@ -30,7 +30,7 @@ import net.dean.jraw.http.NetworkException;
 import net.dv8tion.jda.core.entities.Guild;
 
 /**
- * Reddit event listener
+ * Twitch event listener
  * @author Nick
  */
 @SuppressWarnings("unchecked")
