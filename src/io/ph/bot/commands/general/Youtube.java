@@ -105,7 +105,7 @@ public class Youtube extends Command {
             .setColor(Color.RED)
             .setDescription("This bot does not have Youtube search setup");
         }
-        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),30);
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build());
         msg.delete().queue();
     }
     

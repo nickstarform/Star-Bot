@@ -33,12 +33,14 @@ import net.dv8tion.jda.core.entities.VoiceChannel;
                 + "You can also play your guild's music playlist\n"
                 + "If your server has a DJ role, this command is restricted to those in that role or mod+",
                 example = "https://youtu.be/dQw4w9WgXcQ\n"
+                        + "Legend of Zelda Ocarina OST\n"
                         + "playlist/gpl (plays your guild's playlist)\n"
                         + "now/nowplaying\n"
                         + "next/list\n"
                         + "skip (kick+ force skips)\n"
                         + "volume (requires kick+)\n"
                         + "shuffle (requires kick+)\n"
+                        + "remove (requires kick+)\n"
                         + "stop (requires kick+)"
         )
 public class Music extends Command {
@@ -308,7 +310,7 @@ public class Music extends Command {
                                 t.getTitle(),
                                 Util.formatTime(t.getTrack().getDuration())));
         }
-        MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),30);
+        MessageUtils.sendMessage(msg.getChannel().getId(),em.build());
         msg.delete().queue();
     }
 
