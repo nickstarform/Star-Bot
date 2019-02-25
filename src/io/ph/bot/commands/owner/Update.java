@@ -34,18 +34,6 @@ public class Update extends Command {
         try {
             StatusChangeJob.commenceUpdateCountdown(Integer.parseInt(Util.getCommandContents(msg)));
             msg.getChannel().sendMessage("Updating in " + Util.getCommandContents(msg) + " minutes.").queue(success -> {msg.delete().queue();});
-            Bot.getInstance().getBots()
-            .forEach(j -> {
-                j.getGuilds()
-                .forEach(g -> {
-                    g.getOwner().getUser().openPrivateChannel().queue(ch -> {
-                        em.setTitle("Bot Restarting:", null)
-                        .setColor(Color.RED)
-                        .setDescription("StarBot will be going doing temporarily to apply upgrades. T-" + Util.getCommandContents(msg) + " minutes.");
-                        g.getOwner().getUser().openPrivateChannel().complete().sendMessage(em.build()).queue();
-                    });
-                });
-            });
         } catch(NumberFormatException e) {
             msg.getChannel().sendMessage(Util.getCommandContents(msg) + " is not a valid integer");
         }
