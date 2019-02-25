@@ -11,7 +11,7 @@ import net.dv8tion.jda.core.entities.Message;
 
 /**
  * Superclass for procedural commands
- * For usage, see {@link io.ph.bot.commands.moderation.Strawpoll}
+ * For usage, see {@link io.ph.bot.commands.administration.Configuration}
  * @author Nick
  *
  */
