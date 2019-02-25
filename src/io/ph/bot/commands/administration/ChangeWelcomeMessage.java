@@ -25,7 +25,7 @@ import net.dv8tion.jda.core.entities.Message;
         permission = Permission.MANAGE_SERVER,
         description = "Change the server's welcome message. \n"
                     + "Use $channel$, $user$, and $server$ to replace with the channel, new user and the server name, respectively.\n"
-                    + "For $channel$ to work you must have channel named rule or rules (non case sensitive).",
+                    + "For $channel$ to work you must have a rules channel defined",
         example = "Welcome $user$ to $server$!. Refer to $channel$"
         )
 @ProceduralAnnotation (
