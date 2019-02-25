@@ -56,7 +56,7 @@ public class Suggestion extends Command {
 
         String sb = suggestContents;
         String timeStamp = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss").format(new Date());
-        if (Util.memberHasPermission(msg.getMember(),Permission.KICK)) {
+        if (Util.memberHasPermission(msg.getMember(),Permission.NONE)) {
             User devel = Bot.getInstance().shards.getUserById(Bot.getInstance().getConfig().getbotDeveloperId());
             //debug
             //System.out.println(devel);

@@ -40,14 +40,22 @@ public class IgnoreChannel extends Command {
         this.msg = msg;
         this.em = new EmbedBuilder();
         this.g = GuildObject.guildMap.get(msg.getGuild().getId());
-        String param = Util.getCommandContents(msg);
+        String param = Util.getParam(msg).toUpperCase().trim();
+        String contents = "";
+        if (!param.equals("")) {
+            contents = Util.getCommandContents(msg).toUpperCase().replace(param,"").trim();
+        }
 
-        if (param.toLowerCase().equals("reset")) {
+        if (param.equals("RESET")) {
             g.resetIgnoreChannel();
             em.setTitle("Ignored Channels Reset", null)
             .setColor(Color.YELLOW)
-            .setDescription("Full discord server command permissions are restored.");
-        } else if (param.equalsIgnoreCase("list")) {
+            .setDescription("Full discord server ignored channels are reset.");
+        } else if (param.equals("REMOVE") || param.equals("DELETE")) {
+            g.removeIgnoreChannel(msg.getGuild().getTextChannelById(contents).getId());
+            em.setTitle("Channel removed from ignored list", null)
+            .setColor(Color.YELLOW);
+        } else if (param.equals("LIST")) {
             ArrayList<String> names = Util.channelNameFromList(msg.getGuild(), g.getIgnoreChannel());
             em.setTitle("Ignored Channels", null);
             if (names.size() > 0) {
@@ -71,7 +79,7 @@ public class IgnoreChannel extends Command {
 
         MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
         msg.delete().queue();
-    }    
+    }
 
     /**
     * Creates this random color. 

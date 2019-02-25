@@ -4,7 +4,7 @@
   <groupId>io.ph</groupId>
   <artifactId>starbot</artifactId>
   <name>Star-Bot</name>
-  <version>1.0.1.1</version>
+  <version>1.0.2.1</version>
   <description>Discord bot made with JDA</description>
   <build>
     <sourceDirectory>src</sourceDirectory>

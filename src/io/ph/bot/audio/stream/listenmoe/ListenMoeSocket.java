@@ -93,8 +93,8 @@ public class ListenMoeSocket extends WebSocketClient {
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        LOG.error("Listen.moe socket closed: {}: {}", code, reason);
-        LOG.info("Attempting reconnect to Listen.moe socket");
+        //LOG.error("Listen.moe socket closed: {}: {}", code, reason);
+        //LOG.info("Attempting reconnect to Listen.moe socket");
         Util.setTimeout(() -> retry(), 10 * 1000, true);
     }
 

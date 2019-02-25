@@ -54,6 +54,7 @@ public class GuildObject {
 
     private List<PlaylistEntity> musicPlaylist = new ArrayList<>();
     private Set<String> joinableRoles = new HashSet<>();
+    private Set<String> ignoreChannels = new HashSet<>();
     private HashMap<String, Boolean> commandStatus = new HashMap<>();
     private Set<String> colorRoles = new HashSet<>();
 
@@ -77,7 +78,9 @@ public class GuildObject {
         this.guildId = g.getIdLong();
         this.specialChannels = new SpecialChannels(config.getString("WelcomeChannelId", ""),
                 config.getString("MusicChannelId", ""), config.getString("LogChannelId", ""),
-                config.getString("MusicVoiceChannelId", ""));
+                config.getString("MusicVoiceChannelId", ""),
+                config.getString("RulesChannel", ""),
+                config.getString("ReportChannel", ""));
         this.historicalSearches = new HistoricalSearches();
         // Hack to get rid of potential delimiters
         String welcomeMessage = Arrays.toString(config.getStringArray("NewUserWelcomeMessage"));
@@ -110,10 +113,12 @@ public class GuildObject {
         // Load up joinable roles
         String[] joinableRolesP = config.getStringArray("JoinableRoles");
         for(String s : joinableRolesP) {
-            if(s.equals(""))
+            if(s.equals("")){
                 continue;
-            if(g.getRoleById(s) == null)
+            }
+            if(g.getRoleById(s) == null){
                 continue;
+            }
             this.joinableRoles.add(s);
         }
         // Load up color roles
@@ -124,6 +129,18 @@ public class GuildObject {
             if(g.getRoleById(s) == null)
                 continue;
             this.colorRoles.add(s);
+        }
+
+        // Load up ignoreChannels
+        String[] ignoreC = config.getStringArray("IgnoreChannels");
+        for(String s : ignoreC) {
+            if(s.equals("")){
+                continue;
+            }
+            if (g.getTextChannelById(s) == null) {
+                continue;
+            }
+            this.ignoreChannels.add(s);
         }
 
         // Load up guild playlist
@@ -256,6 +273,52 @@ public class GuildObject {
     public Set<String> getColorJoinableRoles() {
         return this.colorRoles;
     }
+
+    public Set<String> getIgnoreChannel() {
+        return this.ignoreChannels;
+    }
+    public boolean addIgnoreChannel(String channelId) {
+        if(this.ignoreChannels.add(channelId)) {
+            this.config.setProperty("IgnoreChannels", this.ignoreChannels);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Remove a Ignore Channel by ID
+     * @param channelId Channel ID
+     * @return True if success
+     */
+    public boolean removeIgnoreChannel(String channelId) {
+        if(this.ignoreChannels.remove(channelId)) {
+            this.config.setProperty("IgnoreChannels", this.ignoreChannels);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Remove a Ignore Channel by ID
+     * @return True if success, false if was not already joinable
+     */
+    public void resetIgnoreChannel() {
+        this.config.setProperty("IgnoreChannels", "");
+        this.ignoreChannels = new HashSet<>();
+    }
+
+    /**
+     * Check if a channel ID is ignored
+     * @param channelId Channel ID to check
+     * @return True else false
+     */
+    public boolean isIgnoreChannel(String channelId) {
+        if (this.ignoreChannels.contains(channelId)) {
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Disable a command on this guild
      * @param s Main name of command to disable
@@ -462,11 +525,20 @@ public class GuildObject {
         private boolean colorRoleStatus;
         private String colorTemplateRoleId;
 
-        ServerConfiguration(String commandPrefix, int messagesPerFifteen, int commandCooldown,
-                String welcomeMessage, String mutedRoleId, String djRoleId, boolean limitToOneRole,
-                boolean firstTime, boolean disableInvites,
-                boolean pmWelcomeMessage, boolean advancedLogging,
-                String autoAssignRoleId, boolean colorRoleStatus,String colorTemplateRoleId) {
+        ServerConfiguration(String commandPrefix,
+                            int messagesPerFifteen,
+                            int commandCooldown,
+                            String welcomeMessage,
+                            String mutedRoleId,
+                            String djRoleId,
+                            boolean limitToOneRole,
+                            boolean firstTime,
+                            boolean disableInvites,
+                            boolean pmWelcomeMessage,
+                            boolean advancedLogging,
+                            String autoAssignRoleId,
+                            boolean colorRoleStatus,
+                            String colorTemplateRoleId) {
             this.commandPrefix = commandPrefix;
             this.messagesPerFifteen = messagesPerFifteen;
             this.commandCooldown = commandCooldown;
@@ -527,7 +599,7 @@ public class GuildObject {
 
         public void setMutedRoleId(String mutedRoleId) {
             this.mutedRoleId = mutedRoleId;
-            config.setProperty("MutedRoleID", mutedRoleId);
+            config.setProperty("MutedRoleId", mutedRoleId);
         }
 
         public String getColorTemplateRoleId() {
@@ -659,13 +731,17 @@ public class GuildObject {
         private String music;
         private String log;
         private String musicVoice;
-        SpecialChannels(String welcome, String music, String log, String musicVoice) {
+        private String rules;
+        private String report;
+
+        SpecialChannels(String welcome, String music, String log, String musicVoice, String rules, String report) {
             this.welcome = welcome;
             this.music = music;
             this.log = log;
             this.musicVoice = musicVoice;
+            this.rules = rules;
+            this.report = report;
         }
-
 
         public String getWelcome() {
             return welcome;
@@ -707,6 +783,29 @@ public class GuildObject {
             if (Bot.getInstance().getConfig().isCompanionBot()) {
                 OutgoingOperations.sendOp2(guildId);
             }
+        }
+
+        public String getRulesChannel() {
+            return rules;
+        }
+
+        public void setRulesChannel(String rules) {
+            if (rules.equals("0")){
+                rules = "";
+            }
+            this.rules = rules;
+            config.setProperty("RulesChannel", rules);
+        }
+        public String getReportChannel() {
+            return report;
+        }
+
+        public void setReportChannel(String report) {
+            if (report.equals("0")) {
+                report = "";
+            }
+            this.report = report;
+            config.setProperty("ReportChannel", report);
         }
     }
 }

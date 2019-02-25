@@ -58,6 +58,7 @@ public class Listeners extends ListenerAdapter {
         e.getJDA().getGuilds().stream()
         .forEach(g -> {
             checkFiles(g);
+            log.info(g.getId());
             GuildObject.guildMap.put(g.getId(), new GuildObject(g));
             startupChecks(g);
         });
@@ -98,6 +99,7 @@ public class Listeners extends ListenerAdapter {
 
         // Color Template role
         String id = g.getConfig().getColorTemplateRoleId();
+        log.info(id);
         if (guild.getRoleById(id) == null) {
             g.getConfig().setColorTemplateRoleId("");
             g.getConfig().setColorRoleStatus(false);
@@ -190,26 +192,18 @@ public class Listeners extends ListenerAdapter {
         if ((!g.getSpecialChannels().getWelcome().equals("") || g.getConfig().isPmWelcomeMessage())
                 && !g.getConfig().getWelcomeMessage().isEmpty()) {
             String msg = g.getConfig().getWelcomeMessage();
-            String chanName = "";
+            TextChannel chanName ;
 
             msg = msg.replaceAll("\\$user\\$", e.getMember().getAsMention());
             msg = msg.replaceAll("\\$server\\$", e.getGuild().getName());
 
             if (msg.contains("\\$channel\\$")) {
-                if (e.getGuild().getTextChannelsByName("rules",true).isEmpty()) {
-                    if (e.getGuild().getTextChannelsByName("rule",true).isEmpty()) {
-                        MessageUtils.sendMessage(msg.getChannel().getId(), "Must have a rule or rules channel to set the $$");
-                    } else {
-                        chanName = e.getGuild().getTextChannelsByName("rule",true).get(0);
-                    }
-                } else {
-                    chanName = e.getGuild().getTextChannelsByName("rules",true).get(0);
+                if (!g.getSpecialChannels().getRulesChannel().equals("")) {
+                    chanName = e.getGuild().getTextChannelById(g.getSpecialChannels().getRulesChannel());
+                    msg = msg.replaceAll("\\$channel\\$", chanName.getAsMention());
                 }
-
-                msg = msg.replaceAll("\\$channel\\$", chanName.getAsMention());
-            } 
+            }
  
-
             if (!g.getConfig().isPmWelcomeMessage())
                 MessageUtils.sendMessage(g.getSpecialChannels().getWelcome(), msg);
             else
@@ -273,8 +267,26 @@ public class Listeners extends ListenerAdapter {
     public void onGuildMessageReceived(GuildMessageReceivedEvent e) {
         if (!Bot.isReady)
             return;
-        //log.info("{}: {}", e.getAuthor().getName(), e.getMessage().getContentDisplay());
+
+        // Bot check
+        if (e.getAuthor().isBot())
+            return;
+        // add blacklist author here
+
         GuildObject g = GuildObject.guildMap.get(e.getGuild().getId());
+
+        if (true) {
+            System.out.println("Author: " + Util.resolveNameFromMember(e.getMember()) + e.getMember().getUser().getId());
+            System.out.println("Message: <" + e.getMessage().getContentRaw() + ">");
+        }
+
+        // ignore channel
+        if (g != null) {
+            if (g.isIgnoreChannel(e.getChannel().getId())) {
+                return;
+            }
+
+        }
 
         // Delete invites
         if (g.getConfig().isDisableInvites()
@@ -285,38 +297,13 @@ public class Listeners extends ListenerAdapter {
                 });
             }
         }
-        // Bot check
-        if (e.getAuthor().isBot())
-            return;
-        // add blacklist author here
-
-        // emoji counting
-        if (g.getConfig().isEmojiStatus()) {
-            if (e.getMessage().getContentRaw().split(":").size() >= 2) {
-                String rawContent = e.getMessage().getContentRaw();
-                ArrayList<String> emojiList = ArrayList<String>(0);
-                Pattern p = Pattern.compile("\\:(.*?)\\:");
-                Matcher m = p.matcher(input);
-                int index = 0;
-                // maybe have to use modulus
-                while (m.find()) {
-                    String emoji = m.group(1); //is your string. do what you want
-                    // debug
-                    System.out.println("emoji: :" + emoji + ":");
-                }
-            }
-        }
 
         // Requesting prefix
-        if (!e.getMessage().mentionsEveryone()
-                && e.getMessage().isMentioned(e.getJDA().getSelfUser())) {
+        if (!e.getMessage().mentionsEveryone() && e.getMessage().isMentioned(e.getJDA().getSelfUser())) {
             if (e.getMessage().getContentDisplay().contains("prefix")) {
-                e.getAuthor().openPrivateChannel().queue(ch -> {
-                    ch.sendMessage(GuildObject
-                            .guildMap.get(e.getGuild().getId()).getConfig().getCommandPrefix()).queue();
-                });
-                return;
-            }
+                e.getChannel().sendMessage(g.getConfig().getCommandPrefix()).queue();
+            };
+            return;
         }
         // Jump to command
         if (e.getMessage().getContentDisplay().startsWith(g.getConfig().getCommandPrefix())) {
@@ -379,14 +366,20 @@ public class Listeners extends ListenerAdapter {
             reportAction = reportAction.replace(param,"");
             Guild possibleGuild = Bot.getInstance().shards.getGuildById(param);
             if (possibleGuild != null) {
-                dest = possibleGuild.getTextChannelsByName("reports",true).get(0).getId();
+                GuildObject g = GuildObject.guildMap.get(possibleGuild.getId());
+                if (!g.getSpecialChannels().getReportChannel().equals("")) {
+                    dest = g.getSpecialChannels().getReportChannel();
+                } else {
+                    dest = possibleGuild.getTextChannelsByName("reports",true).get(0).getId();
+                }
                 if ((dest == null) || (dest == "")) {
                     dest = possibleGuild.getOwner().getUser().getId();
                     possibleGuild = null;
                 }
             } 
             if ((dest == null) || (dest == "")) {
-                dest = e.getMessage().getId();
+                dest = e.getAuthor().getId();
+                String fail = "\nReport Failed, contact Nickalas#1944 <" + botdevID + ">\n";
                 reportAction = param + reportAction;
             }
 

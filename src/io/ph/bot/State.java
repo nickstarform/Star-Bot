@@ -26,7 +26,6 @@ public class State {
         } catch (Exception e) {
             LoggerFactory.getLogger(State.class).error("Error changing avatar");
         }
-
     }
     public static void changeBotPresence(OnlineStatus status) {
         Bot.getInstance().getBots().forEach(j -> j.getPresence().setStatus(status));

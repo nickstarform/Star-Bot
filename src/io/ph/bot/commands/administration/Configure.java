@@ -30,8 +30,8 @@ import net.dv8tion.jda.core.entities.Message;
         title = "Bot configuration",
         steps = {"Limit $joinrole to a single role?",
                 "Automatically delete invite links sent by non-moderator users?",
-                "How many messages can a user send per 15 seconds? Use 0 to disable slow mode"}, 
-        types = {StepType.YES_NO, StepType.YES_NO, StepType.INTEGER},
+                "How many messages can a user send per 15 seconds? Use 0 to disable slow mode", "ID for the rules channel (if not present 0)", "ID for the mod report channel (if not present 0)"}, 
+        types = {StepType.YES_NO, StepType.YES_NO, StepType.INTEGER, StepType.STRING, StepType.STRING},
         breakOut = "finish",
         deletePrevious = true
         )
@@ -59,6 +59,8 @@ public class Configure extends ProceduralCommand {
         g.getConfig().setLimitToOneRole((boolean) super.getResponses().get(0));
         g.getConfig().setDisableInvites((boolean) super.getResponses().get(1));
         g.getConfig().setMessagesPerFifteen((int) super.getResponses().get(2));
+        g.getSpecialChannels().setRulesChannel((String) super.getResponses().get(3));
+        g.getSpecialChannels().setReportChannel((String) super.getResponses().get(4));
         EmbedBuilder em = new EmbedBuilder();
         em.setTitle("Success", null)
         .setColor(Color.GREEN)

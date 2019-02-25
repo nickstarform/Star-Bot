@@ -76,14 +76,12 @@ public class Prune extends Command {
             if (target == null) {
                 // User didn't specify a target, just prune the #
                 final int i2 = num;
-                msg.getTextChannel().getHistory().retrievePast(num + 2).queue(msgs -> {
+                msg.getTextChannel().getHistory().retrievePast(num + 1).queue(msgs -> {
                     msg.getTextChannel().deleteMessages(msgs).queue(success -> {
                         em.setTitle("Success", null)
                         .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
                         .setDescription("Pruned " + (i2) + " messages");
                         MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
-                    }, failure -> {
-                        msg.getChannel().sendMessage(MessageUtils.handleFailure(failure)).queue();
                     });
                 }, failure -> {
                     msg.getChannel().sendMessage(MessageUtils.handleFailure(failure)).queue();

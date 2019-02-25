@@ -24,10 +24,10 @@ import net.dv8tion.jda.core.entities.Message;
         aliases = {"commands"},
         category = CommandCategory.UTILITY,
         permission = Permission.NONE,
-        description = "Either list all commands or get help for one. Use 'showall' to display inline",
+        description = "Either list all commands or get help for one. Use 'DM' to send a DM",
         example = "----- *DMs user with command list\n"
                 + "(optional command name) *Shows info on a command\n"
-                + "showall *Shows inline instead of DM"
+                + "DM *DM instead of inline"
         )
 public class Help extends Command {
 
@@ -36,7 +36,7 @@ public class Help extends Command {
         String command = Util.getCommandContents(msg).toLowerCase();
         EmbedBuilder em = new EmbedBuilder();
         // this command is for displaying all commands inline
-        if(command.equals("showall")) {         
+        if((command.length() == 0) && (!command.equals("DM"))) {         
             List<Command> coll = (List<Command>) CommandHandler.getAllCommands();
             Collections.sort(coll, (f, s) -> {
                 if(f.getPermission().compareTo(s.getPermission()) != 0)
@@ -63,7 +63,7 @@ public class Help extends Command {
             .setFooter("PM me a command name to get more information", null);
              msg.getChannel().sendMessage(em.build()).queue();
         // if the command is specified
-        } else if(command.length() > 0) {
+        } else if((command.length() > 0) && (!command.equals("dm"))) {
             Command c;
             if((c = CommandHandler.getCommand(command)) == null) {
                 em.setTitle("Invalid command", null)

@@ -67,7 +67,14 @@ public class Quote extends Command {
         this.em = new EmbedBuilder();
         this.contents = Util.getCommandContents(msg);
         this.param = "";
-        
+
+        if (true) {
+            System.out.println("QuoteCommand");
+            System.out.println("Author: " + msg.getAuthor().getId());
+            System.out.println("Message: " + msg.getContentRaw());
+        }
+
+
         try{
             param = Util.getParam(msg);
         } catch (IndexOutOfBoundsException e) {
@@ -334,38 +341,27 @@ public class Quote extends Command {
      * List all quotes made by either the guild or by a user
      */
     private void listQuotesAll() {
-        String nContent = Util.getCommandContents(Util.getCommandContents(msg));
         ArrayList<String> totalString = new ArrayList<String>(1);
+        String ret = "";
+        String fin = "";
         //debug
         //System.out.println("Cont: " + nContent);
-        if (!nContent.equals("")) {
-            Member qMember = Util.resolveMemberFromMessage(nContent,msg.getGuild());
-            String name = Util.resolveNameFromMember(qMember,false);
-            em.setTitle("All Quotes created by: **" + name + "**", null);
-            String[] results = QuoteObject.searchByUser(qMember.getUser().getId(),msg.getGuild().getId());
+        em.setTitle("All Quotes created in this guild: ", null);
+        List<Member> iteratorion = msg.getGuild().getMembers();
+        for (int count = 0; count < iteratorion.size(); count ++) {
+            Member j = iteratorion.get(count);
+            String[] results = QuoteObject.searchByUser(j.getUser().getId(),msg.getGuild().getId());
             if (results != null) {
+                StringBuilder sb = new StringBuilder();
                 for (String s : results) {
-                    QuoteObject qO = QuoteObject.forName(Integer.parseInt(s),msg.getGuild().getId());
-                    totalString.add("**#" + qO.getQuoteUniq() + "** \"" + qO.getQuoteContent() + "\"");
+                    sb.append(s + ", ");
                 }
+                fin = sb.toString();
+                ret = "**" + Util.resolveNameFromMember(j,false) + ":** " + fin.substring(0, fin.length() - 2);
+                totalString.add(ret);
             }
-        } else {
-            em.setTitle("All Quotes created in this guild: ", null);
-            List<Member> iteratorion = msg.getGuild().getMembers();
-            iteratorion.forEach(j -> {
-                String[] results = QuoteObject.searchByUser(j.getUser().getId(),msg.getGuild().getId());
-                if (results != null) {
-                    StringBuilder sb = new StringBuilder();
-                    for (String s : results) {
-                        sb.append(s + ", ");
-                    }
-                    String fin = sb.toString();
-                    totalString.add("**" + Util.resolveNameFromMember(j,false) + ":** " + fin.substring(0, fin.length() - 2));
-                }
-            });
         }
-        MessageUtils.sendMessage(msg.getChannel().getId(),em.build());
-        msg.delete().queue();
+        MessageUtils.staggerArray(totalString,msg,em);
         em.clear();
     }
 
@@ -422,8 +418,9 @@ public class Quote extends Command {
             int uniq = Integer.parseInt(contents);
             QuoteObject m = QuoteObject.forName(uniq, msg.getGuild().getId());
             msg.getChannel().sendMessage("\"" + m.getQuoteContent() + "\" ~ " 
-                    + m.getUserID() + " " + m.getDate().toString()).queue(success 
-                    -> {msg.delete().queue();});
+                    + m.getUserID() + " " + m.getDate().toString()).queue(success -> {
+                        msg.delete().queue();
+                    });
         } catch (IllegalArgumentException e) {
             em.setTitle("Error", null)
             .setColor(Color.RED)

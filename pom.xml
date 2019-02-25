@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>io.ph</groupId>
 	<artifactId>starbot</artifactId>
-	<version>1.0.1.1</version>
+	<version>1.0.2.1</version>
 	<name>Star-Bot</name>
 	<description>Discord bot made with JDA</description>
 	<properties>
@@ -71,7 +71,7 @@
 		<dependency>
 			<groupId>net.dv8tion</groupId>
 			<artifactId>JDA</artifactId>
-			<version>3.7.1_386</version>
+			<version>3.8.3_460</version>
 			<type>jar</type>
 			<scope>compile</scope>
 		</dependency>
@@ -135,7 +135,7 @@
 		<dependency>
             <groupId>com.github.nickalaskreynolds</groupId>
             <artifactId>RESTWrapper</artifactId>
-            <version>a7acc55</version>
+            <version>fec64b9</version>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/com.squareup.retrofit2/converter-gson -->
 		<!-- Retrofit converter to gson -->
