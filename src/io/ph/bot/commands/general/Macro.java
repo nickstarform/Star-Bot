@@ -81,7 +81,6 @@ public class Macro extends Command {
             try {
                 MacroObject m = MacroObject.forName(contents, msg.getGuild().getId(), true);
                 MessageUtils.sendMessage(msg.getChannel().getId(),m.getMacroContent());
-                msg.delete().queue();
                 return;
             } catch (IllegalArgumentException e) {
                 em.setTitle("Error", null)
@@ -91,7 +90,6 @@ public class Macro extends Command {
         }
         if (!em.isEmpty()) {
             MessageUtils.sendMessage(msg.getChannel().getId(),em.build());
-            msg.delete().queue();
         }
     }
 

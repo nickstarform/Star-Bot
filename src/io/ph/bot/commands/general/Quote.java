@@ -131,9 +131,7 @@ public class Quote extends Command {
         //System.out.println(param);
         if (!em.isEmpty()){
             MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
-            msg.delete().queue();
         }
-        msg.delete().queue();
     }
 
     /**

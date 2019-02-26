@@ -178,7 +178,7 @@ public class QuoteObject {
             Member m = Bot.getInstance().shards.getGuildById(this.guildID).getMemberById(requesterId);
             //If user isn't a mod, need to check that they made this
             if (!Util.memberHasPermission(m, Permission.KICK)) {
-                sql = "SELECT hits FROM `discord_quote` WHERE uniq = ? AND userID = ?";
+                sql = "DELETE FROM `discord_quote` WHERE uniq = ? AND userID = ?";
                 stmt = conn.prepareStatement(sql);
                 stmt.setInt(1, this.uniq);
                 stmt.setString(2, requesterId);
@@ -188,18 +188,21 @@ public class QuoteObject {
                         return false;
                 } catch(SQLException e) {
                     e.printStackTrace();
+                    return false;
                 } finally {
                     SQLUtils.closeQuietly(rs);
                     SQLUtils.closeQuietly(stmt);
                 }
+                return true;
+            } else {
+                sql = "DELETE FROM `discord_quote` WHERE uniq = ? AND userID = ?";
+                stmt = conn.prepareStatement(sql);
+                stmt.setInt(1, this.uniq);
+                stmt.setString(2, this.userID);
+                stmt.execute();
+                return true;
             }
 
-            sql = "DELETE FROM `discord_quote` WHERE uniq = ? AND userID = ?";
-            stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, this.uniq);
-            stmt.setString(2, this.userID);
-            stmt.execute();
-            return true;
         } catch(SQLException e) {
             e.printStackTrace();
             return false;
