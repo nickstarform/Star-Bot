@@ -55,13 +55,17 @@ public class Listeners extends ListenerAdapter {
 
         String logMsg = null;
 
-        e.getJDA().getGuilds().stream()
-        .forEach(g -> {
+        List<Guild> gl = e.getJDA().getGuilds();
+        logMsg = "Bot attempting to open: " + e.getJDA().getGuilds().size() + " guilds.";
+        log.info(logMsg);
+
+        for (int i=0; i < gl.size(); i++ ){
+            Guild g = gl.get(i);
             checkFiles(g);
             log.info(g.getId());
             GuildObject.guildMap.put(g.getId(), new GuildObject(g));
             startupChecks(g);
-        });
+        }
         if (e.getJDA().getShardInfo() != null) {
             logMsg = "Bot is now logged on shard " + e.getJDA().getShardInfo().getShardId() + " with " + e.getJDA().getGuilds().size() + " guilds";
             log.info(logMsg);
@@ -138,6 +142,15 @@ public class Listeners extends ListenerAdapter {
         checkFiles(e.getGuild());
         GuildObject g = new GuildObject(e.getGuild());
         GuildObject.guildMap.put(e.getGuild().getId(), g);
+        EmbedBuilder em = new EmbedBuilder()
+        .addField("Guild: ", e.getGuild().getName(), true)
+        .addField("Guild ID: ", e.getGuild().getId(), true)
+        .addField("Owner: ", Util.resolveNameFromMember(e.getGuild().getOwner(),true), true)
+        .addField("Owner ID: ", e.getGuild().getOwner().getUser().getId(), true)
+        .setColor(Color.GREEN)
+        .setTimestamp(Instant.now());
+
+        MessageUtils.sendPrivateMessage(botdevID, em.build());
         // g.getConfig().setFirstTime(false);
         /*
          * If you want a welcome message, set it here!
@@ -167,6 +180,13 @@ public class Listeners extends ListenerAdapter {
         if (!Bot.isReady)
             return;
         try {
+            EmbedBuilder em = new EmbedBuilder()
+            .addField("Guild: ", e.getGuild().getName(), true)
+            .addField("Guild ID: ", e.getGuild().getId(), true)
+            .setColor(Color.RED)
+            .setTimestamp(Instant.now());
+
+            MessageUtils.sendPrivateMessage(botdevID, em.build());
             FileUtils.deleteDirectory(new File("resources/guilds/" + e.getGuild().getId() + "/"));
             GuildObject.guildMap.remove(e.getGuild().getId());
             log.info("Guild has left: {}", e.getGuild().getName());
@@ -275,8 +295,15 @@ public class Listeners extends ListenerAdapter {
 
         GuildObject g = GuildObject.guildMap.get(e.getGuild().getId());
 
+        if (g == null) {
+            GuildObject.guildMap.put(e.getGuild().getId(), new GuildObject(e.getGuild()));
+            g = GuildObject.guildMap.get(e.getGuild().getId());
+        }
+
+
         if (true) {
             System.out.println("Author: " + Util.resolveNameFromMember(e.getMember()) + e.getMember().getUser().getId());
+            System.out.println("Guild: " + e.getGuild().getId());
             System.out.println("Message: <" + e.getMessage().getContentRaw() + ">");
         }
 
@@ -285,7 +312,8 @@ public class Listeners extends ListenerAdapter {
             if (g.isIgnoreChannel(e.getChannel().getId())) {
                 return;
             }
-
+        } else {
+            return ;
         }
 
         // Delete invites
