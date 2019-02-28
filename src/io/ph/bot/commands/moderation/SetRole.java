@@ -27,7 +27,7 @@ import net.dv8tion.jda.core.entities.Role;
         category = CommandCategory.MODERATION,
         permission = Permission.MANAGE_ROLES,
         description = "Assign a role to a user",
-        example = "[userid <int>] [role-name <string>]"
+        example = "[optional <rm>] [user <int>/<username>] [role-name <string>]"
         )
 public class SetRole extends Command {
 
@@ -35,49 +35,95 @@ public class SetRole extends Command {
     public void executeCommand(Message msg) {
         EmbedBuilder em = new EmbedBuilder();
         String contents = Util.getCommandContents(msg);
-        String role = Util.getCommandContents(contents);
-        String id = Util.getParam(msg);
-        if ((contents.split(" ").length < 2) || (!Util.isInteger(id))) {
+        String param = Util.getParam(msg);
+        String role = "";
+        String id = "";
+        Member mem;
+        if (param.equalsIgnoreCase("rm")) {
+            id = Util.getParam(contents);
+            role = Util.getCommandContents(Util.getCommandContents(contents));
+            param = "rm";
+        } else {
+            id = param;
+            role = Util.getCommandContents(contents);
+            param = "add";
+        }
+        // System.out.println(contents);
+        // System.out.println(id);
+        // System.out.println(role);
+        // System.out.println(param);
+        if (!Util.isInteger(id)) {
+            mem = Util.resolveMemberFromMessage(id, msg.getGuild());
+        } else {
+            mem = Util.resolveUserFromMessage(id, msg.getGuild().getId());
+        }
+        String name = Util.resolveNameFromMember(mem);
+        if (contents.split(" ").length < 2) {
             em.setTitle("Hmm...", null)
             .setColor(Color.RED)
-            .setDescription("Improper inputs! ID: <" + id + ">, role:<" + role + ">");
+            .setDescription("Improper inputs! User: <" + id + ">, role:<" + role + ">");
             msg.getChannel().sendMessage(em.build()).queue();
             return;
         }
-        Member mem = Util.resolveUserFromMessage(id, msg.getGuild().getId());
         if(role.equals("")) {
             MessageUtils.sendIncorrectCommandUsage(msg, this);
             return;
         }
         for(Role r : msg.getGuild().getRoles()) {
             if(r.getName().equalsIgnoreCase(role)) {
-                if (mem.getRoles().contains(r)) {
+                if (mem.getRoles().contains(r) && param.equals("add")) {
                     em.setTitle("Hmm...", null)
-                    .setColor(Color.CYAN)
+                    .setColor(Color.YELLOW)
                     .setDescription("They're already in this role!");
                     msg.getChannel().sendMessage(em.build()).queue();
                     return;
+                } else if (!mem.getRoles().contains(r) && param.equals("rm")) {
+                    em.setTitle("Hmm...", null)
+                    .setColor(Color.YELLOW)
+                    .setDescription("They're not in this role!");
+                    msg.getChannel().sendMessage(em.build()).queue();
+                    return;
+                } 
+                if (param.equals("add")) {
+                    final String responce = "You set " + name + " is now in the role **" + role + "**";
+                    msg.getGuild().getController()
+                    .addSingleRoleToMember(mem, r).queue(
+                        success -> {
+                            em.setTitle("Success", null)
+                            .setColor(Color.GREEN)
+                            .setDescription(responce);
+                            msg.getChannel().sendMessage(em.build()).queue();
+                        },
+                        failure -> {
+                            em.setTitle("Error", null)
+                            .setColor(Color.RED)
+                            .setDescription(failure.getMessage());
+                            msg.getChannel().sendMessage(em.build()).queue();
+                        });
+                    return;
+                } else {
+                    final String responce = "You set " + name + " is removed from the role **" + role + "**";
+                    msg.getGuild().getController()
+                    .removeSingleRoleFromMember(mem, r).queue(
+                        success -> {
+                            em.setTitle("Success", null)
+                            .setColor(Color.GREEN)
+                            .setDescription(responce);
+                            msg.getChannel().sendMessage(em.build()).queue();
+                        },
+                        failure -> {
+                            em.setTitle("Error", null)
+                            .setColor(Color.RED)
+                            .setDescription(failure.getMessage());
+                            msg.getChannel().sendMessage(em.build()).queue();
+                        });
+                    return;                    
                 }
-                msg.getGuild().getController()
-                .addRolesToMember(mem, r).queue(
-                    success -> {
-                        em.setTitle("Success", null)
-                        .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
-                        .setDescription("You set " + Util.resolveNameFromMember(mem) + " is now in the role **" + role + "**");
-                        msg.getChannel().sendMessage(em.build()).queue();
-                    },
-                    failure -> {
-                        em.setTitle("Error", null)
-                        .setColor(Color.RED)
-                        .setDescription(failure.getMessage());
-                        msg.getChannel().sendMessage(em.build()).queue();
-                    });
-                return;
             }
         }
         em.setTitle("Error", null)
         .setColor(Color.RED)
-        .setDescription("That role doesn't exist!");
+        .setDescription("That role doesn't exist!" + role);
         msg.getChannel().sendMessage(em.build()).queue();
     }
 }
