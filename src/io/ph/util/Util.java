@@ -128,7 +128,7 @@ public class Util {
 
     public static String resolveNameFromMember(Member member,boolean state) {
         String name = member.getNickname();
-        if ((name == null) || name.equals("") || state) {
+        if ((name == null) || state) {
             name = member.getUser().getName() + "#" + member.getUser().getDiscriminator();
         }
         return name;
@@ -361,13 +361,20 @@ public class Util {
      * @param input String input
      * @return True if int, false if not
      */
-    public static boolean isInteger(String input) {
-        try {
-            Integer.parseInt(input);
-            return true;
-        } catch(Exception e) {
-            return false;
+    public static boolean isInteger(String s) {
+        return isInteger(s,10);
+    }
+
+    public static boolean isInteger(String s, int radix) {
+        if(s.isEmpty()) return false;
+        for(int i = 0; i < s.length(); i++) {
+            if(i == 0 && s.charAt(i) == '-') {
+                if(s.length() == 1) return false;
+                else continue;
+            }
+            if(Character.digit(s.charAt(i),radix) < 0) return false;
         }
+        return true;
     }
 
     /**
