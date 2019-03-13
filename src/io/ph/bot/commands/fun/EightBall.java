@@ -18,7 +18,7 @@ import net.dv8tion.jda.core.entities.Message;
  */
 @CommandData (
         defaultSyntax = "eightball",
-        aliases = {"magicball"},
+        aliases = {"magicball", "8ball"},
         category = CommandCategory.FUN,
         permission = Permission.NONE,
         description = "Ask the magic eight ball a question",
