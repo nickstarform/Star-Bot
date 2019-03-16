@@ -32,9 +32,12 @@ import net.dv8tion.jda.core.JDA;
                     + "Please use the form of the example provided. Please be as descriptive as possible "
                     + "and keep it contained within a single message\n"
                     + "Please be patient and wait for a reply.\n"
-                    + "In order to report something you **HAVE** to DM the bot",
-        example = "`> report guildId reportContent + pictureAttachment` *(Prefered format, doesn't have to include picture)\n"
-                + "`> report reportContent` *(Basic format, might take longer for conflict resolution)"
+                    + "In order to report something you **HAVE** to DM the bot"
+                    + "`> report guildId reportContent + pictureAttachment` "
+                    + "*(Prefered format, doesn't have to include picture)\n"
+                    + "`> report reportContent` "
+                    + "*(Basic format, might take longer for conflict resolution)",
+        example = ""
         )
 public class Report extends Command {
 
