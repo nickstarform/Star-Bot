@@ -20,7 +20,7 @@ import net.dv8tion.jda.core.entities.Message;
  */
 @CommandData (
         defaultSyntax = "changewelcome",
-        aliases = {"welcomemessage", "changewelcomemessage"},
+        aliases = {"changewelcomemessage",},
         category = CommandCategory.ADMINISTRATION,
         permission = Permission.MANAGE_SERVER,
         description = "Change the server's welcome message. \n"
