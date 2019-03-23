@@ -1,9 +1,4 @@
 # mvn files
-target/classes
-target/generated-sources/
-target/maven-archiver/
-target/maven-status/
-target/orig*
 target/*
 
 # live run
@@ -13,3 +8,19 @@ target/*
 *logs.txt
 *testing
 testing/
+
+# python files/dirs
+__pycache__
+*.pyc
+
+# private files
+*private*
+*.tmp
+*.bak
+
+# any compiled/compressed files
+*.tar
+*.gz
+
+# docs
+docs/build
