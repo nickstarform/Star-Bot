@@ -2,7 +2,7 @@
 Star Bot
 ========
 
-Welcome to `Star-Bot`, an open source Discord Bot. Originally based from Momo by Kagumi. However, the project completely diverged early and prompted a rewrite from Java to Python (yay). The bot focuses on moderation and additionally will handle many things: from sending Twitch.tv notifications, to temporarily muting troublemakers, `Star-Bot` can do a lot for your server.
+Welcome to `Star-Bot`, an open source Discord Bot. Originally based from Momo by Kagumi. However, the project completely diverged early and prompted a rewrite from Java to Python (yay). As a fellow maintainer, a lot of inspiration was also drawn from the amazing Yin-bot by dashwav. This bot focuses on moderation and additionally will handle many things: from sending Twitch.tv notifications, to temporarily muting troublemakers, `Star-Bot` can do a lot for your server.
 
 
 Can I just add Star-Bot to my server?
@@ -26,6 +26,7 @@ Hosting Star-Bot for yourself
 - If you want to host your own instance of the bot, feel free to take a look at the Releases tab and download the package. Fill out the configuration in the `config/config.yml`_ file, then run `docker-compose`. 
 - To obtain a bot token from Discord, head on over to the `Discord Developers`_ page. From there, you can create an Application, then convert it to a Bot account. Then, click to show the bot token, which you can copy and paste into `config/config.yml`
 
+.. _`config/config.yml`: ./Star-Bot/config/config.yml
 .. _`Discord Developers`: https://discordapp.com/developers/applications/me
 
 - Hosting Star-Bot for yourself nets you some benefits. You can change its username, avatar, and game status to whatever you see fit!
