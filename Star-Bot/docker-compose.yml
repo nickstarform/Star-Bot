@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+  postgres-db:
+    image: postgres:10-alpine
+    restart: always
+    environment: 
+      POSTGRES_USER: starbotuser
+      POSTGRES_PASSWORD: starbot-password
+      POSTGRES_DB: starbotdb
+      POSTGRES_PORT: 5444
+    volumes:
+      - starbot-db-volume:/var/lib/postgresql/data
+  starbot:
+    build:
+      context: .
+      dockerfile: starbot.dockerfile
+    depends_on: 
+      - postgres-db
+
+
+volumes:
+  starbot-db-volume:
