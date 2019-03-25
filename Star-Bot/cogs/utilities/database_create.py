@@ -96,7 +96,7 @@ async def make_tables(pool: Pool, schema: str):
         guild_id BIGINT,
         mod_id BIGINT,
         user_id BIGINT,
-        index_id INT NOT NULL AUTO_INCREMENT,
+        index_id INT,
         type INT,
         reason TEXT,
         forgiven BOOLEAN DEFAULT FALSE,
@@ -109,7 +109,7 @@ async def make_tables(pool: Pool, schema: str):
         guild_id BIGINT,
         mod_id BIGINT,
         user_id BIGINT,
-        index_id INT NOT NULL AUTO_INCREMENT,
+        index_id INT,
         reason TEXT,
         major BOOLEAN DEFAULT FALSE,
         forgiven BOOLEAN DEFAULT FALSE,
@@ -123,10 +123,9 @@ async def make_tables(pool: Pool, schema: str):
         creator_id BIGINT,
         name TEXT,
         content TEXT,
-        id INT NOT NULL AUTO_INCREMENT,
         hits INT,
         currtime TIMESTAMP DEFAULT current_timestamp,
-        PRIMARY KEY (guild_id, name, id)
+        PRIMARY KEY (guild_id, name)
     );"""
 
     quotes = f"""
@@ -136,7 +135,7 @@ async def make_tables(pool: Pool, schema: str):
         quoted_id BIGINT,
         creator_id BIGINT,
         content TEXT,
-        id INT NOT NULL AUTO_INCREMENT,
+        id INT,
         hits INT,
         currtime TIMESTAMP DEFAULT current_timestamp,
         PRIMARY KEY (guild_id, id)
@@ -154,7 +153,7 @@ async def make_tables(pool: Pool, schema: str):
     CREATE TABLE IF NOT EXISTS {schema}.reacts (
         guild_id BIGINT,
         base_message_id BIGINT,
-        target_channel_id BIGINT,
+        target_id BIGINT,
         react_id BIGINT,
         react_role BOOLEAN DEFAULT FALSE,
         react_channel BOOLEAN DEFAULT FALSE,

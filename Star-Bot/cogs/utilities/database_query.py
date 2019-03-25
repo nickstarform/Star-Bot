@@ -11,7 +11,7 @@ from asyncpg.pool import Pool
 
 # relative modules
 from config.config import Config
-from cogs.utilities.make_database import make_tables
+from cogs.utilities.database.create import make_tables
 from cogs.utilities.functions import ModAction
 
 # global attributes
