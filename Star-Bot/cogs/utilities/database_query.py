@@ -10,9 +10,9 @@ from asyncpg import Record, InterfaceError, create_pool
 from asyncpg.pool import Pool
 
 # relative modules
-from config.config import Config
-from cogs.utilities.database_create import make_tables
-from cogs.utilities.functions import ModAction
+from config import Config
+from . import make_tables
+from . import ModAction
 
 # global attributes
 __all__ = ('Controller',)
@@ -387,7 +387,8 @@ class Controller():
                 blacklist_users = $14,
                 ban_footer = $15, kick_footer = $16, faq = $17,
                 rules = $18, misc = $19,
-                bots = $20, channels = $21, currtime = DEFAULT)
+                bots = $20, channels = $21, autoroles = $22,
+                currtime = DEFAULT)
                 ON CONFLICT (guild_id) DO nothing;
             """
 
@@ -412,7 +413,8 @@ class Controller():
             f'',  # rules TEXT,
             f'',  # misc TEXT,
             f'',  # bots TEXT,
-            f''  # channels TEXT,
+            f'',  # channels TEXT,
+            []  # autoroles BIGINT ARRAY,
         )
 
     async def get_guild_settings(self):
@@ -474,6 +476,111 @@ class Controller():
             logger.warning(f'Error getting guild settings {e}')
             return False
 
+    async def get_all_autoroles(self, guild_id: int):
+        """Return all autoroles.
+
+        Parameters
+        ----------
+        guild_id: int
+            id for the guild
+
+        Returns
+        ----------
+        list
+            list of all autoroles
+        """
+        sql = f"""
+            SELECT joinable_roles FROM {self.schema}.guilds
+            WHERE guild_id = $1;
+        """
+        role_list = await self.pool.fetchval(sql, guild_id)
+        return role_list
+
+    async def is_role_autorole(self, guild_id: int, role_id: int):
+        """Check if role is autorole.
+
+        Parameters
+        ----------
+        guild_id: int
+            id for the guild
+        role_id: int
+            id for the role
+
+        Returns
+        ----------
+        boolean
+            true or false
+        """
+        sql = f"""
+            SELECT * FROM {self.schema}.guilds
+                WHERE guild_id = $1
+                AND autoroles @> $2;
+        """
+
+        row = await self.pool.fetchrow(sql, guild_id, [role_id])
+        return True if row else False
+
+    async def add_autorole(self, guild_id: int, role_id: int,
+                                logger):
+        """Add role to autorole.
+
+        Parameters
+        ----------
+        guild_id: int
+            id for the guild
+        role_id: int
+            id for the role
+        logger: Logger
+            logger instance for the bot
+
+        Returns
+        ----------
+        boolean
+            success true or false
+        """
+        sql = f"""
+            UPDATE {self.schema}.guilds
+                SET autoroles = (SELECT array_agg(distinct e)
+                FROM unnest(array_append(autoroles,$1::bigint)) e)
+                WHERE guild_id = $2;
+        """
+        try:
+            await self.pool.execute(sql, role_id, guild_id)
+            return True
+        except Exception as e:
+            logger.warning(f'Error adding role <#{role_id}> to guild {guild_id}: {e}') # noqa
+            return False
+
+    async def remove_autorole(self, guild_id: int, role_id: int, logger):
+        """Remove if role is autorole.
+
+        Parameters
+        ----------
+        guild_id: int
+            id for the guild
+        role_id: int
+            id for the role
+        logger: Logger
+            logger instance for the bot
+
+        Returns
+        ----------
+        boolean
+            success true or false
+        """
+        role_list = await self.get_all_autoroles(guild_id)
+        role_list.remove(role_id)
+        sql = f"""
+            UPDATE {self.schema}.guilds SET autoroles = $1
+                WHERE guild_id = $2;
+        """
+        try:
+            await self.pool.execute(sql, role_list, guild_id)
+        except Exception as e:
+            logger.warning(f'Error removing roles: {e}')
+            return False
+        return True
+
     async def get_all_joinable_roles(self, guild_id: int):
         """Return all joinable roles.
 
@@ -520,7 +627,7 @@ class Controller():
 
     async def add_joinable_role(self, guild_id: int, role_id: int,
                                 logger):
-        """Check if role is joinable.
+        """Add role to joinable.
 
         Parameters
         ----------
@@ -1698,8 +1805,8 @@ class Controller():
 
         Returns
         ----------
-        list
-            list all of the blacklisted channels
+        boolean
+            return status true or false
         """
         sql = f"""
             UPDATE {self.schema}.guilds
@@ -1726,8 +1833,8 @@ class Controller():
 
         Returns
         ----------
-        list
-            list all of the blacklisted channels
+        boolean
+            return status true or false
         """
         channel_list = await self.get_all_blacklist_channels(guild_id)
         channel_list.remove(channel_id)
@@ -1784,6 +1891,106 @@ class Controller():
                 AND blacklist_channels @> $2;
         """
         row = await self.pool.fetchrow(sql, guild_id, [channel_id])
+        return True if row else False
+
+    async def add_blacklist_user(self, guild_id: int, user_id: int, logger): # noqa
+        """Add blacklisted channel.
+
+        Parameters
+        ----------
+        guild_id: int
+            id for the guild
+        user_id: int
+            id for the user to add
+
+        Returns
+        ----------
+        boolean
+            return status true or false
+        """
+        sql = f"""
+            UPDATE {self.schema}.guilds
+                SET blacklist_users = (SELECT array_agg(distinct e)
+                FROM unnest(array_append(blacklist_users,$1::bigint)) e)
+                WHERE guild_id = $2;
+        """
+        try:
+            await self.pool.execute(sql, channel_id, guild_id)
+            return True
+        except Exception as e:
+            logger.warning(f'Error adding user to blacklist {guild_id}: {e}')
+            return False
+
+    async def rem_blacklist_user(self, guild_id: int, user_id: int, logger): # noqa
+        """Remove blacklisted channel.
+
+        Parameters
+        ----------
+        guild_id: int
+            id for the guild
+        user_id: int
+            id for the user to remove
+
+        Returns
+        ----------
+        boolean
+            return status true or false
+        """
+        user_list = await self.get_all_blacklist_users(guild_id)
+        user_list.remove(user_id)
+        sql = f"""
+            UPDATE {self.schema}.guilds
+                SET blacklist_users = $1
+                WHERE guild_id = $2;
+        """
+        try:
+            await self.pool.execute(sql, user_list, guild_id)
+        except Exception as e:
+            logger.warning(f'Error removing blacklist channel: {e}')
+            return False
+        return True
+
+    async def get_all_blacklist_users(self, guild_id: int): # noqa
+        """Get all blacklisted channels.
+
+        Parameters
+        ----------
+        guild_id: int
+            id for the guild
+
+        Returns
+        ----------
+        list
+            list all of the blacklisted channels
+        """
+        sql = f"""
+            SELECT blacklist_users FROM {self.schema}.guilds
+                WHERE guild_id = $1;
+        """
+        channel_list = await self.pool.fetchval(sql, guild_id)
+        return channel_list
+
+    async def is_blacklist_user(self, guild_id: int, user_id: int):
+        """Check if user is a blacklisted.
+
+        Parameters
+        ----------
+        guild_id: int
+            id for the guild
+        user_id: int
+            id for the user to check
+
+        Returns
+        ----------
+        boolean
+            return status true or false
+        """
+        sql = f"""
+            SELECT * FROM {self.schema}.guilds
+                WHERE guild_id = $1
+                AND blacklist_users @> $2;
+        """
+        row = await self.pool.fetchrow(sql, guild_id, [user_id])
         return True if row else False
 
     """

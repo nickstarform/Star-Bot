@@ -77,6 +77,7 @@ async def make_tables(pool: Pool, schema: str):
         send_welcome_channel BOOLEAN DEFAULT FALSE,
         report_channel BIGINT,
         rules_channel BIGINT,
+        autoroles BIGINT ARRAY,
         joinable_roles BIGINT ARRAY,
         blacklist_channels BIGINT ARRAY,
         blacklist_users BIGINT ARRAY,
