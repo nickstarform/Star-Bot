@@ -1,4 +1,4 @@
-"""General Embed Sender Hub."""
+"""General Embed Dialog Hub."""
 
 # internal modules
 
@@ -8,11 +8,11 @@ import asyncio
 from discord.ext import commands
 
 # relative modules
+from cogs.utilities import Colours, generic_embed
 
 # global attributes
 __all__ = ('iterator',
-           'confirm',
-           'generic_embed')
+           'confirm')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
@@ -36,7 +36,7 @@ async def iterator(ctx: commands.Context, step: dict, timeout: int):
     dict
         the same dictionary with value overriden
     """
-    message = generic_embed(f'Please answer these questions ({timeout}s timer):', '', [])
+    message = generic_embed(f'Please answer these questions ({timeout}s timer):', '', [], Colours.DIALOG_T)
     request = await ctx.send(embed=message)
     failed = False
 
@@ -96,7 +96,7 @@ async def confirm(ctx: commands.Context, message: str, timeout: int):
                     f'\n➡️ Type `confirm` to {ctx.command}'\
                     ' or literally anything else to cancel.'\
                     f'\n\n*You have {timeout}s...*'
-    message = generic_embed(r'❗ Confirmation Request ❗', confirmdialog, [])
+    message = generic_embed(r'❗ Confirmation Request ❗', confirmdialog, [], Colours.DIALOG_T)
     request = await ctx.send(embed=message, delete_after=timeout)
     try:
         message = await ctx.bot.wait_for("message",
@@ -116,33 +116,6 @@ async def confirm(ctx: commands.Context, message: str, timeout: int):
     except Exception as e:
         print(f'Error in deleting message: {e}')
     return True
-
-
-def generic_embed(title: str, message: str, fields: list):
-    """Generic embed builder.
-
-    Parameters
-    ----------
-    title: str
-        title of the embed
-    message: str
-        the message to display
-    fields: list
-        a 2d list of field populators [[field_name, field_value],[]]
-
-    Returns
-    -------
-    :func: discord.Embed
-        The discord embed object
-    """
-    embed = discord.Embed(title=title, type='rich')
-    if len(message) > 0:
-        embed.description = message
-    if len(fields) == 0:
-        return embed
-    for field in fields:
-        embed.add_field(name=field[0], value=field[1])
-    return embed
 
 # end of code
 
