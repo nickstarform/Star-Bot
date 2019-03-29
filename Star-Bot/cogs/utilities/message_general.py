@@ -17,6 +17,8 @@ def generic_message(ctx, channel, message: str, delete: int):
 
     Parameters
     ----------
+    ctx: :func: commands.Context
+        the context command object
     message: str
         the message to display. Will try to split by sentance,
         fallback by word, fallback crude cut

@@ -9,11 +9,11 @@ set them to immutable by use of enumerators.
 import yaml
 import datetime
 from enum import Enum
+import os
 
 # external modules
 
 # relative modules
-from cogs.utilities.functions import current_time
 
 # global attributes
 __all__ = ('Config',)
@@ -21,6 +21,23 @@ __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
 # general functions
+
+
+def current_time():
+    """
+    Get Current time in botworld.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    str
+        String format (Day Mon, DD YYYY HH:MM) of datetime in UTC
+    """
+    time = datetime.datetime.utcnow()
+    return time.strftime('%A, %b %d %Y %H:%M')
+
 
 def _construct(yml_c: dict, template_c: dict, token: str):
     """Configuration Constructor.
@@ -119,38 +136,40 @@ class BaseConfig(Enum):
 
     Loaded = False
     pass
+if str(os.getcwd())[-4:] != 'docs':
+    # template configuration, key: required (True/False)
+    template = {'token': True, 'owner_id': True, 'devel_id': True,
+                'bot_key': False, 'bot_id': True, 'support_server': False,
+                'psql_username': True, 'psql_passwd': True,
+                'psql_dbname': True, 'psql_port': True,
+                'psql_host': True}
 
+    # load in the yaml configuration file for parsing
+    with open(f"{__path__}/config.yml", 'r') as yml_config:
+            y_c = yaml.load(yml_config)
 
-# template configuration, key: required (True/False)
-template = {'token': True, 'owner_id': True, 'devel_id': True,
-            'bot_key': False, 'bot_id': True, 'support_server': False,
-            'psql_username': True, 'psql_passwd': True,
-            'psql_dbname': True, 'psql_port': True,
-            'psql_host': True}
+    __MAPPING__ = {'date': current_time()}
+    for key in template.keys():
+        __MAPPING__[key] = _construct(y_c, template, key)
 
-# load in the yaml configuration file for parsing
-with open("./config/config.yml", 'r') as yml_config:
-        y_c = yaml.load(yml_config)
+    # static variables for discord
+    BOT_INVITE = 'https://discordapp.com/oauth2/authorize?'\
+        'client_id=$repl$&scope=bot&permissions=0'
+    DISCORD = 'https://discordapp.com/invite/$repl$'
 
-__MAPPING__ = {'date': current_time()}
-for key in template.keys():
-    __MAPPING__[key] = _construct(y_c, template, key)
+    # redefine custom mapping
+    if __MAPPING__['support_server']:
+        __MAPPING__['support_server'] = f"{DISCORD.replace('$repl$', __MAPPING__['support_server'])}"
+    if __MAPPING__['bot_key']:
+        __MAPPING__['bot_key'] = f"{BOT_INVITE.replace('$repl$', __MAPPING__['bot_key'])}"
 
-# static variables for discord
-BOT_INVITE = 'https://discordapp.com/oauth2/authorize?'\
-    'client_id=$repl$&scope=bot&permissions=0'
-DISCORD = 'https://discordapp.com/invite/$repl$'
+    __MAPPING__['Loaded'] = True
 
-# redefine custom mapping
-if __MAPPING__['support_server']:
-    __MAPPING__['support_server'] = f"{DISCORD.replace('$repl$', __MAPPING__['support_server'])}"
-if __MAPPING__['bot_key']:
-    __MAPPING__['bot_key'] = f"{BOT_INVITE.replace('$repl$', __MAPPING__['bot_key'])}"
-
-__MAPPING__['Loaded'] = True
-
-# store into Config
-Config = Enum('BaseConfig', names=__MAPPING__)
+    # store into Config
+    Config = Enum('BaseConfig', names=__MAPPING__)
+else:
+    __MAPPING__ = {'date': current_time()}
+    Config = Enum('BaseConfig', names=__MAPPING__)
 
 if __name__ == "__main__":
     print('Testing')
