@@ -40,8 +40,7 @@ async def make_tables(pool: Pool, schema: str):
 
     glob = f"""
     CREATE TABLE IF NOT EXISTS {schema}.global (
-        disallowed TEXT ARRAY,
-        allowed TEXT ARRAY,
+        disallowed_commands TEXT ARRAY,
         guild_blacklist BIGINT ARRAY,
         user_blacklist BIGINT ARRAY,
         currtime TIMESTAMP DEFAULT current_timestamp,
@@ -81,6 +80,7 @@ async def make_tables(pool: Pool, schema: str):
         joinable_roles BIGINT ARRAY,
         blacklist_channels BIGINT ARRAY,
         blacklist_users BIGINT ARRAY,
+        disallowed_commands TEXT ARRAY,
         ban_footer TEXT,
         kick_footer TEXT,
         faq TEXT,

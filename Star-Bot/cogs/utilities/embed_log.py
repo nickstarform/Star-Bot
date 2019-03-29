@@ -6,7 +6,9 @@
 import discord
 
 # relative modules
-from cogs.utilities import Colours, generic_embed, current_time
+from .colours import Colours
+from .embed_general import generic_embed
+from .functions import current_time
 
 # global attributes
 __all__ = ('joinembed',

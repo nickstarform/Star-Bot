@@ -6,7 +6,8 @@
 import discord
 
 # relative modules
-from cogs.utilities import Colours, current_time
+from .colours import Colours
+from .functions import current_time
 from config import Config
 
 # global attributes

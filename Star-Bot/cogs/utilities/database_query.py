@@ -11,8 +11,8 @@ from asyncpg.pool import Pool
 
 # relative modules
 from config import Config
-from . import make_tables
-from . import ModAction
+from .database_create import make_tables
+from .functions import ModAction
 
 # global attributes
 __all__ = ('Controller',)
@@ -270,8 +270,8 @@ class Controller():
 
         Parameters
         ----------
-        user_id: int
-            id for the user to check
+        cmd: str
+            cmd to check
 
         Returns
         ----------
@@ -283,6 +283,94 @@ class Controller():
         """
         row = await self.pool.fetchrow(sql, [channel_id])
         return True if row else False
+
+
+    async def add_disallowed_global(self, cmd: str, logger): # noqa
+        """Add Disallowed Global Commands.
+
+        Parameters
+        ----------
+        cmd: str
+            cmd to check
+
+        Returns
+        ----------
+        boolean
+            success true or false
+        """
+        sql = f"""
+            UPDATE {self.schema}.global
+                SET disallowed_commands = (SELECT array_agg(distinct e)
+                FROM unnest(array_append(disallowed_commands,$1::bigint)) e);
+        """
+        try:
+            await self.pool.execute(sql, cmd)
+            return True
+        except Exception as e:
+            logger.warning(f'Error adding cmd to disallowed  {cmd}: {e}')
+            return False
+
+    async def rem_disallowed_global(self, cmd: str, logger): # noqa
+        """Remove Disallowed Global Commands.
+
+        Parameters
+        ----------
+        cmd: str
+            cmd to check
+
+        Returns
+        ----------
+        boolean
+            success true or false
+        """
+        cmd_list = await self.get_all_disallowed_global()
+        cmd_list.remove(cmd)
+        sql = f"""
+            UPDATE {self.schema}.global SET disallowed_commands = $1
+        """
+        try:
+            await self.pool.execute(sql, cmd_list)
+        except Exception as e:
+            logger.warning(f'Error removing disallowed cmds: {e}')
+            return False
+        return True
+
+    async def get_all_disallowed_global(self): # noqa
+        """Get Disallowed Global Commands.
+
+        Parameters
+        ----------
+
+        Returns
+        ----------
+        list
+            list all of the cmds disallowed
+        """
+        sql = f"""
+            SELECT disallowed_commands FROM {self.schema}.global;
+        """
+        cmd_list = await self.pool.fetchval(sql)
+        return cmd_list
+
+    async def is_disallowed_global(self, cmd: str):
+        """Is Disallowed Global Commands.
+
+        Parameters
+        ----------
+        cmd: str
+            cmd to check
+
+        Returns
+        ----------
+        boolean
+            return status true or false
+        """
+        sql = f"""
+            SELECT * FROM {self.schema}.global WHERE disallowed_commands @> $2;
+        """
+        row = await self.pool.fetchrow(sql, [cmd])
+        return True if row else False
+
 
     async def add_report(self, user_id: int, message: str, logger): # noqa
         """Add report from user user.
@@ -388,6 +476,7 @@ class Controller():
                 ban_footer = $15, kick_footer = $16, faq = $17,
                 rules = $18, misc = $19,
                 bots = $20, channels = $21, autoroles = $22,
+                disallowed_cmds = $23
                 currtime = DEFAULT)
                 ON CONFLICT (guild_id) DO nothing;
             """
@@ -414,7 +503,8 @@ class Controller():
             f'',  # misc TEXT,
             f'',  # bots TEXT,
             f'',  # channels TEXT,
-            []  # autoroles BIGINT ARRAY,
+            [],  # autoroles BIGINT ARRAY,
+            []  # disallowed_cmds text array
         )
 
     async def get_guild_settings(self):
@@ -475,6 +565,92 @@ class Controller():
         except Exception as e:
             logger.warning(f'Error getting guild settings {e}')
             return False
+
+    async def add_disallowed(self, cmd: str, logger): # noqa
+        """Add Disallowed guilds Commands.
+
+        Parameters
+        ----------
+        cmd: str
+            cmd to check
+
+        Returns
+        ----------
+        boolean
+            success true or false
+        """
+        sql = f"""
+            UPDATE {self.schema}.guilds
+                SET disallowed_commands = (SELECT array_agg(distinct e)
+                FROM unnest(array_append(disallowed_commands,$1::bigint)) e);
+        """
+        try:
+            await self.pool.execute(sql, cmd)
+            return True
+        except Exception as e:
+            logger.warning(f'Error adding cmd to disallowed  {cmd}: {e}')
+            return False
+
+    async def rem_disallowed(self, cmd: str, logger): # noqa
+        """Remove Disallowed guilds Commands.
+
+        Parameters
+        ----------
+        cmd: str
+            cmd to check
+
+        Returns
+        ----------
+        boolean
+            success true or false
+        """
+        cmd_list = await self.get_all_disallowed()
+        cmd_list.remove(cmd)
+        sql = f"""
+            UPDATE {self.schema}.guilds SET disallowed_commands = $1
+        """
+        try:
+            await self.pool.execute(sql, cmd_list)
+        except Exception as e:
+            logger.warning(f'Error removing disallowed cmds: {e}')
+            return False
+        return True
+
+    async def get_all_disallowed(self): # noqa
+        """Get Disallowed guilds Commands.
+
+        Parameters
+        ----------
+
+        Returns
+        ----------
+        list
+            list all of the cmds disallowed
+        """
+        sql = f"""
+            SELECT disallowed_commands FROM {self.schema}.guilds;
+        """
+        cmd_list = await self.pool.fetchval(sql)
+        return cmd_list
+
+    async def is_disallowed(self, cmd: str):
+        """Is Disallowed guilds Commands.
+
+        Parameters
+        ----------
+        cmd: str
+            cmd to check
+
+        Returns
+        ----------
+        boolean
+            return status true or false
+        """
+        sql = f"""
+            SELECT * FROM {self.schema}.guilds WHERE disallowed_commands @> $2;
+        """
+        row = await self.pool.fetchrow(sql, [cmd])
+        return True if row else False
 
     async def get_all_autoroles(self, guild_id: int):
         """Return all autoroles.

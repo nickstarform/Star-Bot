@@ -6,7 +6,9 @@
 import discord
 
 # relative modules
-from cogs.utilities import Colours, current_time, generic_embed
+from .colours import Colours
+from .functions import current_time
+from .embed_general import generic_embed
 from config import Config
 
 # global attributes

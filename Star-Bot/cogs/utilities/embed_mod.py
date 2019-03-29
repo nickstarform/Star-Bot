@@ -6,7 +6,9 @@
 import discord
 
 # relative modules
-from cogs.utilities import Colours, ModAction, generic_embed, current_time
+from .colours import Colours
+from .functions import ModAction, current_time
+from .embed_general import generic_embed
 
 # global attributes
 __all__ = ('untimeout',

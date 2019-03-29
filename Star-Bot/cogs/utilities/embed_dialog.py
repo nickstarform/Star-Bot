@@ -8,7 +8,8 @@ import asyncio
 from discord.ext import commands
 
 # relative modules
-from cogs.utilities import Colours, generic_embed
+from .colours import Colours
+from .embed_general import generic_embed
 
 # global attributes
 __all__ = ('iterator',
