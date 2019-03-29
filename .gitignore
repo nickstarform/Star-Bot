@@ -17,6 +17,7 @@ __pycache__
 *private*
 *.tmp
 *.bak
+*.yml
 
 # any compiled/compressed files
 *.tar
