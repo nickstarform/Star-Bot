@@ -263,6 +263,121 @@ class BlackListGlobal():
                                                           f'global blacklist: {e}')
             await ctx.send(embed=embed)
 
+    @commands.group(aliases=['globalcommands'])
+    @permissions.is_master()
+    async def commandsglobal(self, ctx):
+        """Add or remove a command to blacklist global list.
+
+        Parameters
+        ----------
+        ctx: :func: commands.Context
+            the context command object
+
+        Returns
+        -------
+        """
+        if ctx.invoked_subcommand is None:
+            cmds = await self.bot.pg_utils.get_all_disallowed_global()
+            if len(cmds) > 0:
+                title = 'Commands blacklisted globally'
+                desc = ', '.join(users)
+            else:
+                desc = ''
+                title = 'No commands in global blacklist'
+            embed = generic_embed(
+                title=title,
+                desc=desc,
+                fields=[],
+                footer=current_time(),
+                colours=Colours.COMMANDS
+            )
+            await ctx.send(embed=embed)
+
+    @commandsglobal.command()
+    async def add(self, ctx):
+        """Add command to global blacklist.
+
+        Parameters
+        ----------
+        ctx: :func: commands.Context
+            the context command object
+
+        Returns
+        -------
+        """
+        added_cmds = []
+        msg = ctx.clean_content.replace(' ', '')
+        if ',' in msg:
+            cmds = [x for x in msg.split(',')]
+        else:
+            cmds = [msg]
+
+        try:
+            for cmd in cmds:
+                success = await self.bot.pg.add_disallowed_global(cmd)
+                if success:
+                    added_cmds.append(cmd)
+            if added_cmds:
+                title = 'Commands added into global blacklist'
+                desc += ', '.join(added_cmds)
+                embed = generic_embed(
+                    title=title,
+                    desc=desc,
+                    fields=[],
+                    colours=Colours.COMMANDS,
+                    footer=current_time()
+                )
+            else:
+                self.bot.logger.info(f'Error adding Commands to global blacklist')
+                embed = embed_errors.internalerrorembed(f'Error adding Commands to global blacklist')
+            await ctx.send(embed=embed)
+        except Exception as e:
+            self.bot.logger.info(f'Error adding Commands to global blacklist {e}')
+            embed = embed_errors.internalerrorembed(f'Error adding Commands to global blacklist {e}')
+            await ctx.send(embed=embed)
+
+    @commandsglobal.command(aliases=['rem', 'del', 'rm'])
+    async def remove(self, ctx):
+        """Removes a command from the blacklist."""
+        removed_cmds = []
+        cmds_notfound = []
+        msg = ctx.clean_content.replace(' ', '')
+        if ',' in msg:
+            cmds = [x for x in msg.split(',')]
+        else:
+            cmds = [msg]
+        cmds = [x for x in cmds if x != '']
+        try:
+            for cmd in cmds:
+                success = False
+                try:
+                    success = await self.bot.pg.rem_disallowed_global(cmd)
+                except ValueError:
+                    user_notfound.append(cmd)
+                if success:
+                    removed_cmds.append(cmd)
+            fields = []
+            if removed_cmds:
+                fields += [['PASS.)', f'{x}'] for x in removed_cmds]
+            if user_notfound:
+                fields += [['FAIL.)', f'{x}'] for x in cmds_notfound]
+            title = 'Command blacklisting'
+            desc = ''
+            embed = generic_embed(
+                title=title,
+                desc=desc,
+                fields=fields,
+                colours=Colours.COMMANDS,
+                footer=current_time()
+            )
+            await ctx.send(embed=embed)
+        except Exception as e:
+            self.bot.logger.warning(f'Issue removing commands from ' +
+                                    f'global blacklist: {e}')
+            embed = embed_errors.internalerrorembed(f'Issue removing commands from ' +
+                                                          f'global blacklist: {e}')
+            await ctx.send(embed=embed)
+
 if __name__ == "__main__":
     """Directly Called."""
 
