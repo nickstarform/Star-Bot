@@ -13,7 +13,8 @@ from .embed_general import generic_embed
 
 # global attributes
 __all__ = ('iterator',
-           'confirm')
+           'confirm',
+           'respond')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
@@ -37,7 +38,10 @@ async def iterator(ctx: commands.Context, step: dict, timeout: int):
     dict
         the same dictionary with value overriden
     """
-    message = generic_embed(f'Please answer these questions ({timeout}s timer):', '', [], Colours.DIALOG_T)
+    message = generic_embed(f'Please answer these questions (Type "cancel" '
+                            f'or "exit" to cancel)'
+                            f'**({timeout}s timer)**:',
+                            '', [], Colours.DIALOG_T)
     request = await ctx.send(embed=message)
     failed = False
 
@@ -47,12 +51,18 @@ async def iterator(ctx: commands.Context, step: dict, timeout: int):
             tmp_m = await ctx.bot.wait_for("message",
                                            timeout=timeout,
                                            check=lambda message:
-                                           message.author == ctx.message.author)
+                                           message.author == ctx.message.author)  # noqa
             step[question] = tmp_m.clean_content
-        except asyncio.TimeoutError:            
+            if ('cancel' == step[question][:6].lower()) or\
+               ('exit' == step[question][:4].lower()):
+                failed = True
+                break
+        except asyncio.TimeoutError:
             failed = True
+            break
         except Exception as e:
-            print(f'Error in reacting to message: {e}')
+            print(f'Error in parsing message: {e}')
+            break
         try:
             await tmp_r.delete()
             await tmp_m.delete()
@@ -64,9 +74,9 @@ async def iterator(ctx: commands.Context, step: dict, timeout: int):
     try:
         await request.delete()
         if not failed:
-            await ctx.message.add_reaction(r'✅')
+            await respond(ctx, True)
         else:
-            ctx.message.add_reaction(r'❌')
+            await respond(ctx, False)
             return False
     except Exception as e:
         print(f'Error in deleting/reacting to message: {e}')
@@ -105,18 +115,29 @@ async def confirm(ctx: commands.Context, message: str, timeout: int):
                                          check=lambda message:
                                          message.author == ctx.message.author)
     except asyncio.TimeoutError:
-        ctx.message.add_reaction(r'❌')
+        await respond(ctx, False)
         return False
     if message.clean_content.lower() != 'confirm':
-        ctx.message.add_reaction(r'❌')
+        await respond(ctx, False)
         return False
     try:
         await request.delete()
         await message.delete()
-        await ctx.message.add_reaction(r'✅')
+        await respond(ctx, True)
     except Exception as e:
         print(f'Error in deleting message: {e}')
     return True
+
+
+async def respond(ctx: commands.Context, status: bool):
+    try:
+        if status:
+            await ctx.message.add_reaction(r'✅')
+        else:
+            await ctx.message.add_reaction(r'❌')
+    except Exception as e:
+        print(f'Error in responding to message message: {e}')
+        pass
 
 # end of code
 

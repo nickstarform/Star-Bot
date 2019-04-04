@@ -8,7 +8,7 @@ Load the configuration file nicely
 # external modules
 
 # relative modules
-from config.config import Config
+from .config import Config
 
 # global attributes
 __all__ = ('Config',)

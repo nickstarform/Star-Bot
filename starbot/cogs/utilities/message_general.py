@@ -7,18 +7,21 @@
 # relative modules
 
 # global attributes
-__all__ = ('test', 'main', 'Default')
+__all__ = ('generic_message', 'split_message', 'MAX_LEN')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
+MAX_LEN = 1000
 
-def generic_message(ctx, channel, message: str, delete: int):
+async def generic_message(ctx, channels, message: str, delete: int):
     """Generic message builder.
 
     Parameters
     ----------
     ctx: :func: commands.Context
         the context command object
+    channels: list
+        List of channels to send the message to.
     message: str
         the message to display. Will try to split by sentance,
         fallback by word, fallback crude cut
@@ -30,11 +33,14 @@ def generic_message(ctx, channel, message: str, delete: int):
     bool
         status true false
     """
-    messages = split_message(message, 500)
+    messages = split_message(message, MAX_LEN)
     for message in messages:
         try:
-            for channel in ctx.message.channel_mentions:
-                await channel.send(f'{message}')
+            for channel in channels:
+                if delete > 0:
+                    await channel.send(f'{message}', delete_after=delete)
+                else:
+                    await channel.send(f'{message}')
         except Exception as e:
             print('Error sending message', e)
             return False
@@ -52,7 +58,10 @@ def split_message(target: str, maxl: int):
         while (len(tmpv) > maxl) or (tmpi_n < (len(target) - 1)):
             case = ''
             if len(tmpv) > maxl:
-                if '. ' in tmpv:
+                if '\n' in tmpv:
+                    case = '\n'
+                    tmpv = f'{case}'.join(tmpv.split(case)[0:-1])  # split sentence
+                elif '. ' in tmpv:
                     case = '. '
                     tmpv = f'{case}'.join(tmpv.split(case)[0:-1])  # split sentence
                 elif '; ' in tmpv:

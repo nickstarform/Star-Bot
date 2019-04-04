@@ -13,12 +13,11 @@ __all__ = ('has_permissions',
            'has_guild_permissions',
            'is_manager',
            'is_admin',
+           'is_master',
            'manager_or_permissions',
            'admin_or_permissions',
            'is_in_guilds',
-           'is_channel_blacklisted',
-           'is_user_blacklisted',
-           'is_guild_blacklisted')
+           'is_blacklisted')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
@@ -44,8 +43,8 @@ async def check_permissions(ctx, perms, *, check=all):
         return False
 
     is_owner = await ctx.bot.is_owner(ctx.author)
-    if (Config.owner_id.value == ctx.author.id) or\
-       (Config.dev_id.value == ctx.author.id) or is_owner:
+    if (str(Config.owner_id.value) == str(ctx.author.id)) or\
+       (str(Config.devel_id.value) == str(ctx.author.id)) or is_owner:
         return True
 
     resolved = ctx.channel.permissions_for(ctx.author)
@@ -96,8 +95,8 @@ async def check_guild_permissions(ctx, perms, *, check=all):
         return False
 
     is_owner = await ctx.bot.is_owner(ctx.author)
-    if (Config.owner_id.value == ctx.author.id) or\
-       (Config.dev_id.value == ctx.author.id) or is_owner:
+    if (str(Config.owner_id.value) == str(ctx.author.id)) or\
+       (str(Config.devel_id.value) == str(ctx.author.id)) or is_owner:
         return True
 
     resolved = ctx.author.guild_permissions
@@ -179,8 +178,8 @@ def is_master():
         if has perms true false
     """
     async def pred(ctx):
-        return True if ctx.author.id == Config.owner_id.value or\
-            ctx.author.id == Config.dev_id.value else False
+        return True if str(ctx.author.id) == str(Config.owner_id.value) or\
+            str(ctx.author.id) == str(Config.devel_id.value) else False
     return commands.check(pred)
 
 
@@ -252,31 +251,9 @@ def is_in_guilds(*guild_ids):
 BLACKLIST
 """
 
-async def is_channel_blacklisted(self, ctx):
-    """Summary line.
 
-    Extended description of function.
-
-    Parameters
-    ----------
-    self: botinstance
-        Description of arg1
-    ctx: :func: commands.Context
-        the context command object
-
-    Returns
-    -------
-    bool
-        if blacklisted true false
-    """
-    return await self.bot.pg_utils.is_blacklist_channel(
-        ctx.channel.id)
-
-
-async def is_user_blacklisted(self, ctx):
-    """Summary line.
-
-    Extended description of function.
+async def is_blacklisted(self, ctx):
+    """Check if in guilds.
 
     Parameters
     ----------
@@ -288,31 +265,17 @@ async def is_user_blacklisted(self, ctx):
     Returns
     -------
     bool
-        if blacklisted true false
+        if in true false
     """
-    status = await self.bot.pg.is_blacklist_user_global(ctx.author.id)
-    if status:
-        return True
-    else:
-        return await self.bot.pg.is_blacklist_user(ctx.guild.id, ctx.author.id)
-
-async def is_guild_blacklisted(self, ctx):
-    """Check status of guild blacklist onjoin.
-
-    Parameters
-    ----------
-    self: botinstance
-        Description of arg1
-    ctx: :func: commands.Context
-        the context command object
-
-    Returns
-    -------
-    bool
-        if blacklisted true false
-    """
-    return await self.bot.pg.is_blacklist_guild_global(ctx.guild.id)
-
+    if await self.bot.pg.is_blacklist_guild_global(ctx.guild.id):
+        return False
+    if await self.bot.pg.is_blacklist_user_global(ctx.message.author.id):
+        return False
+    if await self.bot.pg.is_blacklist_channel(ctx.guild.id, ctx.channel.id):
+        return False
+    if await self.bot.pg.is_blacklist_user(ctx.guild.id, ctx.message.author.id):
+        return False
+    return True
 
 if __name__ == "__main__":
     """Directly Called."""

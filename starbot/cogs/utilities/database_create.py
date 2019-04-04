@@ -14,9 +14,10 @@ __all__ = ('make_tables', 'tables')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
-tables = ('glob', 'glob_reports', 'guilds', 'moderation',
-          'warnings', 'spamming', 'macros', 'quotes',
-          'joinableroles', 'reacts', 'joinableinfo')
+tables = ('glob', 'glob_reports', 'guilds',
+          'moderation', 'warnings', 'macros',
+          'quotes', 'remindme', 'joinableinfo',
+          'reacts')
 
 
 async def make_tables(pool: Pool, schema: str):
@@ -51,7 +52,7 @@ async def make_tables(pool: Pool, schema: str):
     CREATE TABLE IF NOT EXISTS {schema}.reports (
         user_id BIGINT,
         message TEXT,
-        id INT NOT NULL AUTO_INCREMENT,
+        id SERIAL,
         currtime TIMESTAMP DEFAULT current_timestamp,
         PRIMARY KEY(id, user_id)
     );"""
@@ -65,7 +66,7 @@ async def make_tables(pool: Pool, schema: str):
         invites_allowed BOOLEAN DEFAULT TRUE,
         voice_logging BOOLEAN DEFAULT FALSE,
         voice_channels BIGINT ARRAY,
-        cleared_chanels BIGINT ARRAY,
+        cleared_channels BIGINT ARRAY,
         modlog_enabled BOOLEAN DEFAULT FALSE,
         modlog_channels BIGINT ARRAY,
         logging_enabled BOOLEAN DEFAULT FALSE,
@@ -76,11 +77,16 @@ async def make_tables(pool: Pool, schema: str):
         send_welcome_channel BOOLEAN DEFAULT FALSE,
         report_channel BIGINT,
         rules_channel BIGINT,
+        colour_enabled BOOLEAN DEFAULT FALSE,
         autoroles BIGINT ARRAY,
         joinable_roles BIGINT ARRAY,
         blacklist_channels BIGINT ARRAY,
         blacklist_users BIGINT ARRAY,
         disallowed_commands TEXT ARRAY,
+        subreddit TEXT ARRAY,
+        twitch TEXT ARRAY,
+        twitter TEXT ARRAY,
+        github TEXT ARRAY,
         ban_footer TEXT,
         kick_footer TEXT,
         faq TEXT,
@@ -142,6 +148,15 @@ async def make_tables(pool: Pool, schema: str):
         PRIMARY KEY (guild_id, id)
     );"""
 
+    remindme = f"""
+    CREATE TABLE IF NOT EXISTS {schema}.reminder (
+        user_id BIGINT,
+        content TEXT,
+        id SERIAL,
+        currtime TIMESTAMP DEFAULT current_timestamp,
+        PRIMARY KEY (id)
+    );"""
+
     joinableinfo = f"""
     CREATE TABLE IF NOT EXISTS {schema}.joinableinfo (
         target_id BIGINT,
@@ -169,9 +184,9 @@ async def make_tables(pool: Pool, schema: str):
     await pool.execute(guilds)
     await pool.execute(moderation)
     await pool.execute(warnings)
-    await pool.execute(spamming)
     await pool.execute(macros)
     await pool.execute(quotes)
+    await pool.execute(remindme)
     await pool.execute(joinableinfo)
     await pool.execute(reacts)
 

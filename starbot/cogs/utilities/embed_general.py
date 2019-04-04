@@ -7,7 +7,7 @@ import discord
 
 # relative modules
 from .colours import Colours
-from .functions import current_time
+from .functions import current_time, chunks
 from config import Config
 
 # global attributes
@@ -19,13 +19,16 @@ __all__ = ('generic_embed',
            'roleduplicateembed',
            'rolenotremovedembed',
            'botinviteembed',
-           'botserverembed')
+           'botserverembed',
+           'MAX_LEN')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
 
+MAX_LEN = 800
+
 def generic_embed(title: str, desc: str, fields: list,
-                  footer: str, colours: Colours=Colours.COMMANDS):
+                  footer: str, colours: Colours=Colours.COMMANDS, force_single: bool=False, **kwargs):
     """Generic embed builder.
 
     The main constraint is len title + desc < 500. Use the generic
@@ -50,28 +53,51 @@ def generic_embed(title: str, desc: str, fields: list,
     :func: discord.Embed
         The discord embed object
     """
+    if len(fields) > 0:
+        ret = []
+        for fi, f in enumerate(fields):
+            f = list(map(str, f))
+            if (f[1] == '[]') or (f[1] == ''):
+                f[1] = 'NONE SET'
+            if len(f[1]) > MAX_LEN:
+                n = []
+                i = 1
+                for x in chunks(f[1], MAX_LEN - 1):
+                    n.append([f[0] + f'({1})', x])
+                    i += 1
+                del fields[fi]
+                fields += n
+            ret.append(f)
+        fields = ret
+    print(title,desc, fields, footer)
     if (len(title) + len(desc)) > 500:
         desc = desc[:500-len(title)]
     total_embeds = (sum([len(''.join(x)) for x in fields]) +
-                    len(title) + len(footer) + len(desc)) // 500 + 1
-    if len(total_embeds) > 1:
-        embeds = [discord.Embed(title=title + f'(Page{x+1}/{total_embeds})',
-                                type='rich',
-                                color=colours.value)
-                  for x in range(total_embeds)]
-        tmplen = 0
+                    len(title) + len(footer) + len(desc)) // MAX_LEN + 1
+    print(total_embeds)
+    print(sum([len(''.join(x)) for x in fields]) + len(title) + len(footer) + len(desc))
+    url = kwargs['url'] if 'url' in kwargs.keys() else ''
+    if total_embeds > 1:
+        embeds = []
         tmpi = 0
+        title += f' (PageX/{total_embeds})'
         for i in range(total_embeds):
-            ctitle = title.replace('X', i + 1)
+            tmplen = 0
+            ctitle = title.replace('X', str(i + 1))
             embed = discord.Embed(title=ctitle, type='rich',
-                                  color=colours.value)
-            if (i == 0) and (len(message) > 0):
-                embed.description = message
+                                  color=colours.value, desc='', url = url)
+            if 'image' in kwargs.keys():
+                embed.set_image(url=kwargs['image'])
+            if 'thumbnail' in kwargs.keys():
+                embed.set_thumbnail(url=kwargs['thumbnail'])
+            if (i == 0) and (len(desc) > 0):
+                embed.description = desc
             if len(footer) > 0:
                 embed.set_footer(text=footer)
             if len(fields) > 0:
                 tmplen += len(''.join(fields[tmpi]))
-                while ((tmplen + len(ctitle) + len(footer)) < 500) and\
+                print(tmplen + len(ctitle) + len(footer))
+                while ((tmplen + len(ctitle) + len(footer)) < MAX_LEN) and\
                         (tmpi < (len(fields) - 1)):
                     tmplen += len(''.join(fields[tmpi]))
                     field = fields[tmpi]
@@ -81,9 +107,14 @@ def generic_embed(title: str, desc: str, fields: list,
             embeds.append(embed)
     else:
         embeds = []
-        embed = discord.Embed(title=title, type='rich', color=colours.value)
-        if len(message) > 0:
-            embed.description = message
+        embed = discord.Embed(title=title, type='rich', desc='', color=colours.value, url = url)
+        if 'image' in kwargs.keys():
+            print(kwargs['image'])
+            embed.set_image(url=kwargs['image'])
+        if 'thumbnail' in kwargs.keys():
+            embed.set_thumbnail(url=kwargs['thumbnail'])
+        if len(desc) > 0:
+            embed.description = desc
         if len(footer) > 0:
             embed.set_footer(text=footer)
         if len(fields) > 0:
@@ -91,6 +122,8 @@ def generic_embed(title: str, desc: str, fields: list,
                 embed.add_field(name=field[0],
                                 value=field[1])
         embeds.append(embed)
+    for x in embeds:
+        print(x.to_dict())
     return embeds
 
 

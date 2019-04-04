@@ -8,7 +8,7 @@ import discord
 # relative modules
 from .colours import Colours
 from .embed_general import generic_embed
-from .functions import current_time
+from .functions import current_time, ModAction
 
 # global attributes
 __all__ = ('joinembed',

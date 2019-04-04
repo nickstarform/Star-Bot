@@ -1,6 +1,6 @@
 """Configuration Preparer.
 
-Just import this file and call Config. This will
+Just import this file and call Config.X. This will
 handle the required configuration parameters and
 set them to immutable by use of enumerators.
 """
@@ -10,6 +10,7 @@ import yaml
 import datetime
 from enum import Enum
 import os
+import subprocess
 
 # external modules
 
@@ -136,17 +137,27 @@ class BaseConfig(Enum):
 
     Loaded = False
     pass
+
 if str(os.getcwd())[-4:] != 'docs':
     # template configuration, key: required (True/False)
-    template = {'token': True, 'owner_id': True, 'devel_id': True,
+    template = {'token': True, 'owner_id': True, 'devel_id': True, 'avatar': False,
                 'bot_key': False, 'bot_id': True, 'support_server': False,
-                'psql_username': True, 'psql_passwd': True,
-                'psql_dbname': True, 'psql_port': True,
-                'psql_host': True}
+                'psql_username': True, 'psql_passwd': False, 'psql_dbname': True,
+                'psql_port': True, 'psql_host': True, 
+                'maluser': False, 'malpass': False,
+                'twitch_token': False,
+                'battlenet_token': False,
+                'imgur_token': False,
+                'redditusername': False, 'redditpassword': False,
+                'redditkey': False, 'redditsecret': False,
+                'twitterappkey': False, 'twitterappsecret': False,
+                'twittertokenkey': False, 'twittertokensecret': False,}
 
     # load in the yaml configuration file for parsing
     with open(f"{__path__}/config.yml", 'r') as yml_config:
             y_c = yaml.load(yml_config)
+    with open(f"{__path__}/../../.version", 'r') as v:
+            version = v.read()
 
     __MAPPING__ = {'date': current_time()}
     for key in template.keys():
@@ -162,10 +173,23 @@ if str(os.getcwd())[-4:] != 'docs':
         __MAPPING__['support_server'] = f"{DISCORD.replace('$repl$', __MAPPING__['support_server'])}"
     if __MAPPING__['bot_key']:
         __MAPPING__['bot_key'] = f"{BOT_INVITE.replace('$repl$', __MAPPING__['bot_key'])}"
+    __MAPPING__['psql_cred'] = {}
+    __MAPPING__['psql_cred']['user'] = __MAPPING__['psql_username']
+    __MAPPING__['psql_cred']['password'] = __MAPPING__['psql_passwd']
+    __MAPPING__['psql_cred']['database'] = __MAPPING__['psql_dbname']
+    __MAPPING__['psql_cred']['port'] = __MAPPING__['psql_port']
+    __MAPPING__['psql_cred']['host'] = __MAPPING__['psql_host']
 
+    # versioning
+    __MAPPING__['version'] = version
+    try:
+        label = subprocess.check_output(['git', 'describe', '--always']).strip().decode()
+    except:
+        label = ''
+    __MAPPING__['githash'] = label
     __MAPPING__['Loaded'] = True
 
-    # store into Config
+    # store into Config object for easy loading
     Config = Enum('BaseConfig', names=__MAPPING__)
 else:
     __MAPPING__ = {'date': current_time()}
