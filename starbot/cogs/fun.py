@@ -13,7 +13,7 @@ from discord.ext import commands
 import requests
 
 # relative modules
-from cogs.utilities import Colours
+from cogs.utilities import Colours, permissions
 from cogs.utilities.functions import current_time
 from cogs.utilities.message_general import generic_message
 from cogs.utilities.embed_general import generic_embed, MAX_LEN
@@ -50,6 +50,8 @@ class Fun(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'eightball'):
+            return
         answers = [
             "It is certain",
             "It is decidedly so",
@@ -94,15 +96,14 @@ class Fun(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'rate'):
+            return
         if isinstance(user, type(None)):
             text = ctx.author
         else:
-            text = extract_member_id(user)
-            if text == '' and len(user) > 0:
-                text = find(lambda m: m.name == user, ctx.guild.members)
+            text = get_member(ctx, user)
         if not isinstance(text, type(None)):
-            if not isinstance(text, str):
-                text = text.id
+            text = text.id
         else:
             await respond(ctx, False)
             return
@@ -131,6 +132,8 @@ class Fun(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'number'):
+            return
         val = minimum + (maximum - minimum) * random.random()
         await generic_message(ctx, [ctx.channel], f'Random number: {val}', -1)
         pass
@@ -152,6 +155,8 @@ class Fun(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'choose'):
+            return
         delimiters = (',', ';', '|', 'or', ' ')
         choices = [text]
         i = 0
@@ -188,6 +193,8 @@ class Fun(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'roll'):
+            return
         text = text.lower()
         explicit = False if 'false' in text else True
         text = text.replace(' ', '')
@@ -235,6 +242,8 @@ class Fun(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'kaga'):
+            return
         try:
             url = 'https://api.imgur.com/3/album/WtrQ0/images'
             headers = {'Authorization': 'Client-ID ' + self.bot.config.imgur_token.value}
@@ -245,17 +254,49 @@ class Fun(commands.Cog):
             await generic_message(ctx, [ctx.channel], f'{e}', -1)
             await respond(ctx, False)
             return
-        print(r.json())
         responce = r.json()['data']
         chose = random.choice(responce)
         await generic_message(ctx, [ctx.channel], f'{chose["link"]}', -1)
         pass
 
-    @commands.command()
+    async def jishonn(self, ctx, *, term: str=None):
+        """Search for terms in japanese to translate on jisho.
+
+        Will search for the keyword anime or manga and use that to
+        further search on kitsu. If neither is found it will default
+        to searching for anime.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
+        url = 'http://jisho.org/search/'
+        url += urllib.parse.quote_plus(term)
+        try:
+            headers = {}
+            r = requests.get(url, headers=headers)
+            if int(r.status_code) > 399:
+                raise RuntimeError
+        except Exception as e:
+            e = e if e != '' else 'None defined'
+            await generic_message(ctx, [ctx.channel], f'{e},{url}', -1)
+            await respond(ctx, False)
+            return
+        print(r.text)
+        responce = r.json()['data'][0]
+
+        print(responce)
+        return
+
+    @commands.command(aliases=['words', 'japanese', 'translate'])
     @commands.guild_only()
     async def jisho(self, ctx, word: str):
         """Translates Japanese to English, and English to Japanese
         Works with Romaji, Hiragana, Kanji, and Katakana"""
+        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'jisho'):
+            return
         search_args = await self.dict_search_args_parse(ctx, word.lower())
         if not search_args:
             return
@@ -333,6 +374,8 @@ class Fun(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'anime'):
+            return
         if not term:
             return
         term = term.lower()
@@ -359,17 +402,33 @@ class Fun(commands.Cog):
             await generic_message(ctx, [ctx.channel], f'{e},{url}', -1)
             await respond(ctx, False)
             return
+
+        def gather(di: dict, fields: list):
+            ret = []
+            for f in fields:
+                try:
+                    ret.append(di[f])
+                except:
+                    ret.append('')
+            return ret
+        def no(li):
+            for f in li:
+                if not isinstance(f, type(None)) and f != '' and f.lower() != 'none':
+                    return f
+
         responce = r.json()['data'][0]
-        link = responce['links']['self']
-        syn = responce['attributes']['synopsis']
-        create = responce['attributes']['createdAt']
-        titles = responce['attributes']['titles']
-        rating = responce['attributes']['averageRating']
-        start = responce['attributes']['startDate']
-        stop = responce['attributes']['endDate']
-        image = responce['attributes']['coverImage']['original']
-        status = responce['attributes']['status']
-        ep = responce['attributes']['episodeCount']
+        link = gather(responce['links'], ['self'])[0]
+        attr = gather(responce['attributes'], ['synopsis',
+                                               'createdAt',
+                                               'titles',
+                                               'averageRating',
+                                               'startDate',
+                                               'endDate',
+                                               'coverImage',
+                                               'status',
+                                               'episodeCount'])
+        syn, create, titles, rating, start, stop, image, status, ep = attr
+        image = no(gather(image, ['original', 'large', 'tiny']))
         fields = []
         if 'en' in titles.keys():
             fields.append(['English', titles['en']])
@@ -393,39 +452,6 @@ class Fun(commands.Cog):
                               )
         for embed in embeds:
             await ctx.send(embed=embed)
-
-    @commands.command(aliases=['translate'])
-    @commands.guild_only()
-    async def jisho(self, ctx, *, term: str=None):
-        """Search for terms in japanese to translate on jisho.
-
-        Will search for the keyword anime or manga and use that to
-        further search on kitsu. If neither is found it will default
-        to searching for anime.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        """
-        url = 'http://jisho.org/search/'
-        url += urllib.parse.quote_plus(term)
-        try:
-            headers = {}
-            r = requests.get(url, headers=headers)
-            if int(r.status_code) > 399:
-                raise RuntimeError
-        except Exception as e:
-            e = e if e != '' else 'None defined'
-            await generic_message(ctx, [ctx.channel], f'{e},{url}', -1)
-            await respond(ctx, False)
-            return
-        print(r.text)
-        responce = r.json()['data'][0]
-
-        print(responce)
-        return
 
 if __name__ == "__main__":
     """Directly Called."""
