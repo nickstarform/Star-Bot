@@ -19,7 +19,10 @@ from cogs.utilities.embed_dialog import respond
 
 
 initial_extensions = ['cogs.fun',
-                      'cogs.owner',]
+                      'cogs.owner',
+                      'cogs.general',
+                      'cogs.moderation',
+                      'cogs.administration',]
 
 def run():
     """Load cogs and build bot.
@@ -34,16 +37,10 @@ def run():
     """
     loop = get_event_loop()
     bot = loop.run_until_complete(Starbot.get_instance())
+    bot.add_cog(Loader(bot))
     for cog in initial_extensions:
         bot.load_extension(f'{cog}')
-    bot.add_cog(Loader(bot))
     bot.run(Config['token'].value)
-
-    @bot.event
-    async def on_message(self, ctx):
-        if not await permissions.is_blacklisted(self, ctx):
-            return
-        await bot.process_commands(ctx)
 
 class Loader(commands.Cog):
 
