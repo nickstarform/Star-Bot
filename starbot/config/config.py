@@ -151,7 +151,7 @@ if str(os.getcwd())[-4:] != 'docs':
                 'redditusername': False, 'redditpassword': False,
                 'redditkey': False, 'redditsecret': False,
                 'twitterappkey': False, 'twitterappsecret': False,
-                'twittertokenkey': False, 'twittertokensecret': False,}
+                'twittertokenkey': False, 'twittertokensecret': False, 'github': False}
 
     # load in the yaml configuration file for parsing
     with open(f"{__path__}/config.yml", 'r') as yml_config:
