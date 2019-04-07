@@ -8,33 +8,64 @@ from typing import Optional
 
 # external modules
 from asyncpg import Record
+from discord.ext import commands
+import discord
 
 # relative modules
 
 # global attributes
 __all__ = ('current_time',
            'ModAction',
-           'extract_member_id',
-           'extract_channel_id',
-           'extract_role_id',
-           'extract_guild_id',
+           'extract_id',
            'extract_time',
            'extract_float',
            'clean_command',
            'parse',
-           'chunks')
+           'chunks',
+           'bannedmember',
+           'flatten',
+           'get_role',
+           'get_member',
+           'get_channel')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
 
 # Basic functions
 
+
+class ModAction(Enum):
+    """Moderation Types.
+
+    Parameters
+    ----------
+
+    Returns
+    ----------
+    """
+
+    MISC = 0
+    KICK = 1
+    BAN = 2
+    UNBAN = 3
+
+
+def flatten(ilist):
+    ret = []
+    for i in ilist:
+        if not isinstance(i, type(None)):
+            if i is not False and i != '':
+                ret.append(i)
+    return ret
+
+
 def chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
-def parse(record: Record) -> Optional[list]:
+
+def parse(record) -> Optional[list]:
     """Parsing Record values.
 
     Parameters
@@ -48,9 +79,44 @@ def parse(record: Record) -> Optional[list]:
         Results from the record in list format
     """
     try:
+        ret = []
+        if isinstance(record, list):
+            ret = [list(r.items()) for r in record]
+            return ret
         return list(record.items())
     except AttributeError:
-        return None
+        return []
+
+
+def time_conv(dt: datetime):
+    """
+    Get Current time in botworld.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    str
+        String format (Day Mon, DD YYYY HH:MM) of datetime in UTC
+    """
+    if isinstance(dt, datetime.timedelta):
+        dt = dt.total_seconds()
+        y = int(dt // int(60. * 60. * 24. * 365.25))
+        r = int(dt % int(60. * 60. * 24. * 365.25))
+        d = int(r // int(60. * 60. * 24.))
+        r = int(r % int(60. * 60. * 24.))
+        h = int(r // int(60. * 60.))
+        r = int(r % int(60. * 60.))
+        m = int(r // int(60.))
+        s = int(r % int(60.))
+        strings = ['years', 'days', 'hours', 'minutes', 'seconds']
+        ret = []
+        for i, f in enumerate([y, d,h,m,s]):
+            if f != 0:
+                ret.append(f'{f} {strings[i]}')
+        return ' '.join(ret)
+    return dt.strftime('%A, %b %d %Y %H:%M')
 
 
 def current_time(ordinal: bool=False):
@@ -70,22 +136,6 @@ def current_time(ordinal: bool=False):
         return time.toordinal()
     else:
         return time.strftime('%A, %b %d %Y %H:%M')
-
-
-class ModAction(Enum):
-    """Moderation Types.
-
-    Parameters
-    ----------
-
-    Returns
-    ----------
-    """
-
-    MISC = 0
-    KICK = 1
-    BAN = 2
-    UNBAN = 3
 
 
 def clean_command(argument: str):
@@ -108,6 +158,18 @@ def clean_command(argument: str):
         else:
             break
     return argument[i:]
+
+
+def clean_str(argument: str, dtype:str='role'):
+    general = argument.replace('<', '').replace('>', '')\
+                      .replace('@', '')
+    if dtype == 'role':
+        return general.replace('&', '')
+    if dtype == 'channel':
+        return general.replace('#', '')
+    else:
+        return general.replace('#', '').replace('&', '')
+
 
 def is_id(argument: str):
     """Check if argument is #.
@@ -132,7 +194,88 @@ def is_id(argument: str):
     return True
 
 
-def extract_member_id(argument: str):
+def get_channel(ctx, argument: str):
+    """Tries to return a channel object.
+
+    Parameters
+    ----------
+    argument: str
+        text to parse
+
+    Returns
+    ----------
+    discord.Channel
+        channel object to return
+    """
+    cleaned = clean_str(argument).lower()
+    try:
+        ret = extract_id(argument, 'channel')
+        if not ret:
+            ret = discord.utils.find(lambda m: (m.id == ret) or
+                (m.name.lower() == cleaned) or # noqa
+                (m.nick.lower() == cleaned), ctx.guild.channels) # noqa
+        else:
+            return ctx.guild.get_role(int(ret))
+        if ret:
+            return ret
+    except:
+        return False
+
+
+def get_role(ctx, argument: str):
+    """Tries to return a role object.
+
+    Parameters
+    ----------
+    argument: str
+        text to parse
+
+    Returns
+    ----------
+    discord.Role
+        role object to return
+    """
+    cleaned = clean_str(argument).lower()
+    try:
+        ret = extract_id(argument, 'role')
+        if not ret:
+            ret = discord.utils.find(lambda m:
+                (m.name.lower() == cleaned), ctx.guild.roles)
+        else:
+            return ctx.guild.get_role(int(ret))
+        if ret:
+            return ret
+    except:
+        return False
+
+
+def get_member(ctx, argument: str):
+    """Tries to return a member object.
+
+    Parameters
+    ----------
+    argument: str
+        text to parse
+
+    Returns
+    ----------
+    discord.Member
+        member object to return
+    """
+    ret = extract_id(argument, 'member')
+    t_st = clean_str(argument, 'member').lower()
+    if not ret:
+        ret = discord.utils.find(lambda m: (m.id == ret) or (m.name.lower() == t_st), ctx.guild.members)
+    else:
+        ret = ctx.guild.get_member(int(ret))
+    if not ret:
+        ret = ctx.guild.get_member_named(t)
+    if ret:
+        return ret
+    else:
+        return None
+
+def extract_id(argument: str, dtype: str='member'):
     """Check if argument is # or <@#>.
 
     Parameters
@@ -147,123 +290,58 @@ def extract_member_id(argument: str):
     """
     if argument.strip(' ') == '':
         return ''
-    if not is_id(argument.replace('<', '').replace('>', '').replace('@', '')):
-        return ''
-    regexes = (
-        r'\\?\<\@?([0-9]{17})\>',  # '<@!?#17+>'
-        r'\\?\<\@?([0-9]+)\>',  # '<@!?#+>'
-        r'?([0-9]{17})',  # '!?#17+>'
-        r'?([0-9]+)',  # '!?#+>'
-    )
+    argument = clean_str(argument, dtype)
+    if is_id(argument):
+        return argument
+    if dtype == 'member':
+        regexes = (
+            r'\\?\<\@?([0-9]{17})\>',  # '<@!?#17+>'
+            r'\\?\<\@?([0-9]+)\>',  # '<@!?#+>'
+            r'?([0-9]{17})',  # '!?#17+>'
+            r'?([0-9]+)',  # '!?#+>'
+        )
+    elif dtype == 'role':
+        regexes = (
+            r'\\?\<\@\&?([0-9]{17})\>',  # '<@!?#17+>'
+            r'\\?\<\@\&?([0-9]+)\>',  # '<@!?#+>'
+            r'?([0-9]{17})',  # '!?#17+>'
+            r'?([0-9]+)',  # '!?#+>'
+        )
+    else:
+        regexes = (
+            r'\\?\<\#?([0-9]{17})\>',  # '<@!?#17+>'
+            r'\\?\<\#?([0-9]+)\>',  # '<@!?#+>'
+            r'?([0-9]{17})',  # '!?#17+>'
+            r'?([0-9]+)',  # '!?#+>'
+        )
     i = 0
-    member_id = None
+    member_id = ''
     while i < len(regexes):
         regex = regexes[i]
-        match = re.findall(regex, argument)
+        try:
+            match = re.finditer(regex, argument, re.MULTILINE)
+        except:
+            match = None
         i += 1
-        if (match is not None) and (len(match) > 0):
-            member_id = int(match[0], base=10)
-            return str(member_id).strip(' ')
-    return str(member_id).strip(' ')
+        if match is None:
+            continue
+        else:
+            match = [x for x in match]
+            if len(match) > 0:
+                match = match[0]
+                member_id = int(match[0], base=10)
+                return str(member_id)
+    return None
 
-
-def extract_channel_id(argument: str):
-    """Check if argument is # or <##>.
-
-    Parameters
-    ----------
-    argument: str
-        text to parse
-
-    Returns
-    ----------
-    str
-        the bare id
-    """
-    if argument.strip(' ') == '':
-        return
-    regexes = (
-        r'\\?\<\#?([0-9]{17})\>',  # '<@!?#17+>'
-        r'\\?\<\#?([0-9]+)\>',  # '<@!?#+>'
-        r'?([0-9]{17})',  # '!?#17+>'
-        r'?([0-9]+)',  # '!?#+>'
-    )
-    i = 0
-    channel_id = None
-    while i < len(regexes):
-        regex = regexes[i]
-        match = re.findall(regex, argument)
-        i += 1
-        if (match is not None) and (len(match) > 0):
-            channel_id = int(match[0], base=10)
-            return str(channel_id).strip(' ')
-    return str(channel_id).strip(' ')
-
-
-def extract_role_id(argument: str):
-    """Check if argument is # or <@&#>.
-
-    Parameters
-    ----------
-    argument: str
-        text to parse
-
-    Returns
-    ----------
-    str
-        the bare id
-    """
-    if argument.strip(' ') == '':
-        return
-    regexes = (
-        r'\\?\<\@\&?([0-9]{17})\>',  # '<@!?#17+>'
-        r'\\?\<\@\&?([0-9]+)\>',  # '<@!?#+>'
-        r'?([0-9]{17})',  # '!?#17+>'
-        r'?([0-9]+)',  # '!?#+>'
-    )
-    i = 0
-    role_id = None
-    while i < len(regexes):
-        regex = regexes[i]
-        match = re.findall(regex, argument)
-        i += 1
-        if (match is not None) and (len(match) > 0):
-            role_id = int(match[0], base=10)
-            return str(role_id).strip(' ')
-    return str(role_id).strip(' ')
-
-
-def extract_guild_id(argument: str):
-    """Check if argument is # or <@&#>.
-
-    Parameters
-    ----------
-    argument: str
-        text to parse
-
-    Returns
-    ----------
-    str
-        the bare id
-    """
-    if argument.replace(' ', '') == '':
-        return
-    print(f'<{argument}>')
-    regexes = (
-        r'?([0-9]{17})',  # '!?#17+>'
-        r'?([0-9]+)',  # '!?#+>'
-    )
-    i = 0
-    role_id = None
-    while i < len(regexes):
-        regex = regexes[i]
-        match = re.findall(regex, argument)
-        i += 1
-        if (match is not None) and (len(match) > 0):
-            role_id = int(match[0], base=10)
-            return str(role_id).strip(' ')
-    return str(role_id).strip(' ')
-
+async def bannedmember(ctx, argument):
+    ban_list = await ctx.guild.bans()
+    member_id = extract_id(argument, 'member')
+    if member_id is not None:
+        entity = discord.utils.find(
+            lambda u: str(u.user.id) == str(member_id), ban_list)
+        return entity
+    else:
+        raise commands.BadArgument("Not a valid previously-banned member.")
 
 def extract_float(argument: str):
     """Extract float from string.
