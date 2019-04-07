@@ -11,7 +11,7 @@ from asyncpg.pool import Pool
 # relative modules
 from config import Config
 from .database_create import make_tables
-from .functions import ModAction
+from .functions import ModAction, parse
 
 # global attributes
 __all__ = ('Controller',)
@@ -106,9 +106,9 @@ class Controller():
             success true or false
         """
         sql = f"""
-            UPDATE {self.schema}.global
-                SET guild_blacklist = (SELECT array_agg(distinct e)
-                FROM unnest(array_append(guild_blacklist,$1::bigint)) e);
+            INSERT INTO {self.schema}.globalguildbl
+                (guild_id, currtime) VALUES ($1, DEFAULT)
+                ON CONFLICT (guild_id) DO NOTHING;
         """
         try:
             await self.pool.execute(sql, int(guild_id))
@@ -130,17 +130,16 @@ class Controller():
         boolean
             success true or false
         """
-        guild_list = await self.get_all_blacklist_guild_global()
-        guild_list.remove(int(guild_id))
         sql = f"""
-            UPDATE {self.schema}.global SET guild_blacklist = $1
+            DELETE FROM {self.schema}.globalguildbl WHERE guild_id = $1
         """
         try:
             await self.pool.execute(sql, int(guild_id))
+            return True
         except Exception as e:
             logger.warning(f'Error removing blacklist guild: {e}')
             return False
-        return True
+        return False
 
     async def get_all_blacklist_guild_global(self): # noqa
         """Get all blacklisted guilds.
@@ -154,9 +153,9 @@ class Controller():
             list all of the blacklisted guilds
         """
         sql = f"""
-            SELECT guild_blacklist FROM {self.schema}.global;
+            SELECT guild_id FROM {self.schema}.globalguildbl;
         """
-        guild_list = await self.pool.fetchval(sql)
+        guild_list = await self.pool.fetch(sql)
         return guild_list
 
     async def is_blacklist_guild_global(self, guild_id: str):
@@ -173,9 +172,9 @@ class Controller():
             return status true or false
         """
         sql = f"""
-            SELECT * FROM {self.schema}.global WHERE guild_blacklist @> $1;
+            SELECT * FROM {self.schema}.globalguildbl WHERE guild_id=$1;
         """
-        row = await self.pool.fetchrow(sql, [int(guild_id)])
+        row = await self.pool.fetchrow(sql, int(guild_id))
         return True if row else False
 
     async def add_blacklist_user_global(self, user_id: str, logger): # noqa
@@ -192,9 +191,9 @@ class Controller():
             success true or false
         """
         sql = f"""
-            UPDATE {self.schema}.global
-                SET user_blacklist = (SELECT array_agg(distinct e)
-                FROM unnest(array_append(user_blacklist,$1::bigint)) e);
+            INSERT INTO {self.schema}.globaluserbl
+                (user_id, currtime) VALUES ($1, DEFAULT)
+                ON CONFLICT (user_id) DO NOTHING;
         """
         try:
             await self.pool.execute(sql,  int(user_id))
@@ -216,17 +215,15 @@ class Controller():
         boolean
             success true or false
         """
-        user_list = await self.get_all_blacklist_users_global()
-        user_list.remove(int(user_id))
         sql = f"""
-            UPDATE {self.schema}.global SET user_blacklist = $1
+            DELETE FROM {self.schema}.globaluserbl WHERE user_id = $1
         """
         try:
-            await self.pool.execute(sql, user_list)
+            return await self.pool.execute(sql, int(user_id))
         except Exception as e:
             logger.warning(f'Error removing blacklist user: {e}')
             return False
-        return True
+        return False
 
     async def get_all_blacklist_users_global(self): # noqa
         """Get all blacklisted channels.
@@ -240,9 +237,9 @@ class Controller():
             list all of the blacklisted users
         """
         sql = f"""
-            SELECT user_blacklist FROM {self.schema}.global;
+            SELECT user_id FROM {self.schema}.globaluserbl;
         """
-        user_list = await self.pool.fetchval(sql)
+        user_list = await self.pool.fetch(sql)
         return user_list
 
     async def is_blacklist_user_global(self, user_id: str):
@@ -259,9 +256,9 @@ class Controller():
             return status true or false
         """
         sql = f"""
-            SELECT * FROM {self.schema}.global WHERE user_blacklist @> $1;
+            SELECT * FROM {self.schema}.globaluserbl WHERE user_id = $1;
         """
-        row = await self.pool.fetchrow(sql, [int(user_id)])
+        row = await self.pool.fetchrow(sql, int(user_id))
         return True if row else False
 
 
@@ -279,9 +276,9 @@ class Controller():
             success true or false
         """
         sql = f"""
-            UPDATE {self.schema}.global
-                SET disallowed_commands = (SELECT array_agg(distinct e)
-                FROM unnest(array_append(disallowed_commands,$1::bigint)) e);
+            INSERT INTO {self.schema}.globalcmdbl
+                (disallowed_command) VALUES ($1)
+                ON CONFLICT (disallowed_command) DO NOTHING;
         """
         try:
             await self.pool.execute(sql, cmd)
@@ -303,13 +300,11 @@ class Controller():
         boolean
             success true or false
         """
-        cmd_list = await self.get_all_disallowed_global()
-        cmd_list.remove(cmd)
         sql = f"""
-            UPDATE {self.schema}.global SET disallowed_commands = $1
+            DELETE FROM {self.schema}.globalcmdbl WHERE disallowed_command = $1
         """
         try:
-            await self.pool.execute(sql, cmd_list)
+            await self.pool.execute(sql, cmd)
         except Exception as e:
             logger.warning(f'Error removing disallowed cmds: {e}')
             return False
@@ -327,9 +322,9 @@ class Controller():
             list all of the cmds disallowed
         """
         sql = f"""
-            SELECT disallowed_commands FROM {self.schema}.global;
+            SELECT disallowed_command FROM {self.schema}.globalcmdbl;
         """
-        cmd_list = await self.pool.fetchval(sql)
+        cmd_list = await self.pool.fetch(sql)
         return cmd_list
 
     async def is_disallowed_global(self, cmd: str):
@@ -347,9 +342,9 @@ class Controller():
         """
         # SELECT * FROM {self.schema}.global WHERE $1 = ANY (disallowed_commands::int[]) 
         sql = f"""
-            SELECT * FROM {self.schema}.global WHERE disallowed_commands @> $1;
+            SELECT * FROM {self.schema}.globalcmdbl WHERE disallowed_command = $1;
         """
-        row = await self.pool.fetchrow(sql, [cmd])
+        row = await self.pool.fetchrow(sql, cmd)
         return True if row else False
 
 
@@ -369,9 +364,8 @@ class Controller():
             success true or false
         """
         sql = f"""
-            INSERT INTO {self.schema}.reports VALUES (user_id = $1,
-                message = $2, id = DEFAULT, currtime = DEFAULT)
-                ON CONFLICT (id,  int(user_id)) DO nothing;
+            INSERT INTO {self.schema}.reports (user_id, message, id, currtime) VALUES ($1, $2,DEFAULT, DEFAULT)
+                ON CONFLICT (id,  user_id) DO nothing;
         """
         try:
             await self.pool.execute(sql,  int(user_id), message)
@@ -419,7 +413,7 @@ class Controller():
         sql = f"""
             SELECT * FROM {self.schema}.reports;
         """
-        report_list = await self.pool.fetchval(sql)
+        report_list = await self.pool.fetch(sql)
         return report_list
 
     """
@@ -531,7 +525,7 @@ class Controller():
             logger.warning(f'Error getting guild settings {e}')
             return False
 
-    async def add_disallowed(self, cmd: str, logger): # noqa
+    async def add_disallowed(self, guild_id: str, cmd: str, logger): # noqa
         """Add Disallowed guilds Commands.
 
         Parameters
@@ -547,16 +541,16 @@ class Controller():
         sql = f"""
             UPDATE {self.schema}.guilds
                 SET disallowed_commands = (SELECT array_agg(distinct e)
-                FROM unnest(array_append(disallowed_commands,$1::bigint)) e);
+                FROM unnest(array_append(disallowed_commands,$2::text)) e) WHERE guild_id = $1;
         """
         try:
-            await self.pool.execute(sql, cmd)
+            await self.pool.execute(sql, int(guild_id), cmd)
             return True
         except Exception as e:
             logger.warning(f'Error adding cmd to disallowed  {cmd}: {e}')
             return False
 
-    async def rem_disallowed(self, cmd: str, logger): # noqa
+    async def rem_disallowed(self, guild_id: str, cmd: str, logger): # noqa
         """Remove Disallowed guilds Commands.
 
         Parameters
@@ -569,19 +563,19 @@ class Controller():
         boolean
             success true or false
         """
-        cmd_list = await self.get_all_disallowed()
+        cmd_list = await self.get_all_disallowed(guild_id)
         cmd_list.remove(cmd)
         sql = f"""
-            UPDATE {self.schema}.guilds SET disallowed_commands = $1
+            UPDATE {self.schema}.guilds SET disallowed_commands = $1 WHERE guild_id = $2;
         """
         try:
-            await self.pool.execute(sql, cmd_list)
+            await self.pool.execute(sql, cmd_list, int(guild_id))
         except Exception as e:
             logger.warning(f'Error removing disallowed cmds: {e}')
             return False
         return True
 
-    async def get_all_disallowed(self): # noqa
+    async def get_all_disallowed(self, guild_id: str): # noqa
         """Get Disallowed guilds Commands.
 
         Parameters
@@ -593,12 +587,12 @@ class Controller():
             list all of the cmds disallowed
         """
         sql = f"""
-            SELECT disallowed_commands FROM {self.schema}.guilds;
+            SELECT disallowed_commands FROM {self.schema}.guilds WHERE guild_id = $1;
         """
-        cmd_list = await self.pool.fetchval(sql)
+        cmd_list = await self.pool.fetchval(sql, int(guild_id))
         return cmd_list
 
-    async def is_disallowed(self, cmd: str):
+    async def is_disallowed(self, guild_id, cmd: str):
         """Is Disallowed guilds Commands.
 
         Parameters
@@ -612,9 +606,9 @@ class Controller():
             return status true or false
         """
         sql = f"""
-            SELECT * FROM {self.schema}.guilds WHERE disallowed_commands @> $1;
+            SELECT * FROM {self.schema}.guilds WHERE guild_id = $1 AND disallowed_commands @> $2;
         """
-        row = await self.pool.fetchrow(sql, [cmd])
+        row = await self.pool.fetchrow(sql, int(guild_id), [cmd])
         return True if row else False
 
     async def get_all_autoroles(self, guild_id: str):
@@ -794,7 +788,7 @@ class Controller():
             await self.pool.execute(sql, int(role_id), int(guild_id))
             return True
         except Exception as e:
-            logger.warning(f'Error adding role <#{role_id}> to guild {guild_id}: {e}') # noqa
+            logger.warning(f'Error adding role <@&{role_id}> to guild {guild_id}: {e}') # noqa
             return False
 
     async def remove_joinable_role(self, guild_id: str, role_id: str, logger):
@@ -822,6 +816,7 @@ class Controller():
         """
         try:
             await self.pool.execute(sql, role_list, int(guild_id))
+            return True
         except Exception as e:
             logger.warning(f'Error removing roles: {e}')
             return False
@@ -1985,11 +1980,11 @@ class Controller():
                 WHERE guild_id = $2;
         """
         try:
-            await self.pool.execute(sql, channel_list, int(guild_id))
+            return await self.pool.execute(sql, channel_list, int(guild_id))
         except Exception as e:
             logger.warning(f'Error removing blacklist channel: {e}')
             return False
-        return True
+        return False
 
     async def get_all_blacklist_channels(self, guild_id: str): # noqa
         """Get all blacklisted channels.
@@ -2086,10 +2081,11 @@ class Controller():
         """
         try:
             await self.pool.execute(sql, user_list, int(guild_id))
+            return True
         except Exception as e:
             logger.warning(f'Error removing blacklist channel: {e}')
             return False
-        return True
+        return False
 
     async def get_all_blacklist_users(self, guild_id: str): # noqa
         """Get all blacklisted channels.
@@ -2153,14 +2149,16 @@ class Controller():
             index of next valid moderation for the user
         """
         sql = f"""
-            SELECT id FROM {self.schema}.warnings WHERE
-                guild_id = $1 AND user_id = $2 ORDER BY id DESC LIMIT 1;
+            SELECT index_id FROM {self.schema}.moderation WHERE
+                guild_id = $1 AND user_id = $2 ORDER BY index_id DESC LIMIT 1;
         """
         try:
-            return await self.pool.fetch(sql, int(guild_id),  int(user_id)) + 1
+            val = await self.pool.fetch(sql, int(guild_id),  int(user_id))
+            val = parse(val[0])[0][1]
+            return val + 1
         except Exception as e:
-            logger.warning(f'Error indexing warnings: {e}')
-            return 0
+            logger.warning(f'Error indexing modactions: {e}')
+            return -1
 
     async def get_moderation_count(self, guild_id: str, user_id: str,
                                    include: bool=False):
@@ -2194,7 +2192,7 @@ class Controller():
 
     async def add_single_moderation(self, guild_id: str, mod_id: str,
                                     target_id: str, reason: str,
-                                    action_type: ModAction):
+                                    action_type: ModAction, logger):
         """Add moderation to db.
 
         Parameters
@@ -2215,20 +2213,20 @@ class Controller():
         bool
             success true or false
         """
-        index = await self.get_moderation_index(int(guild_id), int(target_id), logging)
+        index = await self.get_moderation_index(int(guild_id), int(target_id), logger)
+        if index == -1:
+            return False
         sql = f"""
-            INSERT INTO {self.schema}.moderation VALUES (guild_id = $1,
-                mod_id = $2, user_id = $3, index_id = $4,
-                reason = $5, type = $6, forgiven = DEFAULT, logtime = DEFAULT);
+            INSERT INTO {self.schema}.moderation (guild_id,mod_id,user_id,index_id,reason,type,forgiven,logtime) VALUES ($1,$2, $3,$4,$5,$6, DEFAULT, DEFAULT);
         """
         await self.pool.execute(
             sql,
             int(guild_id),
-            mod_id,
+            int(mod_id),
             int(target_id),
-            index,
+            int(index),
             reason,
-            action_type.value
+            int(action_type.value)
         )
 
     async def get_all_moderation(self, guild_id: str, user_id: str,
@@ -2330,7 +2328,7 @@ class Controller():
                 user_id = $6 AND index_id = $7;
         """
         try:
-            await self.pool.execute(sql, reason, mod_id,
+            await self.pool.execute(sql, reason, int(mod_id),
                                     action_type.value,
                                     status, int(guild_id),
                                      int(user_id), int(index))
@@ -2452,10 +2450,10 @@ class Controller():
         """
         index = await self.get_warning_index(int(guild_id), int(target_id), logging)
         sql = f"""
-            INSERT INTO {self.schema}.warnings VALUES (guild_id = $1,
-                mod_id = $2, user_id = $3, index_id = $4,
-                reason = $5, major = $6, forgiven = DEFAULT,
-                logtime = DEFAULT);
+            INSERT INTO {self.schema}.warnings (guild_id,
+                mod_id, user_id, index_id,
+                reason, major, forgiven,
+                logtime) VALUES ($1,$2,$3,$4,$5, $6, DEFAULT,DEFAULT) ;
         """
         await self.pool.execute(
             sql,
@@ -2607,7 +2605,31 @@ class Controller():
     """
     JOIN_INFO
     """
-    async def add_single_joininfo(self, target_id: str, info: str, logger):
+
+    async def is_single_joininfo(self, guild_id: str, target_id: str):
+        """Check if user is a blacklisted.
+
+        Parameters
+        ----------
+        guild_id: str
+            id for the guild
+        user_id: str
+            id for the user to check
+
+        Returns
+        ----------
+        boolean
+            return status true or false
+        """
+        sql = f"""
+            SELECT * FROM {self.schema}.joinableinfo
+                WHERE guild_id = $1
+                AND target_id = $2;
+        """
+        row = await self.pool.fetchrow(sql, int(guild_id), int(target_id))
+        return True if row else False
+
+    async def add_single_joininfo(self, guild_id: str, target_id: str, info: str, logger):
         """Add a single joininfo db.
 
         Parameters
@@ -2624,16 +2646,16 @@ class Controller():
         """
         sql = f"""
             INSERT INTO {self.schema}.joinableinfo
-                VALUES (target_id = $1, info = $2, currtime = DEFAULT);
+                (target_id, info, guild_id, currtime) VALUES ($1, $2, $3, DEFAULT);
         """
         try:
-            await self.pool.execute(sql, int(target_id), info)
+            await self.pool.execute(sql, int(target_id), info, int(guild_id))
         except Exception as e:
             logger.warning(f'Error retrieving join info {e}')
             return False
         return True
 
-    async def get_single_joininfo(self, target_id: str, logger):
+    async def get_single_joininfo(self, guild_id: str, target_id: str, logger):
         """Get a single warning db.
 
         Parameters
@@ -2648,16 +2670,16 @@ class Controller():
         """
         sql = f"""
             SELECT * FROM {self.schema}.joinableinfo
-                WHERE target_id = $1;
+                WHERE target_id = $1 and guild_id = $2;
         """
         try:
-            return await self.pool.fetch(sql, int(target_id))
+            return await self.pool.fetch(sql, int(target_id), int(guild_id))
         except Exception as e:
             logger.warning(f'Error retrieving join info {e}')
             return False
         return True
 
-    async def set_single_joininfo(self, target_id: str, info: str, logger):
+    async def set_single_joininfo(self, guild_id: str, target_id: str, info: str, logger):
         """Set a single moderation db.
 
         Parameters
@@ -2674,10 +2696,10 @@ class Controller():
         """
         sql = f"""
             UPDATE {self.schema}.joinableinfo
-                SET info = $1 WHERE target_id = $2;
+                SET info = $1 WHERE target_id = $2 and guild_id = $3;
         """
         try:
-            await self.pool.execute(sql, info, int(target_id))
+            await self.pool.execute(sql, info, int(target_id), int(guild_id))
         except Exception as e:
             logger.warning(f'Error setting joininfo {e}')
             return False
@@ -2728,7 +2750,7 @@ class Controller():
                 WHERE guild_id = $1;
         """
         try:
-            return await set(self.pool.fetchall(sql, int(guild_id)))
+            return await set(self.pool.fetch(sql, int(guild_id)))
         except Exception as e:
             logger.warning(f'Error getting quoted users: {e}')
             return False
@@ -2809,7 +2831,7 @@ class Controller():
                 WHERE guild_id = $1 AND id = $2;
         """
         try:
-            return await self.pool.fetchall(sql, int(guild_id), int(qid))
+            return await self.pool.fetch(sql, int(guild_id), int(qid))
         except Exception as e:
             logger.warning(f'Error retrieving quote {e}')
             return False
@@ -2904,10 +2926,10 @@ class Controller():
         """
         index = await self.get_quote_index(guild_id)
         sql = f"""
-            INSERT INTO {self.schema}.quotes VALUES
-                (guild_id = $1, origin_id = $2, quoted_id = $3,
-                creator_id = $4, content = $5, id = $6,
-                hits = 0, currtime = DEFAULT);
+            INSERT INTO {self.schema}.quotes (guild_id, origin_id, quoted_id,
+                creator_id, content, id,
+                hits, currtime) VALUES
+                ($1, $2, $3, $4, $5, $6, 0, DEFAULT);
         """
         try:
             await self.pool.execute(sql, int(guild_id), int(origin_id),
@@ -2938,7 +2960,7 @@ class Controller():
                 guild_id = $1 ORDER BY hits DESC LIMIT $2;
         """
         try:
-            return await self.pool.fetchall(sql, int(guild_id), top)
+            return await self.pool.fetch(sql, int(guild_id), top)
         except Exception as e:
             logger.warning(f'Error removing quote: {e}')
             return False
@@ -2963,7 +2985,7 @@ class Controller():
                 WHERE guild_id = $1 AND quoted_id = $2;
         """
         try:
-            return await self.pool.fetchall(sql, int(guild_id), int(quoted_id))
+            return await self.pool.fetch(sql, int(guild_id), int(quoted_id))
         except Exception as e:
             logger.warning(f'Error getting quoted user: {e}')
             return False
@@ -2985,7 +3007,7 @@ class Controller():
             SELECT id FROM {self.schema}.quotes WHERE guild_id = $1;
         """
         try:
-            return await self.pool.fetchall(sql, int(guild_id), int(origin_id),
+            return await self.pool.fetch(sql, int(guild_id), int(origin_id),
                                             int(quoted_id), int(creator_id), content)
         except Exception as e:
             logger.warning(f'Error removing quote: {e}')
@@ -3012,7 +3034,7 @@ class Controller():
                 guild_id = $1 AND quoted_id = $2;
         """
         try:
-            return await self.pool.fetchall(sql, int(guild_id), int(origin_id),
+            return await self.pool.fetch(sql, int(guild_id), int(origin_id),
                                             int(quoted_id), int(creator_id), content)
         except Exception as e:
             logger.warning(f'Error removing quote: {e}')
@@ -3182,9 +3204,9 @@ class Controller():
             success true false
         """
         sql = f"""
-            INSERT INTO {self.schema}.macros VALUES
-                (guild_id = $1, creator_id = $2, name = $3, content = $4,
-                hits = 0, currtime = DEFAULT);
+            INSERT INTO {self.schema}.macros (guild_id, creator_id, name, content,
+                hits, currtime) VALUES
+                ($1,$2, $3, $4,0,DEFAULT);
         """
         try:
             await self.pool.execute(sql, int(guild_id), int(creator_id), name, content)
@@ -3213,7 +3235,7 @@ class Controller():
                 guild_id = $1 ORDER BY hits DESC LIMIT $2;
         """
         try:
-            return await self.pool.fetchall(sql, int(guild_id), top)
+            return await self.pool.fetch(sql, int(guild_id), top)
         except Exception as e:
             logger.warning(f'Error removing macro: {e}')
             return False
@@ -3236,7 +3258,7 @@ class Controller():
                 WHERE guild_id = $1;
         """
         try:
-            return await set(self.pool.fetchall(sql, int(guild_id), int(creator_id)))
+            return await set(self.pool.fetch(sql, int(guild_id), int(creator_id)))
         except Exception as e:
             logger.warning(f'Error getting macro: {e}')
             return False
@@ -3261,7 +3283,7 @@ class Controller():
                 WHERE guild_id = $1 AND creator_id = $2;
         """
         try:
-            return await self.pool.fetchall(sql, int(guild_id), creator_id)
+            return await self.pool.fetch(sql, int(guild_id), int(creator_id))
         except Exception as e:
             logger.warning(f'Error getting macro: {e}')
             return False
@@ -3283,7 +3305,7 @@ class Controller():
             SELECT name FROM {self.schema}.macros WHERE guild_id = $1;
         """
         try:
-            return await self.pool.fetchall(sql, int(guild_id))
+            return await self.pool.fetch(sql, int(guild_id))
         except Exception as e:
             logger.warning(f'Error getting macros: {e}')
             return False
@@ -3307,7 +3329,7 @@ class Controller():
             SELECT name FROM {self.schema}.macros WHERE guild_id = $1 AND creator_id = $2;
         """
         try:
-            return await self.pool.fetchall(sql, int(guild_id), int(creator_id))
+            return await self.pool.fetch(sql, int(guild_id), int(creator_id))
         except Exception as e:
             logger.warning(f'Error getting macro: {e}')
             return False
@@ -3461,11 +3483,25 @@ class Controller():
             success true false
         """
         sql = f"""
-            INSERT INTO {self.schema}.reacts VALUES
-                (guild_id = $1, base_message_id = $2, target_id = $3,
-                react_id = $4, react_role = $5, react_channel = $6,
-                react_category = $7, info = $8, currtime = DEFAULT)
-                ON CONFLICT (int(base_message_id), int(react_id)) DO nothing;
+            INSERT INTO {self.schema}.reacts (
+            guild_id,
+            base_message_id,
+            target_id,
+            react_id,
+            react_role,
+            react_channel,
+            react_category,
+            info,
+            currtime) VALUES
+                ($1,
+                $2,
+                $3,
+                $4,
+                $5,
+                $6,
+                $7,
+                $8,DEFAULT)
+                ON CONFLICT (base_message_id, react_id) DO nothing;
         """
         try:
             await self.pool.execute(sql, int(guild_id), int(creator_id), name, content)
@@ -3495,7 +3531,7 @@ class Controller():
             SELECT * FROM {self.schema}.reacts WHERE guild_id = $1;
         """
         try:
-            return await self.pool.fetchall(sql, int(guild_id))
+            return await self.pool.fetch(sql, int(guild_id))
         except Exception as e:
             logger.warning(f'Error getting reacts: {e}')
             return False

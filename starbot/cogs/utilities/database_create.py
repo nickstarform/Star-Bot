@@ -39,13 +39,25 @@ async def make_tables(pool: Pool, schema: str):
     """
     await pool.execute('CREATE SCHEMA IF NOT EXISTS {};'.format(schema))
 
-    glob = f"""
-    CREATE TABLE IF NOT EXISTS {schema}.global (
-        disallowed_commands TEXT ARRAY,
-        guild_blacklist BIGINT ARRAY,
-        user_blacklist BIGINT ARRAY,
+    globcl = f"""
+    CREATE TABLE IF NOT EXISTS {schema}.globalcmdbl (
+        disallowed_command TEXT,
         currtime TIMESTAMP DEFAULT current_timestamp,
-        PRIMARY KEY(currtime)
+        PRIMARY KEY(disallowed_command)
+    );"""
+
+    globul = f"""
+    CREATE TABLE IF NOT EXISTS {schema}.globaluserbl (
+        user_id BIGINT,
+        currtime TIMESTAMP DEFAULT current_timestamp,
+        PRIMARY KEY(user_id)
+    );"""
+
+    globgl = f"""
+    CREATE TABLE IF NOT EXISTS {schema}.globalguildbl (
+        guild_id BIGINT,
+        currtime TIMESTAMP DEFAULT current_timestamp,
+        PRIMARY KEY(guild_id) 
     );"""
 
     glob_reports = f"""
@@ -159,8 +171,9 @@ async def make_tables(pool: Pool, schema: str):
 
     joinableinfo = f"""
     CREATE TABLE IF NOT EXISTS {schema}.joinableinfo (
+        guild_id BIGINT,
         target_id BIGINT,
-        info TEXT ARRAY,
+        info TEXT,
         currtime TIMESTAMP DEFAULT current_timestamp,
         PRIMARY KEY (target_id)
     );"""
@@ -179,7 +192,9 @@ async def make_tables(pool: Pool, schema: str):
         PRIMARY KEY (base_message_id, react_id)
     );"""
 
-    await pool.execute(glob)
+    await pool.execute(globcl)
+    await pool.execute(globul)
+    await pool.execute(globgl)
     await pool.execute(glob_reports)
     await pool.execute(guilds)
     await pool.execute(moderation)
