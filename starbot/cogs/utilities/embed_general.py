@@ -1,13 +1,14 @@
 """General Embed Constructor Hub."""
 
 # internal modules
+import datetime
 
 # external modules
 import discord
 
 # relative modules
 from .colours import Colours
-from .functions import current_time, chunks
+from .functions import current_time, chunks, time_conv
 from config import Config
 
 # global attributes
@@ -18,8 +19,6 @@ __all__ = ('generic_embed',
            'rolenotfoundembed',
            'roleduplicateembed',
            'rolenotremovedembed',
-           'botinviteembed',
-           'botserverembed',
            'MAX_LEN')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
@@ -28,7 +27,7 @@ __path__ = __file__.strip('.py').strip(__filename__)
 MAX_LEN = 800
 
 def generic_embed(title: str, desc: str, fields: list,
-                  footer: str, colours: Colours=Colours.COMMANDS, force_single: bool=False, **kwargs):
+                  footer: str=None, colours: Colours=Colours.COMMANDS, force_single: bool=False, **kwargs):
     """Generic embed builder.
 
     The main constraint is len title + desc < 500. Use the generic
@@ -53,6 +52,8 @@ def generic_embed(title: str, desc: str, fields: list,
     :func: discord.Embed
         The discord embed object
     """
+    if not footer:
+        footer = current_time()
     if len(fields) > 0:
         ret = []
         for fi, f in enumerate(fields):
@@ -85,11 +86,13 @@ def generic_embed(title: str, desc: str, fields: list,
             tmplen = 0
             ctitle = title.replace('X', str(i + 1))
             embed = discord.Embed(title=ctitle, type='rich',
-                                  color=colours.value, desc='', url = url)
+                                  color=colours.value, desc='', url=url)
             if 'image' in kwargs.keys():
-                embed.set_image(url=kwargs['image'])
+                if kwargs['image'] is not None and kwargs['image'].lower() != 'none':
+                    embed.set_image(url=kwargs['image'])
             if 'thumbnail' in kwargs.keys():
-                embed.set_thumbnail(url=kwargs['thumbnail'])
+                if kwargs['thumbnail'] is not None and kwargs['thumbnail'].lower() != 'none':
+                    embed.set_thumbnail(url=kwargs['thumbnail'])
             if (i == 0) and (len(desc) > 0):
                 embed.description = desc
             if len(footer) > 0:
@@ -109,10 +112,11 @@ def generic_embed(title: str, desc: str, fields: list,
         embeds = []
         embed = discord.Embed(title=title, type='rich', desc='', color=colours.value, url = url)
         if 'image' in kwargs.keys():
-            print(kwargs['image'])
-            embed.set_image(url=kwargs['image'])
+            if (kwargs['image'] is not None) and kwargs['image'].lower() != 'none':
+                embed.set_image(url=kwargs['image'])
         if 'thumbnail' in kwargs.keys():
-            embed.set_thumbnail(url=kwargs['thumbnail'])
+            if kwargs['thumbnail'] is not None and kwargs['thumbnail'].lower() != 'none':
+                embed.set_thumbnail(url=kwargs['thumbnail'])
         if len(desc) > 0:
             embed.description = desc
         if len(footer) > 0:
@@ -245,43 +249,6 @@ def rolenotremovedembed(user: discord.User, role_name: str):
     ctitle = 'Role Not Removed'
     cdesc = f'{user.mention}, you don\'t have the **{role_name}** role'
     ccolour = Colours.WARNING
-    return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
-
-
-def botinviteembed():
-    """Bot invite link.
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-    discord.Embed
-        embedded object to send message
-    """
-
-    ccolour = Colours.COMMANDS
-    ctitle = f'Invite link'
-    cdesc = f'[Click!]({Config.bot_key.value}) to invite ' +\
-        f'<@{Config.bot_id.value}> to your server!'
-    return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
-
-
-def botserverembed():
-    """Bot support server invite.
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-    discord.Embed
-        embedded object to send message
-    """
-    ccolour = Colours.COMMANDS
-    ctitle = f'Invite link'
-    cdesc = f'[Click!]({Config.support_server.value}) to join the bot' +\
-        f'<@{Config.bot_id.value}>\'s support server!'
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 # end of code

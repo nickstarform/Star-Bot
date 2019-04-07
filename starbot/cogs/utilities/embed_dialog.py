@@ -10,6 +10,7 @@ from discord.ext import commands
 # relative modules
 from .colours import Colours
 from .embed_general import generic_embed
+from .functions import current_time
 
 # global attributes
 __all__ = ('iterator',
@@ -52,7 +53,7 @@ async def iterator(ctx: commands.Context, step: dict, timeout: int):
                                            timeout=timeout,
                                            check=lambda message:
                                            message.author == ctx.message.author)  # noqa
-            step[question] = tmp_m.clean_content
+            step[question] = tmp_m.content
             if ('cancel' == step[question][:6].lower()) or\
                ('exit' == step[question][:4].lower()):
                 failed = True
@@ -102,12 +103,12 @@ async def confirm(ctx: commands.Context, message: str, timeout: int):
     bool
         success true false
     """
-    confirmdialog = f'\nAttempting to {ctx.command}:\n'\
+    confirmdialog = f'\nAttempting to **{ctx.command}**:\n'\
                     f'{message}'\
-                    f'\n➡️ Type `confirm` to {ctx.command}'\
+                    f'\n➡️ Type `confirm` to **{ctx.command}**'\
                     ' or literally anything else to cancel.'\
-                    f'\n\n*You have {timeout}s...*'
-    message = generic_embed(r'❗ Confirmation Request ❗', confirmdialog, [], Colours.DIALOG_T)
+                    f'\n\n**You have {timeout}s...**'
+    message = generic_embed(title=r'❗ Confirmation Request ❗', desc=confirmdialog, fields=[], footer=current_time(), colors=Colours.DIALOG_T)[0]
     request = await ctx.send(embed=message, delete_after=timeout)
     try:
         message = await ctx.bot.wait_for("message",
@@ -117,8 +118,10 @@ async def confirm(ctx: commands.Context, message: str, timeout: int):
     except asyncio.TimeoutError:
         await respond(ctx, False)
         return False
-    if message.clean_content.lower() != 'confirm':
+    if message.content.lower() != 'confirm':
+        await request.delete()
         await respond(ctx, False)
+        await message.delete()
         return False
     try:
         await request.delete()

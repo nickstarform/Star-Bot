@@ -22,8 +22,7 @@ __path__ = __file__.strip('.py').strip(__filename__)
 
 
 def botpermissionerrorembed(action: str, required_perm: str):
-    """
-    Handle Invalid Bot Permissions.
+    """Handle Invalid Bot Permissions.
 
     Will use this embed for when the bot doesn't have
     the valid permissions for the thrown command.
@@ -47,8 +46,7 @@ def botpermissionerrorembed(action: str, required_perm: str):
 
 
 def userpermissionerrorembed(action: str, required_perm: str):
-    """
-    Handle Invalid User Permissions.
+    """Handle Invalid User Permissions.
 
     Will use this embed for when the user doesn't have
     the valid permissions for the thrown command.
@@ -72,8 +70,7 @@ def userpermissionerrorembed(action: str, required_perm: str):
 
 
 def internalerrorembed(message: str):
-    """
-    Some random error occured.
+    """Some random error occured.
 
     Parameters
     ----------
@@ -90,8 +87,7 @@ def internalerrorembed(message: str):
 
 
 def panicerrorembed():
-    """
-    Something Failed Majorly
+    """Something Failed Majorly.
 
     Parameters
     ----------
@@ -109,8 +105,7 @@ def panicerrorembed():
 
 
 def moderrorembed():
-    """
-    General Moderation Error
+    """General Moderation Error.
 
     Parameters
     ----------

@@ -247,20 +247,15 @@ GUILD ACTIONS
 """
 
 
-def kickembed(kicked_name: str, kicked_id: str, mod_name: str,
-                mod_id: str, reason: str):
+def kickembed(kicked_user, mod_user, reason: str):
     """Kick user.
 
     Parameters
     ----------
-    kicked_name: str
+    kicked_user: str
         name of user
-    kicked_id: str
-        nid of user
-    mod_name: str
+    mod_user: str
         name of mod
-    mod_id: str
-        id of mod
     reason: str
         reason for ban
 
@@ -269,11 +264,10 @@ def kickembed(kicked_name: str, kicked_id: str, mod_name: str,
     discord.Embed
         embedded object to send message
     """
-    local_title = f'{kicked_name}: <@{kicked_id}> was '\
-                  f'kicked by {mod_name}: <@{mod_id}>'
-    local_desc = f'Reason: {reason}'
+    ctitle = f'KICKED'
+    cdesc = f'{kicked_user.display_name}: {kicked_user.mention} was kicked by {mod_user.display_name}: {mod_user.mention}'
     ccolour = Colours.CHANGE_G
-    return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
+    return generic_embed(ctitle, cdesc, [['Reason', reason]], current_time(), ccolour)[0]
 
 
 def logbanembed(banned_name: str, banned_id: str, mod_name: str,
@@ -298,7 +292,7 @@ def logbanembed(banned_name: str, banned_id: str, mod_name: str,
     discord.Embed
         embedded object to send message
     """
-    local_title = f'User Banned'
+    ctitle = f'User Banned'
     cdesc = f'{banned_name}: <@{banned_id}> was '\
             f'banned by {mod_name}: <@{mod_id}>'\
             f'Reason: {reason}'
@@ -306,7 +300,7 @@ def logbanembed(banned_name: str, banned_id: str, mod_name: str,
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 
-def banembed(*args, **kwargs):
+def banembed(banned_user, mod_user, reason: str):
     """User banned.
 
     Just calls :func: logbanembed
@@ -319,23 +313,21 @@ def banembed(*args, **kwargs):
     discord.Embed
         embedded object to send message
     """
-    return LogBanEmbed(*args, **kwargs)
+    ctitle = f'BANNED'
+    cdesc = f'{banned_user.display_name}: {banned_user.mention} was banned by {mod_user.display_name}: {mod_user.mention}'
+    ccolour = Colours.CHANGE_G
+    return generic_embed(ctitle, cdesc, [['Reason', reason]], current_time(), ccolour)[0]
 
 
-def unbanembed(unbanned_name: str, unbanned_id: str, mod_name: str,
-               mod_id: str, reason: str):
+def unbanembed(banned_user, mod_user, reason: str):
     """Ban removed.
 
     Parameters
     ----------
-    unbanned_name: str
+    banned_user: str
         name of user
-    unbanned_id: str
-        nid of user
     mod_name: str
         name of mod
-    mod_id: str
-        id of mod
     reason: str
         reason for ban
 
@@ -344,12 +336,11 @@ def unbanembed(unbanned_name: str, unbanned_id: str, mod_name: str,
     discord.Embed
         embedded object to send message
     """
-    local_title = f'User Unbanned'
-    cdesc = f'{unbanned_name}: <@{unbanned_id}> was '\
-            f'unbanned by {mod_name}: <@{mod_id}>'\
-            f'Reason: {reason}'
+    ctitle = f'User Unbanned'
+    cdesc = f'{banned_user.display_name}: {banned_user.mention} was '\
+            f'unbanned by {mod_user.display_name}: {mod_user.mention}'
     ccolour = Colours.CHANGE_G
-    return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
+    return generic_embed(ctitle, cdesc, [['Reason', reason]], current_time(), ccolour)[0]
 
 
 def modembed(modded_name: str, modded_id: str, mod_name: str, mod_id: str,
