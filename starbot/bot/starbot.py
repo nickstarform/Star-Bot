@@ -81,6 +81,21 @@ class Starbot(Bot):
                          f'Version: {self.config["version"].value}\n'
                          f'Git Hash: {self.config["githash"].value}')
 
+    async def on_message(self, ctx):
+        if ctx.author.bot:
+            return
+        if (int(ctx.author.id) == int(self.config.devel_id.value)) or\
+           (int(ctx.author.id) == int(self.config.owner_id.value)):
+            await self.process_commands(ctx)
+        elif not await permissions.is_blacklisted(self, ctx):
+            await self.process_commands(ctx)
+        else:
+            return
+        if not self.guild_settings[ctx.guild.id]['invites_allowed'] and\
+        ('discord.gg' in ctx.content):
+            ctx.delete()
+            return
+
 if __name__ == "__main__":
     """Directly Called."""
 
