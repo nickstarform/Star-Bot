@@ -5,6 +5,7 @@ import datetime
 from enum import Enum
 import re
 from typing import Optional
+from time import sleep
 
 # external modules
 from asyncpg import Record
@@ -26,7 +27,8 @@ __all__ = ('current_time',
            'flatten',
            'get_role',
            'get_member',
-           'get_channel')
+           'get_channel',
+           'lessen_list')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
@@ -415,6 +417,47 @@ def extract_time(argument: str):
                 flt = extract_float(grp)
                 args += float(flt) * reg_map[groupNum]
         return args
+
+def lessen_list(ilist: list, amount: int):
+    """Try to split list intelligently.
+
+    This is a highly specific command, but it takes
+    the input list, counts up the length of its 
+    constituents, and tries to output a new
+    list of the same elements but for a 
+    length specified by amount.
+
+    Example:
+        ilist = [1,2,3,4,5], amount = 3
+        yields [1,2,3]
+        ilist = [1,24,3,4,5], amount = 3
+        yields [1,24]
+        ilist = [1,242,3,4,5], amount = 3
+        yields [1]
+    Parameters
+    ----------
+    ilist: list
+        list to modify
+    amount: int
+        max length of sum of parts
+
+    Returns
+    ----------
+    list
+        shortened list
+    """
+    sum_c = 0
+    sum_n = 0
+    i = 0
+    ret = []
+    while i < (len(ilist) - 1):
+        sum_c += len(str(ilist[i]))
+        sum_n = len(str(ilist[i + 1]))
+        ret.append(ilist[i])
+        if (sum_c > amount) or (sum([sum_c, sum_n]) > amount):
+            i = len(ilist)
+        i += 1
+    return ret
 
 # end of code
 
