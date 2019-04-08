@@ -23,8 +23,10 @@ __all__ = ('generic_embed',
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
+MAX_DESC_LEN = 2000
+MAX_FIELD_LEN = 1000
+MAX_LEN = 6000
 
-MAX_LEN = 800
 
 def generic_embed(title: str, desc: str, fields: list,
                   footer: str=None, colours: Colours=Colours.COMMANDS, force_single: bool=False, **kwargs):
@@ -60,21 +62,21 @@ def generic_embed(title: str, desc: str, fields: list,
             f = list(map(str, f))
             if (f[1] == '[]') or (f[1] == ''):
                 f[1] = 'NONE SET'
-            if len(f[1]) > MAX_LEN:
+            if len(f[1]) > MAX_FIELD_LEN:
                 n = []
                 i = 1
-                for x in chunks(f[1], MAX_LEN - 1):
+                for x in chunks(f[1], MAX_FIELD_LEN - 1):
                     n.append([f[0] + f'({1})', x])
                     i += 1
                 del fields[fi]
                 fields += n
             ret.append(f)
         fields = ret
-    print(title,desc, fields, footer)
-    if (len(title) + len(desc)) > 500:
-        desc = desc[:500-len(title)]
+    print(title, desc, fields, footer)
+    if (len(title) + len(desc)) > MAX_DESC_LEN:
+        desc = desc[:MAX_DESC_LEN - len(title)]
     total_embeds = (sum([len(''.join(x)) for x in fields]) +
-                    len(title) + len(footer) + len(desc)) // MAX_LEN + 1
+                    len(title) + len(footer) + len(desc)) // MAX_FIELD_LEN + 1
     print(total_embeds)
     print(sum([len(''.join(x)) for x in fields]) + len(title) + len(footer) + len(desc))
     url = kwargs['url'] if 'url' in kwargs.keys() else ''
