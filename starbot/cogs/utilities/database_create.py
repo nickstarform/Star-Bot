@@ -39,6 +39,14 @@ async def make_tables(pool: Pool, schema: str):
     """
     await pool.execute('CREATE SCHEMA IF NOT EXISTS {};'.format(schema))
 
+    globalmacros = f"""
+    CREATE TABLE IF NOT EXISTS {schema}.globalmacros (
+        name TEXT,
+        content TEXT,
+        currtime TIMESTAMP DEFAULT current_timestamp,
+        PRIMARY KEY (name)
+    );"""
+
     globcl = f"""
     CREATE TABLE IF NOT EXISTS {schema}.globalcmdbl (
         disallowed_command TEXT,
@@ -165,6 +173,7 @@ async def make_tables(pool: Pool, schema: str):
         user_id BIGINT,
         content TEXT,
         id SERIAL,
+        notify_in BIGINT,
         currtime TIMESTAMP DEFAULT current_timestamp,
         PRIMARY KEY (id)
     );"""
@@ -192,6 +201,7 @@ async def make_tables(pool: Pool, schema: str):
         PRIMARY KEY (base_message_id, react_id)
     );"""
 
+    await pool.execute(globalmacros)
     await pool.execute(globcl)
     await pool.execute(globul)
     await pool.execute(globgl)

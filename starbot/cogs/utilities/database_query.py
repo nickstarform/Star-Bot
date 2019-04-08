@@ -347,7 +347,6 @@ class Controller():
         row = await self.pool.fetchrow(sql, cmd)
         return True if row else False
 
-
     async def add_report(self, user_id: str, message: str, logger): # noqa
         """Add report from user user.
 
@@ -415,6 +414,130 @@ class Controller():
         """
         report_list = await self.pool.fetch(sql)
         return report_list
+
+
+    async def get_all_global_macro(self, logger):
+        """Get a single global macro db.
+
+        Parameters
+        ----------
+        name: str
+            name of the macro
+
+        Returns
+        ----------
+        list
+            list of columns from single macro
+        """
+        sql = f"""
+            SELECT * FROM {self.schema}.globalmacros;
+        """
+        try:
+            return await self.pool.fetch(sql)
+        except Exception as e:
+            logger.warning(f'Error retrieving quote {e}')
+            return False
+
+
+    async def get_single_global_macro(self, name: str, logger):
+        """Get a single global macro db.
+
+        Parameters
+        ----------
+        name: str
+            name of the macro
+
+        Returns
+        ----------
+        list
+            list of columns from single macro
+        """
+        sql = f"""
+            SELECT * FROM {self.schema}.globalmacros
+                WHERE name = $1;
+        """
+        try:
+            return await self.pool.fetch(sql, name)
+        except Exception as e:
+            logger.warning(f'Error retrieving quote {e}')
+            return False
+
+    async def set_single_global_macro(self, name: str, content: str, logger):
+        """Set a single global macro db.
+
+        Parameters
+        ----------
+        name: str
+            name of the macro
+        content: str
+            content of quote
+
+        Returns
+        ----------
+        bool
+            success true false
+        """
+        sql = f"""
+            UPDATE {self.schema}.globalmacros
+                SET content = $2 WHERE name = $1;
+        """
+        try:
+            await self.pool.execute(sql, name, content)
+        except Exception as e:
+            logger.warning(f'Error setting macro {e}')
+            return False
+        return True
+
+    async def delete_single_global_macro(self, name: str, logger):
+        """Remove global macro from DB.
+
+        Parameters
+        ----------
+        name: str
+            name of the macro
+
+        Returns
+        -------
+        bool
+            success true false
+        """
+        sql = f"""
+            DELETE FROM {self.schema}.globalmacros
+                WHERE name = $1;
+        """
+        try:
+            await self.pool.execute(sql, name)
+        except Exception as e:
+            logger.warning(f'Error removing macro: {e}')
+            return False
+        return True
+
+    async def add_single_global_macro(self, name: str, content: str, logger):
+        """Add a single global macro db.
+
+        Parameters
+        ----------
+        name: str
+            name of macro
+        content: str
+            content of macro
+
+        Returns
+        -------
+        bool
+            success true false
+        """
+        sql = f"""
+            INSERT INTO {self.schema}.globalmacros (name, content, currtime) VALUES
+                ($1,$2,DEFAULT);
+        """
+        try:
+            await self.pool.execute(sql, name, content)
+        except Exception as e:
+            logger.warning(f'Error adding macro: {e}')
+            return False
+        return True
+
 
     """
     GUILD DB ACTIONS
@@ -1195,6 +1318,60 @@ class Controller():
             logger.warning(f'Error removing modlog channel: {e}')
             return False
         return True
+
+
+    async def set_report_channel(self, guild_id: str, channel_id: str, logger):
+        """Setting the report channel.
+
+        Parameters
+        ----------
+        guild_id: str
+            id for the guild
+        channel: str
+            id of the channel
+
+        Returns
+        ----------
+        boolean
+            true or false
+        """
+        sql = f"""
+            UPDATE {self.schema}.guilds
+                SET report_channel = $1
+                WHERE guild_id = $2
+        """
+
+        try:
+            await self.pool.execute(sql, int(channel_id), int(guild_id))
+            return True
+        except Exception as e:
+            logger.warning(f'Issue setting report channel: {e}')
+            return False
+
+    async def get_report_channel(self, guild_id: str, logger):
+        """Get the ban message footer.
+
+        Parameters
+        ----------
+        guild_id: str
+            id for the guild
+
+        Returns
+        ----------
+        str
+            the ban message
+        """
+        sql = f"""
+            SELECT report_channel from {self.schema}.guilds
+                WHERE guild_id = $1
+        """
+        try:
+            message = await self.pool.fetchrow(sql, int(guild_id))
+            return message['report_channel']
+        except Exception as e:
+            logger.warning(f'Error while getting report channel: {e}')
+            return None
+
 
     async def set_ban_footer(self, guild_id: str, message: str, logger):
         """Setting the ban message footer.
@@ -2051,7 +2228,7 @@ class Controller():
                 WHERE guild_id = $2;
         """
         try:
-            await self.pool.execute(sql, int(channel_id), int(guild_id))
+            await self.pool.execute(sql, int(user_id), int(guild_id))
             return True
         except Exception as e:
             logger.warning(f'Error adding user to blacklist {guild_id}: {e}')
@@ -2104,8 +2281,8 @@ class Controller():
             SELECT blacklist_users FROM {self.schema}.guilds
                 WHERE guild_id = $1;
         """
-        channel_list = await self.pool.fetchval(sql, int(guild_id))
-        return channel_list
+        user_list = await self.pool.fetch(sql, int(guild_id))
+        return user_list
 
     async def is_blacklist_user(self, guild_id: str, user_id: str):
         """Check if user is a blacklisted.
