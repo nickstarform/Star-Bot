@@ -96,7 +96,7 @@ class Moderation(commands.Cog):
                 await ctx.send(embed=embed)
 
     @changejoinroles.command(name='add')
-    async def _cjra(self, ctx, base_role: str=None, *, roles: str=None):
+    async def _cjra(self, ctx: commands.Context, base_role: str=None, *, roles: str=None):
         """Add to joinable list.
 
         If the role isn't found, it will create the role.
@@ -153,7 +153,7 @@ class Moderation(commands.Cog):
             await ctx.send(embed=embed)
 
     @changejoinroles.command(name='remove', aliases=['rm', 'del', 'delete'])
-    async def _cjrr(self, ctx, *, roles: str):
+    async def _cjrr(self, ctx: commands.Context, *, roles: str):
         """Remove joinable roles.
 
         Parameters
@@ -230,7 +230,7 @@ class Moderation(commands.Cog):
         return
 
     @changejoinroles.command(name='info')
-    async def _cjri(self, ctx, role: str, *, info: str):
+    async def _cjri(self, ctx: commands.Context, role: str, *, info: str):
         """Replace/add the joinable roles info.
 
         Parameters
@@ -280,7 +280,7 @@ class Moderation(commands.Cog):
     @commands.command(aliases=['prunerole', 'purgerole'])
     @commands.guild_only()
     @permissions.has_permissions(manage_roles=True)
-    async def cleanrole(self, ctx, *, role: str):
+    async def cleanrole(self, ctx: commands.Context, *, role: str):
         """Remove all users from role.
 
         Parameters
@@ -334,7 +334,7 @@ class Moderation(commands.Cog):
             return
 
     @setrole.command(name='add', aliases=['give'])
-    async def _roleadd(self, ctx, member: str, *, roles: str):
+    async def _roleadd(self, ctx: commands.Context, member: str, *, roles: str):
         """Give the users these roles.
 
         Parameters
@@ -365,7 +365,7 @@ class Moderation(commands.Cog):
         pass
 
     @setrole.command(name='replace', aliases=['set'])
-    async def _rolerepl(self, ctx, member: str, *, roles: str):
+    async def _rolerepl(self, ctx: commands.Context, member: str, *, roles: str):
         """Give the users these roles.
 
         Parameters
@@ -392,7 +392,7 @@ class Moderation(commands.Cog):
         pass
 
     @setrole.command(name='remove', aliases=['del', 'rm'])
-    async def _rolerm(self, ctx, member: str, *, roles: str):
+    async def _rolerm(self, ctx: commands.Context, member: str, *, roles: str):
         """Give the users these roles.
 
         Parameters
@@ -425,7 +425,7 @@ class Moderation(commands.Cog):
     @commands.command()
     @permissions.has_permissions(manage_messages=True)
     @commands.guild_only()
-    async def prune(self, ctx, amount: str='10', user: str=None):
+    async def prune(self, ctx: commands.Context, amount: str='10', user: str=None):
         """Purge a set number of messages.
 
         Parameters
@@ -467,7 +467,6 @@ class Moderation(commands.Cog):
                         continue
                 await message.delete()
             await generic_message(ctx, [ctx.channel], f'Deleted messages', 5)
-            ctx.delete()
             return
         except discord.Forbidden as e:
             await respond(ctx, False)
@@ -658,7 +657,7 @@ class Moderation(commands.Cog):
     @commands.command()
     @permissions.has_permissions(ban_members=True)
     @commands.guild_only()
-    async def logban(self, ctx, member: str, *,
+    async def logban(self, ctx: commands.Context, member: str, *,
                      reason: str=None):
         """Log a manual ban.
         """
@@ -712,7 +711,7 @@ class Moderation(commands.Cog):
                     self.bot.logger.warning(f'Issue posting to mod log: {e}')
 
     @logban.error
-    async def logban_error(self, ctx, error):
+    async def logban_error(self, ctx: commands.Context, error):
         self.bot.logger.warning(f'Banned_user argument not found in ban list.')
         await ctx.send(
             embed=embeds.LogbanErrorEmbed(),
@@ -969,6 +968,38 @@ class Moderation(commands.Cog):
         embeds.append(embed)
         for embed in embeds:
             await ctx.send(embed=embed)
+
+    """
+    MESSAGING
+    """
+    @commands.command(aliases=['mdm'])
+    @commands.guild_only()
+    @permissions.admin_or_permissions(manage_guild=True)
+    async def massdm(self, ctx: commands.Context, role: discord.Role, *, message: str):
+        """Sends a DM to all Members with the given Role.
+        Allows for the following customizations:
+          `{member}` is the member being messaged
+          `{role}` is the role through which they are being messaged
+          `{server}` is the server through which they are being messaged
+          `{sender}` is you, the person sending the message
+        """
+
+        try:
+            await ctx.message.delete()
+        except discord.Forbidden:
+            log.warning("Failed to delete command message: insufficient permissions")
+        except:
+            log.warning("Failed to delete command message")
+
+        for member in role.members:
+            try:
+                await member.send(message.format(member=member, role=role, server=ctx.guild, sender=ctx.author))
+            except discord.Forbidden:
+                log.warning("Failed to DM user {0} (ID {0.id}): insufficient permissions".format(member))
+                continue
+            except:
+                self.bot.logger.warning("Failed to DM user {0} (ID {0.id})".format(member))
+                continue
 
     """
     ADD WARNINGS AND MODERATIONS
