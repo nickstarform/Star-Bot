@@ -20,7 +20,8 @@ __all__ = ('untimeout',
            'modlistembed',
            'modeditembed',
            'modaddembed',
-           'modrmembed')
+           'modrmembed',
+           'guildreport')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
@@ -435,6 +436,59 @@ def modrmembed(modded_name: str, modded_id: str, mod_name: str, mod_id: str,
             f'They have {infraction_count} infractions.'
     ccolour = Colours.CHANGE_G
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
+
+
+def guildreport(ctx, reporter, reportees, content, messages: list):
+    """Warning removed.
+
+    Parameters
+    ----------
+    reporter: discord.Member
+        person reporting
+    reportees: discord.Member
+        people being reported
+    content: str
+        content of report
+    messages: list
+        id of the mod
+
+    Returns
+    -------
+    discord.Embed
+        embedded object to send message
+    """
+    ctitle = f'❗Received report❗'
+    cdesc = f'{reporter.name}: {reporter.mention} is sending in a report about possibly '
+    for reportee in reportees:
+        cdesc += f'[{reportee.name}: {reportee.mention}]'
+    cdesc += f'\n {content}'
+    fields=[]
+    fields.append(['Guild', f'{ctx.guild.name}: <{ctx.guild.id}>'])
+    for i in range(len(messages)):
+        message = messages[i]
+        if len(str(message.content)) >= 400:
+            leng = len(str(message.content)) // 400 + 1
+            for ite in range(leng):
+                if ite == 0:
+                    mess = str(message.content)[:400]
+                elif ite < leng - 1:
+                    index = ite * 400
+                    mess = str(message.content)[index:index + 400]
+                else:
+                    index = ite * 400
+                    mess = str(message.content)[index:]
+
+                fields.append([f'Message[{ite+1}/{leng}]: {message.author.name}: {message.author.mention}',
+                               f'[LINK!]({message.jump_url})\n'
+                               f'{mess}'])
+        else:
+            mess = message.content
+            fields.append([f'Message: {message.author.name}: {message.author.mention}',
+                           f'[LINK!]({message.jump_url})\n'
+                           f'{mess}'])
+    ccolour = Colours.WARNING
+    return generic_embed(ctitle, cdesc, fields, current_time(), ccolour)
+
 
 # end of code
 

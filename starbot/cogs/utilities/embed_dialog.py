@@ -20,7 +20,8 @@ __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
 
-async def iterator(ctx: commands.Context, step: dict, timeout: int):
+async def iterator(ctx: commands.Context, step: dict,
+                   timeout: int, with_confirm: bool=False):
     """Generic iterator embedder.
 
     Will ask a series of questions and save the results
@@ -39,21 +40,26 @@ async def iterator(ctx: commands.Context, step: dict, timeout: int):
     dict
         the same dictionary with value overriden
     """
-    message = generic_embed(f'Please answer these questions (Type "cancel" '
-                            f'or "exit" to cancel)'
-                            f'**({timeout}s timer)**:',
-                            '', [], Colours.DIALOG_T)
+    message = generic_embed(title=f'Please answer these questions.',
+        desc=f'Type `cancel` or `exit` to cancel. Type `-1` to keep original/default value (in square brackets)\n**({timeout}s timer)**:',
+        fields=[],
+        colours=Colours.DIALOG_T,
+        footer=current_time())[0]
     request = await ctx.send(embed=message)
     failed = False
+    original = step.copy()
 
     for question in step.keys():
-        tmp_r = await ctx.send(f'{question}')
+        tmp_r = await ctx.send(f'{question} [{step[question]}]')
         try:
             tmp_m = await ctx.bot.wait_for("message",
                                            timeout=timeout,
                                            check=lambda message:
                                            message.author == ctx.message.author)  # noqa
-            step[question] = tmp_m.content
+            if ('-1' != step[question][:2]):
+                step[question] = tmp_m.content
+            else:
+                continue
             if ('cancel' == step[question][:6].lower()) or\
                ('exit' == step[question][:4].lower()):
                 failed = True
@@ -63,12 +69,14 @@ async def iterator(ctx: commands.Context, step: dict, timeout: int):
             break
         except Exception as e:
             print(f'Error in parsing message: {e}')
+            await ctx.send(embed=eembed.internalerrorembed(f'Error in parsing message: {e}'), delete_after=5)
             break
         try:
             await tmp_r.delete()
             await tmp_m.delete()
         except Exception as e:
             print(f'Error in deleting message: {e}')
+            await ctx.send(embed=eembed.internalerrorembed(f'Error in deleting message: {e}'), delete_after=5)
         if failed:
             break
 
@@ -81,6 +89,7 @@ async def iterator(ctx: commands.Context, step: dict, timeout: int):
             return False
     except Exception as e:
         print(f'Error in deleting/reacting to message: {e}')
+        await ctx.send(embed=eembed.internalerrorembed(f'Error in deleting/reacting to message: {e}'), delete_after=5)
     return step
 
 
@@ -108,7 +117,10 @@ async def confirm(ctx: commands.Context, message: str, timeout: int):
                     f'\n➡️ Type `confirm` to **{ctx.command}**'\
                     ' or literally anything else to cancel.'\
                     f'\n\n**You have {timeout}s...**'
-    message = generic_embed(title=r'❗ Confirmation Request ❗', desc=confirmdialog, fields=[], footer=current_time(), colors=Colours.DIALOG_T)[0]
+    message = generic_embed(title=r'❗ Confirmation Request ❗',
+                            desc=confirmdialog,
+                            fields=[], footer=current_time(),
+                            colors=Colours.DIALOG_T)[0]
     request = await ctx.send(embed=message, delete_after=timeout)
     try:
         message = await ctx.bot.wait_for("message",
@@ -133,13 +145,29 @@ async def confirm(ctx: commands.Context, message: str, timeout: int):
 
 
 async def respond(ctx: commands.Context, status: bool):
+    """Respond/react to message.
+
+    Parameters
+    ----------
+    ctx: :func: commands.Context
+        the context command object
+    status: bool
+        status to react with
+
+    Returns
+    -------
+    bool
+        success true false
+    """
     try:
         if status:
             await ctx.message.add_reaction(r'✅')
         else:
             await ctx.message.add_reaction(r'❌')
+        return True
     except Exception as e:
         print(f'Error in responding to message message: {e}')
+        return False
         pass
 
 # end of code
