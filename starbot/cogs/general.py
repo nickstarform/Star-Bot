@@ -24,6 +24,7 @@ from cogs.utilities.message_general import generic_message
 from cogs.utilities.embed_dialog import respond
 from cogs.utilities import embed_errors as eembeds
 from cogs.utilities import embed_general as gembed
+from cogs.utilities.embed_mod import guildreport
 
 # global attributes
 __all__ = ('General',)
@@ -43,11 +44,185 @@ class General(commands.Cog):
         super().__init__()
 
     """
+    PERMISSIONS
+    """
+    @commands.command(name='permissions', aliases=['perms', 'permission'])
+    @commands.guild_only()
+    async def _perms(self, ctx: commands.Context, *, user: str=None):
+        """Get your permissions.
+
+        If you have > manage role perms then you can
+        get the permissions level of other users.
+
+        Parameters
+        ----------
+        user: str
+            Optional parameter of a user
+
+        Returns
+        -------
+        """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'permissions'):
+            return
+        if not user:
+            target = ctx.author
+        else:
+            if not ctx.channel.permissions_for(ctx.author).manage_roles:
+                embed = eembeds.userpermissionerrorembed('permissions [user]. Use the normal permission command', 'manage_roles')
+                await ctx.send(embed=embed, delete_after=5)
+                await respond(ctx, False)
+                return
+            else:
+                target = get_member(ctx, user)
+        perms = ctx.channel.permissions_for(target)
+        perms = list(map(lambda x: str(x).upper() + '`', [': `'.join(map(str, x)) for x in perms]))
+        title = f'Permissions for {target.name}: {target.id}\n'
+        desc = 'User is bot Owner/Dev\n' if (str(target.id) == self.bot.config.owner_id.value) or (str(target.id) == self.bot.config.devel_id.value) else ''
+        desc += 'User is guild owner\n' if (str(target.id) == str(ctx.guild.owner.id)) else ''
+        desc += '\n'
+        fields = "\n".join(perms)
+        await generic_message(ctx, [ctx.channel], f'{title}{desc}{fields}\n\n{current_time()}', -1)
+        return
+
+    """
+    ADDING REPORT FUNCTION
+    """
+    @commands.command(name='report', aliases=['reportmessage', 'reportthis'])
+    @commands.guild_only()
+    async def _report(self, ctx: commands.Context):
+        """Report the most recent message to the modteam.
+
+        Will report the most recent message before this one.
+        Deletes your message and will attempt to DM you with
+        the report. Will also do, in order until 1 works,
+        report to Mod Channel (if set), report to server_owner,
+        or report to bot owner. Abusing this command will get
+        you/your guild banned from the bot permanently.
+
+        You can also DM the bot with this command to report
+        something. Follow this format please:
+        >report [guild_id optional] stuff to report
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'report'):
+            return
+        rchan = await self.bot.pg.get_report_channel(ctx.guild.id, self.bot.logger)
+        guild_owner = ctx.guild.owner
+
+        report = []
+        async for message in ctx.channel.history(limit=3, before=ctx.message):
+            report.append(message)
+        being_reported = [m.author for m in report]
+        embeds = guildreport(ctx, ctx.message.author,
+                             being_reported,
+                             ctx.message.content, report)
+        try:
+            t = "\n".join([": ".join([r.author.mention, r.content]) for r in report])
+            await self.bot.pg.add_report(ctx.author.id, f'FromUser: <@{ctx.author.id}>, Messages:\n{t}', self.bot.logger)  # noqa
+        except Exception as e:
+            self.bot.logger.warning(f'Error adding report: {e}')
+            print(e)
+            pass
+        for embed in embeds:
+            fail = False
+            if (rchan is not None) and (int(rchan) > 1E15):
+                try:
+                    (ctx.guild.get_channel(int(rchan))).send(embed=embed)
+                except Exception as e:
+                    self.bot.logger.warning(f'Error sending report to {rchan}: {e}')
+                    fail = True
+            elif guild_owner is not None:
+                try:
+                    if not guild_owner.dm_channel:
+                        await guild_owner.create_dm()
+                    await guild_owner.dm_channel.send(embed=embed)
+                except Exception as e:
+                    self.bot.logger.warning(f'Error sending report to {guild_owner.id}: {e}')
+                    fail = True
+            else:
+                try:
+                    owner = self.bot.get_user(self.bot.config.owner_id.value)
+                    if not owner.dm_channel:
+                        await owner.create_dm()
+                    await owner.dm_channel.send(embed=embed)
+                except Exception as e:
+                    self.bot.logger.warning(f'Error sending report to {owner.id}: {e}')
+                    fail = True
+            try:
+                if not ctx.author.dm_channel:
+                    await ctx.author.create_dm()
+                await ctx.author.dm_channel.send(embed=embed)
+            except Exception as e:
+                self.bot.logger.warning(f'Error sending report to {ctx.author.id}: {e}')
+        try:
+            if not ctx.author.dm_channel:
+                await ctx.author.create_dm()
+            await ctx.author.dm_channel.send(f'Sent in the report. Please be patient. Abusing this function will get you/your guild banned. {current_time()}')
+        except Exception as e:
+            self.bot.logger.warning(f'Error sending report to {ctx.author.id}: {e}')
+        await ctx.message.delete()
+        pass
+
+    """
+    ADD SUGGEST FUNCTION
+    """
+    @commands.command(aliases=['suggestion', 'wishlist', 'features'])
+    async def suggest(self, ctx: commands.Context, *, suggestions: str):
+        """Send a suggestion to the bot owner.
+
+        Will attempt to send a suggestion to first the bot
+        support server (if set) or the bot owner.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'suggest'):
+            return
+        # check if DM
+        pass
+
+    """
     MISC
     """
+    @commands.command()
+    @commands.guild_only()
+    async def remindme(self, ctx: commands.Context, *, argument: str):
+        """Set a reminder for yourself or in the channel.
+
+        Take the following time string or any combination
+        thereof:
+            `1y1mo1w1d1h1m1s`
+        If cannot parse string, it will just dm you immediately.
+
+        Examples:
+            > remindme 2mo1d1s Learn how to code in python
+            > remindme channel 2h Will start the tourney soon.
+            > remindme Just a quick reminder
+
+        Parameters
+        ----------
+        argument: str
+            Try to parse this
+
+        Returns
+        -------
+        """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'remindme'):
+            return
+        pass
+
+
     @commands.command(aliases=['id', 'snowflake'])
     @commands.guild_only()
-    async def snowflakeid(self, ctx, *, argument: str):
+    async def snowflakeid(self, ctx: commands.Context, *, argument: str):
         """Add or remove a user to blacklist global list.
 
         Parameters
@@ -64,7 +239,7 @@ class General(commands.Cog):
 
     @commands.group(aliases=['say', 'repeat'])
     @commands.guild_only()
-    async def echo(self, ctx, *, message):
+    async def echo(self, ctx: commands.Context, *, message: str):
         """Echo.
 
         Parameters
@@ -82,7 +257,7 @@ class General(commands.Cog):
 
     @echo.command(aliases=['to', 'in'])
     @permissions.is_manager()
-    async def channel(self, ctx, channels: str, *, message: str):
+    async def channel(self, ctx: commands.Context, channels: str, *, message: str):
         """Send to channel(s).
 
         Comma separated list of channel mentionables/ids or 
@@ -205,7 +380,7 @@ class General(commands.Cog):
 
     @commands.command(aliases=['getuser'])
     @commands.guild_only()
-    async def userinfo(self, ctx, *, user: str):
+    async def userinfo(self, ctx: commands.Context, *, user: str):
         """Get info on a user.
 
         Parameters
@@ -244,7 +419,7 @@ class General(commands.Cog):
     @commands.command(aliases=['ping_role'])
     @permissions.has_permissions(manage_roles=True)
     @commands.guild_only()
-    async def pingrole(self, ctx, *, roles: str):
+    async def pingrole(self, ctx: commands.Context, *, roles: str):
         """Ping roles.
 
         Parameters
@@ -273,7 +448,7 @@ class General(commands.Cog):
 
     @commands.command(aliases=['roleinfo'])
     @commands.guild_only()
-    async def inrole(self, ctx, *, roles: str):
+    async def inrole(self, ctx: commands.Context, *, roles: str):
         """Ping roles.
 
         Parameters
@@ -349,7 +524,7 @@ class General(commands.Cog):
         pass
 
     @_role.command(name='add')
-    async def _roleadd(self, ctx, *, roles: str):
+    async def _roleadd(self, ctx: commands.Context, *, roles: str):
         """Ping roles.
 
         Parameters
@@ -363,7 +538,7 @@ class General(commands.Cog):
         pass
 
     @_role.command(name='remove', aliases=['rm', 'del', 'not'])
-    async def _rolerm(self, ctx, *, roles: str):
+    async def _rolerm(self, ctx: commands.Context, *, roles: str):
         """Ping roles.
 
         Parameters
