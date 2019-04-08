@@ -18,6 +18,7 @@ from . import functions
 #from . import help_format
 from . import message_general
 from . import permissions
+from . import guild_manip_functions
 
 
 # global attributes
@@ -32,7 +33,8 @@ __all__ = ('Colours',
            'functions', 
            #'help_format', 
            'message_general', 
-           'permissions', )
+           'permissions',
+           'guild_manip_functions')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
