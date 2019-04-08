@@ -11,7 +11,7 @@ import sys
 
 # relative modules
 from cogs.utilities import (Colours, permissions)
-from cogs.utilities.functions import (current_time, extract_member_id, extract_guild_id, parse)
+from cogs.utilities.functions import (current_time, extract_id, get_member, get_role, parse)
 from cogs.utilities.embed_general import generic_embed
 from cogs.utilities.embed_dialog import respond
 from cogs.utilities.embed_errors import internalerrorembed
@@ -24,7 +24,7 @@ __path__ = __file__.strip('.py').strip(__filename__)
 
 def setup(bot):
     bot.add_cog(Owner(bot))
-    print('Loaded owner')
+    print('Loaded Owner')
 
 
 class Owner(commands.Cog):
@@ -32,6 +32,7 @@ class Owner(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        super().__init__()
 
     """
     BOT CONFIG
@@ -43,8 +44,6 @@ class Owner(commands.Cog):
 
         Parameters
         ----------
-        ctx: :func: commands.Context
-            the context command object
 
         Returns
         -------
@@ -80,8 +79,6 @@ class Owner(commands.Cog):
 
         Parameters
         ----------
-        ctx: :func: commands.Context
-            the context command object
 
         Returns
         -------
@@ -136,13 +133,11 @@ class Owner(commands.Cog):
 
     @commands.group()
     @permissions.is_master()
-    async def config(self, ctx):
+    async def globalconfig(self, ctx):
         """Display Config.
 
         Parameters
         ----------
-        ctx: :func: commands.Context
-            the context command object
 
         Returns
         -------
@@ -164,20 +159,18 @@ class Owner(commands.Cog):
             for embed in embeds:
                 await ctx.send(embed=embed)
 
-    @config.command()
+    @globalconfig.command()
     async def guild(self, ctx, *, gid: str=None):
         """Check a specific guild configuration.
         Parameters
         ----------
-        ctx: :func: commands.Context
-            the context command object
 
         Returns
         -------
         """
         try:
             if not gid:
-                gid = extract_guild_id(ctx.message.clean_content)
+                gid = extract_id(ctx.message.clean_content, 'guild')
             if not gid:
                 await respond(ctx, False)
                 return
@@ -227,28 +220,6 @@ class Owner(commands.Cog):
             await respond(ctx, False)
             self.bot.logger.warning(f'Error changing bots username: {e}')
 
-    @commands.command(hidden=True)
-    @permissions.is_master()
-    async def set_playing(self, ctx, *, game: str=None):
-        if game:
-            await self.bot.change_presence(activity=discord.Game(game))
-        await respond(ctx, True)
-        pass
-
-    @commands.command(hidden=True)
-    @permissions.is_master()
-    async def change_username(self, ctx, *, new_username: str):
-        """
-        Changes bot username
-        """
-        bot_user = self.bot.user
-        try:
-            await bot_user.edit(username=new_username)
-            await respond(ctx, True)
-        except Exception as e:
-            await respond(ctx, False)
-            self.bot.logger.warning(f'Error changing bots username: {e}')
-
     """
     BLACKLIST
     """
@@ -259,14 +230,13 @@ class Owner(commands.Cog):
 
         Parameters
         ----------
-        ctx: :func: commands.Context
-            the context command object
 
         Returns
         -------
         """
         if ctx.invoked_subcommand is None:
             users = await self.bot.pg.get_all_blacklist_users_global()
+            users = [str(x[0][1]) for x in parse(users)]
             if isinstance(users, type(None)):
                 users = []
             if len(users) > 0:
@@ -288,31 +258,28 @@ class Owner(commands.Cog):
                 await ctx.send(embed=embed)
 
     @blacklistglobaluser.command(name='add', pass_context=True)
-    async def _a(self, ctx, uids: str=None):
+    async def _blgua(self, ctx, uids: str=None):
         """Add user to global blacklist.
 
         Parameters
         ----------
-        ctx: :func: commands.Context
-            the context command object
         uids: str
             List of id, comma separated
 
         Returns
         -------
         """
-        print(type(ctx))
         added_users = []
         msg = uids.replace(' ', '')
         if ',' in msg:
-            users = [extract_member_id(x) for x in msg.split(',')]
+            users = [extract_id(x, 'member') for x in msg.split(',')]
         else:
-            users = [msg]
+            users = [extract_id(msg, 'member')]
         users = [x for x in users if x != '']
 
         try:
             for user in users:
-                success = await self.bot.pg.add_blacklist_user_global(user)
+                success = await self.bot.pg.add_blacklist_user_global(user, self.bot.logger)
                 if success:
                     added_users.append(user)
             if added_users:
@@ -329,24 +296,24 @@ class Owner(commands.Cog):
                 )
             else:
                 self.bot.logger.info(f'Error adding users to global blacklist')
-                embed = embed_errors.internalerrorembed(f'Error adding users to global blacklist')
-                await ctx.send(embed=embed)
+                embed = internalerrorembed(f'Error adding users to global blacklist')
+                await respond(ctx, False)
+                await ctx.send(embed=embed, delete_after=5)
                 return
             for embed in embeds:
                 await ctx.send(embed=embed)
         except Exception as e:
             self.bot.logger.info(f'Error adding users to global blacklist {e}')
-            embed = embed_errors.internalerrorembed(f'Error adding users to global blacklist {e}')
-            await ctx.send(embed=embed)
+            embed = internalerrorembed(f'Error adding users to global blacklist {e}')
+            await respond(ctx, False)
+            await ctx.send(embed=embed, delete_after=5)
 
     @blacklistglobaluser.command(name='remove', aliases=['rem', 'del', 'rm'])
-    async def _r(self, ctx, uids: str=None):
+    async def _blgur(self, ctx, uids: str=None):
         """Removes a user from the blacklist.
 
         Parameters
         ----------
-        ctx: :func: commands.Context
-            the context command object
         uids: str
             List of id, comma separated
 
@@ -357,24 +324,27 @@ class Owner(commands.Cog):
         user_notfound = []
         msg = uids.replace(' ', '')
         if ',' in msg:
-            users = [extract_member_id(x) for x in msg.split(',')]
+            users = [extract_id(x, 'member') for x in msg.split(',')]
         else:
-            users = [msg]
+            users = [extract_id(msg, 'member')]
         users = [x for x in users if x != '']
         try:
             for user in users:
                 success = False
                 try:
-                    success = await self.bot.pg.rem_blacklist_user_global(user)
-                except ValueError:
+                    success = await self.bot.pg.rem_blacklist_user_global(user, self.bot.logger)
+                except:
                     user_notfound.append(user)
                 if success:
                     removed_users.append(user)
+                else:
+                    user_notfound.append(user)
+
             fields = []
             if removed_users:
-                fields += [['PASS.)', f'<@{x}>'] for x in removed_users]
+                fields.append(['PASS', ', '.join([f'<@{x}>' for x in removed_users])])
             if user_notfound:
-                fields += [['FAIL.)', f'<@{x}>'] for x in user_notfound]
+                fields.append(['FAIL', ', '.join([f'<@{x}>' for x in user_notfound])])
             title = 'Users blacklisting'
             desc = ''
             embeds = generic_embed(
@@ -389,9 +359,10 @@ class Owner(commands.Cog):
         except Exception as e:
             self.bot.logger.warning(f'Issue removing users from ' +
                                     f'global blacklist: {e}')
-            embed = embed_errors.internalerrorembed(f'Issue removing users from ' +
+            embed = internalerrorembed(f'Issue removing users from ' +
                                                           f'global blacklist: {e}')
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, delete_after=5)
+            await respond(ctx, False)
 
     @commands.group(aliases=['blgg'], pass_context=True)
     @permissions.is_master()
@@ -400,14 +371,13 @@ class Owner(commands.Cog):
 
         Parameters
         ----------
-        ctx: :func: commands.Context
-            the context command object
 
         Returns
         -------
         """
         if ctx.invoked_subcommand is None:
             guilds = await self.bot.pg.get_all_blacklist_guild_global()
+            guilds = [str(g[0][1]) for g in parse(guilds)]
             if isinstance(guilds, type(None)):
                 guilds = []
             if len(guilds) > 0:
@@ -429,33 +399,33 @@ class Owner(commands.Cog):
                 await ctx.send(embed=embed)
 
     @blacklistglobalguild.command(name='add', pass_context=True)
-    async def _a(self, ctx):
-        """Add guild to global blacklist.
+    async def _blgga(self, ctx, *, gids: str=None):
+        """Add guild to global blacklist. 
+
+        Give id or trigger inside of a guild.
 
         Parameters
         ----------
-        ctx: :func: commands.Context
-            the context command object
         uids: str
             List of id, comma separated
 
         Returns
         -------
         """
-        print(type(self))
-        print(type(ctx))
-        print(self.bot.config)
         added_guilds = []
-        msg = ctx.message.replace(' ', '')
-        if ',' in msg:
-            guilds = [extract_guild_id(x) for x in msg.split(',')]
+        if gids is not None:
+            msg = gids.replace(' ', '')
+            if ',' in msg:
+                guilds = [extract_id(x, 'guild') for x in msg.split(',')]
+            else:
+                guilds = [extract_id(msg, 'guild')]
+            guilds = flatten(guilds)
         else:
-            guilds = [msg]
-        guilds = [x for x in guilds if x != '']
+            guilds = [ctx.guild.id]
 
         try:
             for guild in guilds:
-                success = await self.bot.pg.add_blacklist_guild_global(guild)
+                success = await self.bot.pg.add_blacklist_guild_global(guild, self.bot.logger)
                 if success:
                     added_guilds.append(guild)
             if added_guilds:
@@ -472,24 +442,26 @@ class Owner(commands.Cog):
                 )
             else:
                 self.bot.logger.info(f'Error adding guilds to global blacklist')
-                embed = embed_errors.internalerrorembed(f'Error adding guilds to global blacklist')
-                await ctx.send(embed=embed)
+                embed = internalerrorembed(f'Error adding guilds to global blacklist')
+                await ctx.send(embed=embed, delete_after=5)
+                await respond(ctx, False)
                 return
             for embed in embeds:
                 await ctx.send(embed=embed)
         except Exception as e:
             self.bot.logger.info(f'Error adding guilds to global blacklist {e}')
-            embed = embed_errors.internalerrorembed(f'Error adding guilds to global blacklist {e}')
-            await ctx.send(embed=embed)
+            embed = internalerrorembed(f'Error adding guilds to global blacklist {e}')
+            await ctx.send(embed=embed, delete_after=5)
+            await respond(ctx, False)
 
     @blacklistglobalguild.command(name='remove', aliases=['rem', 'del', 'rm'])
-    async def _r(self, ctx, gids: str=None):
+    async def _blggr(self, ctx, gids: str=None):
         """Removes a guild from the blacklist.
+
+        Give id or trigger inside of a guild.
 
         Parameters
         ----------
-        ctx: :func: commands.Context
-            the context command object
         gids: str
             List of id, comma separated
 
@@ -498,27 +470,33 @@ class Owner(commands.Cog):
         """
         removed_guilds = []
         guild_notfound = []
-        msg = gids.replace(' ', '')
-        if ',' in msg:
-            guilds = [extract_guild_id(x) for x in msg.split(',')]
+        if gids is not None:
+            msg = gids.replace(' ', '')
+            if ',' in msg:
+                guilds = [extract_id(x, 'guild') for x in msg.split(',')]
+            else:
+                guilds = [extract_id(msg, 'guild')]
+            guilds = flatten(guilds)
         else:
-            guilds = [msg]
-        guilds = [x for x in guilds if x != '']
+            guilds = [ctx.guild.id]
+
         try:
             for guild in guilds:
                 success = False
                 try:
-                    success = await self.bot.pg.rem_blacklist_user_global(guild)
+                    success = await self.bot.pg.rem_blacklist_guild_global(guild, self.bot.logger)
                 except ValueError:
                     guild_notfound.append(guild)
                 if success:
                     removed_guilds.append(guild)
+                else:
+                    guild_notfound.append(guild)
             fields = []
             if removed_guilds:
-                fields += [['PASS.)', f'<@{x}>'] for x in removed_guilds]
+                fields.append(['PASS.)', ', '.join([f'<@{x}>' for x in removed_guilds])])
             if guild_notfound:
-                fields += [['FAIL.)', f'<@{x}>'] for x in guild_notfound]
-            title = 'Users blacklisting'
+                fields.append(['FAIL.)', ', '.join([f'<@{x}>' for x in guild_notfound])])
+            title = 'Guilds blacklisting Removed'
             desc = ''
             embeds = generic_embed(
                 title=title,
@@ -532,30 +510,30 @@ class Owner(commands.Cog):
         except Exception as e:
             self.bot.logger.warning(f'Issue removing guilds from ' +
                                     f'global blacklist: {e}')
-            embed = embed_errors.internalerrorembed(f'Issue removing guilds from ' +
+            embed = internalerrorembed(f'Issue removing guilds from ' +
                                                           f'global blacklist: {e}')
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, delete_after=5)
+            await respond(ctx, False)
 
     @commands.group(aliases=['globalcommands', 'blgc'], pass_context=True)
     @permissions.is_master()
-    async def commandsglobal(self, ctx):
+    async def blacklistglobalcmd(self, ctx):
         """Add or remove a command to blacklist global list.
 
         Parameters
         ----------
-        ctx: :func: commands.Context
-            the context command object
 
         Returns
         -------
         """
         if ctx.invoked_subcommand is None:
             cmds = await self.bot.pg.get_all_disallowed_global()
+            cmds = [x[0][1] for x in parse(cmds)]
             if isinstance(cmds, type(None)):
                 cmds = []
             if len(cmds) > 0:
                 title = 'Commands blacklisted globally'
-                desc = ', '.join(users)
+                desc = ', '.join(cmds)
             else:
                 desc = ''
                 title = 'No commands in global blacklist'
@@ -569,14 +547,12 @@ class Owner(commands.Cog):
             for embed in embeds:
                 await ctx.send(embed=embed)
 
-    @commandsglobal.command(name='add', pass_context=True)
-    async def _a(self, ctx, cmds: str=None):
+    @blacklistglobalcmd.command(name='add', pass_context=True)
+    async def _blgca(self, ctx, cmds: str=None):
         """Add command to global blacklist.
 
         Parameters
         ----------
-        ctx: :func: commands.Context
-            the context command object
         uids: str
             List of id, comma separated
 
@@ -584,7 +560,10 @@ class Owner(commands.Cog):
         -------
         """
         added_cmds = []
-        msg = cmds.replace(' ', '')
+        if cmds in ['all', 'everything']:
+            msg = ','.join([x.name for x in self.bot.commands])
+        else:
+            msg = cmds.replace(' ', '')
         if ',' in msg:
             cmds = [x for x in msg.split(',')]
         else:
@@ -592,12 +571,12 @@ class Owner(commands.Cog):
 
         try:
             for cmd in cmds:
-                success = await self.bot.pg.add_disallowed_global(cmd)
+                success = await self.bot.pg.add_disallowed_global(cmd, self.bot.logger)
                 if success:
                     added_cmds.append(cmd)
             if added_cmds:
                 title = 'Commands added into global blacklist'
-                desc += ', '.join(added_cmds)
+                desc = ', '.join(added_cmds)
                 embeds = generic_embed(
                     title=title,
                     desc=desc,
@@ -607,24 +586,24 @@ class Owner(commands.Cog):
                 )
             else:
                 self.bot.logger.info(f'Error adding Commands to global blacklist')
-                embed = embed_errors.internalerrorembed(f'Error adding Commands to global blacklist')
-                await ctx.send(embed=embed)
+                embed = internalerrorembed(f'Error adding Commands to global blacklist')
+                await ctx.send(embed=embed, delete_after=5)
+                await respond(ctx, False)
                 return
             for embed in embeds:
                 await ctx.send(embed=embed)
         except Exception as e:
             self.bot.logger.info(f'Error adding Commands to global blacklist {e}')
-            embed = embed_errors.internalerrorembed(f'Error adding Commands to global blacklist {e}')
-            await ctx.send(embed=embed)
+            embed = internalerrorembed(f'Error adding Commands to global blacklist {e}')
+            await ctx.send(embed=embed, delete_after=5)
+            await respond(ctx, False)
 
-    @commandsglobal.command(name='remove', aliases=['rem', 'del', 'rm'])
-    async def _r(self, ctx, cmds: str=None):
+    @blacklistglobalcmd.command(name='remove', aliases=['rem', 'del', 'rm'])
+    async def _blgcr(self, ctx, cmds: str=None):
         """Removes a command from the blacklist.
 
         Parameters
         ----------
-        ctx: :func: commands.Context
-            the context command object
         cmds: str
             List of cmds, comma separated
 
@@ -633,7 +612,10 @@ class Owner(commands.Cog):
         """
         removed_cmds = []
         cmds_notfound = []
-        msg = cmds.replace(' ', '')
+        if cmds in ['all', 'everything']:
+            msg = ','.join([x.name for x in self.bot.commands])
+        else:
+            msg = cmds.replace(' ', '')
         if ',' in msg:
             cmds = [x for x in msg.split(',')]
         else:
@@ -643,16 +625,18 @@ class Owner(commands.Cog):
             for cmd in cmds:
                 success = False
                 try:
-                    success = await self.bot.pg.rem_disallowed_global(cmd)
+                    success = await self.bot.pg.rem_disallowed_global(cmd, self.bot.logger)
                 except ValueError:
-                    user_notfound.append(cmd)
+                    cmds_notfound.append(cmd)
                 if success:
                     removed_cmds.append(cmd)
+                else:
+                    cmds_notfound.append(cmd)
             fields = []
             if removed_cmds:
-                fields += [['PASS.)', f'{x}'] for x in removed_cmds]
-            if user_notfound:
-                fields += [['FAIL.)', f'{x}'] for x in cmds_notfound]
+                fields.append(['PASS.)', ', '.join(removed_cmds)])
+            if cmds_notfound:
+                fields.append(['FAIL.)', ', '.join(cmds_notfound)])
             title = 'Command blacklisting'
             desc = ''
             embeds = generic_embed(
@@ -667,10 +651,9 @@ class Owner(commands.Cog):
         except Exception as e:
             self.bot.logger.warning(f'Issue removing commands from ' +
                                     f'global blacklist: {e}')
-            embed = embed_errors.internalerrorembed(f'Issue removing commands from ' +
+            embed = internalerrorembed(f'Issue removing commands from ' +
                                                           f'global blacklist: {e}')
             await ctx.send(embed=embed)
-
 
 if __name__ == "__main__":
     """Directly Called."""
