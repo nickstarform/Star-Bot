@@ -11,6 +11,7 @@ import math
 # external modules
 from discord.ext import commands
 import requests
+import discord
 
 # relative modules
 from cogs.utilities import Colours, permissions
@@ -37,7 +38,7 @@ class Fun(commands.Cog):
 
     @commands.command(aliases=['8ball'])
     @commands.guild_only()
-    async def eightball(self, ctx, *, _: str):
+    async def eightball(self, ctx: commands.Context, *, _: str):
         """Classic 8ball.
 
         Parameters
@@ -80,7 +81,7 @@ class Fun(commands.Cog):
 
     @commands.command(aliases=['judge', 'match'])
     @commands.guild_only()
-    async def rate(self, ctx, *, user: str=None):
+    async def rate(self, ctx: commands.Context, *, user: str=None):
         """Rate someone.
 
         Either rate another user or see how the bot rates you.
@@ -117,7 +118,7 @@ class Fun(commands.Cog):
 
     @commands.command(aliases=['sample', 'num'])
     @commands.guild_only()
-    async def number(self, ctx, minimum: int=0, maximum: int=100):
+    async def number(self, ctx: commands.Context, minimum: int=0, maximum: int=100):
         """Uniform sample between two values.
 
         Parameters
@@ -140,7 +141,7 @@ class Fun(commands.Cog):
 
     @commands.command(aliases=['chose', 'choice', 'pick', 'which'])
     @commands.guild_only()
-    async def choose(self, ctx, *, text:str):
+    async def choose(self, ctx: commands.Context, *, text:str):
         """Pick from a list.
 
         Must be delimited by `,` or `;` or `|` or `or` or ` ` in that order
@@ -172,7 +173,7 @@ class Fun(commands.Cog):
 
     @commands.command(aliases=['dice', 'd20'])
     @commands.guild_only()
-    async def roll(self, ctx, *, text: str='d20', explicit: bool=True):
+    async def roll(self, ctx: commands.Context, *, text: str='d20', explicit: bool=True):
         """Classic dice roller.
 
         Dice roller that tries to be intelligent:
@@ -198,10 +199,15 @@ class Fun(commands.Cog):
         text = text.lower()
         explicit = False if 'false' in text else True
         text = text.replace(' ', '')
+        text = text.replace(str(explicit).lower(), '')
         regex = f'([0-9]*)(d)([0-9]*)(\-?\+?)([0-9]*)'
         match = re.findall(regex, text)[0]
         if match[2] == '0':
-            await generic_message(ctx, [ctx.channel], 'Rolled with a d0 dummy', -1)
+            await generic_message(ctx, [ctx.channel], 'Rolled with a d0 dummy', 5)
+            return
+        if int(match[0]) > 100:
+            await generic_message(ctx, [ctx.channel], 'Please roll with something less than 100dice', 5)
+            return
         numdice = int(match[0], base=10) if match[0] else 1
         sides = int(match[2], base=10) if match[2] else 20
         mod = int(''.join(match[3:]), base=10) if match[3] else 0
@@ -218,18 +224,12 @@ class Fun(commands.Cog):
             total += roll
             if explicit: 
                 tmp = f'{roll:>9}|{total:>9}|{(total + mod * (i + 1)):>15}\n'
-                p = '```\n```'
-                if ((len(contructor) + len(tmp) + 3) - tracker) > MAX_LEN:
-                    tracker += MAX_LEN
-                    contructor += p
                 contructor += f'{tmp}'
         if explicit:
             contructor += f'-----------------------------------\n'
-            contructor += f'AVG: {float(total / numdice) + mod}  EXPECTED: {(math.ceil(sides / 2) + 1 + mod)}  TOTAL: {total + numdice * mod}```'
-            await generic_message(ctx, [ctx.channel], contructor, -1)
-        else:
-            contructor += f'`AVG: {float(total / numdice) + mod}  EXPECTED: {(math.ceil(sides / 2) + 1 + mod)}  TOTAL: {total + numdice * mod}`'
-            await generic_message(ctx, [ctx.channel], contructor, -1)
+        contructor += f'AVG: {float(total / numdice) + mod}  EXPECTED: {(math.ceil(sides / 2) + 1 + mod)}  TOTAL: {total + numdice * mod}```'
+        await generic_message(ctx, [ctx.channel], contructor, -1, splitwith='```')
+        return
 
     @commands.command(aliases=['sleep', 'night'])
     @commands.guild_only()
@@ -259,46 +259,29 @@ class Fun(commands.Cog):
         await generic_message(ctx, [ctx.channel], f'{chose["link"]}', -1)
         pass
 
-    async def jishonn(self, ctx, *, term: str=None):
-        """Search for terms in japanese to translate on jisho.
+    @commands.command(aliases=['words', 'japanese', 'translate'])
+    @commands.guild_only()
+    async def jisho(self, ctx: commands.Context, word: str):
+        """Translates using jisho.
 
-        Will search for the keyword anime or manga and use that to
-        further search on kitsu. If neither is found it will default
-        to searching for anime.
+        Japanese to English, and English to Japanese
+        Works with Romaji, Hiragana, Kanji, and Katakana.
 
         Parameters
         ----------
+        word: str
+            translate this single word
 
         Returns
         -------
         """
-        url = 'http://jisho.org/search/'
-        url += urllib.parse.quote_plus(term)
-        try:
-            headers = {}
-            r = requests.get(url, headers=headers)
-            if int(r.status_code) > 399:
-                raise RuntimeError
-        except Exception as e:
-            e = e if e != '' else 'None defined'
-            await generic_message(ctx, [ctx.channel], f'{e},{url}', -1)
-            await respond(ctx, False)
-            return
-        print(r.text)
-        responce = r.json()['data'][0]
-
-        print(responce)
-        return
-
-    @commands.command(aliases=['words', 'japanese', 'translate'])
-    @commands.guild_only()
-    async def jisho(self, ctx, word: str):
-        """Translates Japanese to English, and English to Japanese
-        Works with Romaji, Hiragana, Kanji, and Katakana"""
         if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'jisho'):
             return
+        self.connector = aiohttp.TCPConnector(force_close=True)
+        self.session = aiohttp.ClientSession(connector=self.connector)
         search_args = await self.dict_search_args_parse(ctx, word.lower())
         if not search_args:
+            await self.session.close()
             return
         limit, query = search_args
         message = urllib.parse.quote(query, encoding='utf-8')
@@ -308,11 +291,16 @@ class Fun(commands.Cog):
         try:
             messages = [self.parse_data(result) for result in data["data"][:limit]]
         except KeyError:
-            return await ctx.send("I was unable to retrieve any data")
+            await respond(ctx, False)
+            await self.session.close()
+            return await ctx.send("I was unable to retrieve any data", delete_after=5)
         try:
             await ctx.send('\n'.join(messages))
         except discord.HTTPException:
+            await respond(ctx, False)
             await ctx.send("No data for that word.")
+        await self.session.close()
+        pass
 
     def parse_data(self, result):
         japanese = result["japanese"]
@@ -349,7 +337,7 @@ class Fun(commands.Cog):
     def display_word(self, obj, *formats):
         return formats[len(obj) - 1].format(**obj)
 
-    async def dict_search_args_parse(self, ctx, message):
+    async def dict_search_args_parse(self, ctx: commands.Context, message):
         if not message:
             return await ctx.send("Error in arg parse")
         limit = 1
@@ -361,7 +349,7 @@ class Fun(commands.Cog):
 
     @commands.command(aliases=['kitsu'])
     @commands.guild_only()
-    async def anime(self, ctx, *, term: str=None):
+    async def anime(self, ctx: commands.Context, *, term: str=None):
         """Search for an anime from Kitsu.io.
 
         Will search for the keyword anime or manga and use that to
