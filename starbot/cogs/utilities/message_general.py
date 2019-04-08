@@ -1,19 +1,21 @@
 """General Message Hub."""
 
 # internal modules
+from time import sleep
 
 # external modules
 
 # relative modules
+from .functions import lessen_list
 
 # global attributes
 __all__ = ('generic_message', 'split_message', 'MAX_LEN')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
-MAX_LEN = 1000
+MAX_LEN = 2000
 
-async def generic_message(ctx, channels, message: str, delete: int):
+async def generic_message(ctx, channels, message: str, delete: int, splitwith: str=''):
     """Generic message builder.
 
     Parameters
@@ -33,8 +35,10 @@ async def generic_message(ctx, channels, message: str, delete: int):
     bool
         status true false
     """
-    messages = split_message(message, MAX_LEN)
+    messages = split_message(message, MAX_LEN, splitwith)
     for message in messages:
+        if not message:
+            continue
         try:
             for channel in channels:
                 if delete > 0:
@@ -47,7 +51,7 @@ async def generic_message(ctx, channels, message: str, delete: int):
     return True
 
 
-def split_message(target: str, maxl: int):
+def split_message(target: str, maxl: int, splitwith: str=''):
     if len(target) <= maxl:
         return [target]
     else:
@@ -57,33 +61,38 @@ def split_message(target: str, maxl: int):
         tmpv = target
         while (len(tmpv) > maxl) or (tmpi_n < (len(target) - 1)):
             case = ''
-            if len(tmpv) > maxl:
+            print('TEST',tmpv, case, splitwith)
+            if (len(tmpv)+ len(case) + len(splitwith)) > maxl:
                 if '\n' in tmpv:
                     case = '\n'
-                    tmpv = f'{case}'.join(tmpv.split(case)[0:-1])  # split sentence
                 elif '. ' in tmpv:
                     case = '. '
-                    tmpv = f'{case}'.join(tmpv.split(case)[0:-1])  # split sentence
                 elif '; ' in tmpv:
                     case = '; '
-                    tmpv = f'{case}'.join(tmpv.split(case)[0:-1])  # split connected
                 elif ': ' in tmpv:
                     case = ': '
-                    tmpv = f'{case}'.join(tmpv.split(case)[0:-1])  # split list
                 elif ', ' in tmpv:
                     case = ', '
-                    tmpv = f'{case}'.join(tmpv.split(case)[0:-1])  # split phrase
                 elif ' ' in tmpv:
                     case = ' '
-                    tmpv = f'{case}'.join(tmpv.split(case)[0:-1])  # split word
+                if case != '':
+                    tmpv = f'{case}'.join(lessen_list(tmpv.split(case),(maxl - len(case) - len(splitwith))))
                 else:
                     case = ''
                     tmpv = tmpv[:maxl]  # greedy split char at lim
-            if (len(tmpv) + len(case)) <= maxl:
+
+            if (len(tmpv) + len(case) + len(splitwith)) <= maxl:
                 tmpi_o += tmpi_n
                 tmpi_n += len(tmpv) + len(case)
-                ret.append(tmpv + case)
+                if tmpi_o == 0:
+                    ret.append(tmpv + splitwith + case)
+                elif tmpi_n < len(target):
+                    ret.append(splitwith + tmpv + splitwith + case)
+                else:
+                    ret.append(splitwith + tmpv + case)
                 tmpv = target[tmpi_n:]
+        if ret[-1] != tmpv:
+            ret.append(tmpv)
     return ret
 
 
