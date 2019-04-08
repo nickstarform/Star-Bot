@@ -11,8 +11,9 @@ import sys
 
 # relative modules
 from cogs.utilities import (Colours, permissions)
-from cogs.utilities.functions import (current_time, extract_id, get_member, get_role, parse)
+from cogs.utilities.functions import (current_time, extract_id, get_member, get_role, parse, time_conv)
 from cogs.utilities.embed_general import generic_embed
+from cogs.utilities.message_general import generic_message
 from cogs.utilities.embed_dialog import respond
 from cogs.utilities.embed_errors import internalerrorembed
 
@@ -160,7 +161,7 @@ class Owner(commands.Cog):
                 await ctx.send(embed=embed)
 
     @globalconfig.command()
-    async def guild(self, ctx, *, gid: str=None):
+    async def guild(self, ctx: commands.Context, *, gid: str=None):
         """Check a specific guild configuration.
         Parameters
         ----------
@@ -200,7 +201,7 @@ class Owner(commands.Cog):
     """
     @commands.command(hidden=True)
     @permissions.is_master()
-    async def set_playing(self, ctx, *, game: str=None):
+    async def set_playing(self, ctx: commands.Context, *, game: str=None):
         if game:
             await self.bot.change_presence(activity=discord.Game(game))
         await respond(ctx, True)
@@ -208,7 +209,7 @@ class Owner(commands.Cog):
 
     @commands.command(hidden=True)
     @permissions.is_master()
-    async def change_username(self, ctx, *, new_username: str):
+    async def change_username(self, ctx: commands.Context, *, new_username: str):
         """
         Changes bot username
         """
@@ -258,7 +259,7 @@ class Owner(commands.Cog):
                 await ctx.send(embed=embed)
 
     @blacklistglobaluser.command(name='add', pass_context=True)
-    async def _blgua(self, ctx, uids: str=None):
+    async def _blgua(self, ctx: commands.Context, uids: str=None):
         """Add user to global blacklist.
 
         Parameters
@@ -309,7 +310,7 @@ class Owner(commands.Cog):
             await ctx.send(embed=embed, delete_after=5)
 
     @blacklistglobaluser.command(name='remove', aliases=['rem', 'del', 'rm'])
-    async def _blgur(self, ctx, uids: str=None):
+    async def _blgur(self, ctx: commands.Context, uids: str=None):
         """Removes a user from the blacklist.
 
         Parameters
@@ -399,7 +400,7 @@ class Owner(commands.Cog):
                 await ctx.send(embed=embed)
 
     @blacklistglobalguild.command(name='add', pass_context=True)
-    async def _blgga(self, ctx, *, gids: str=None):
+    async def _blgga(self, ctx: commands.Context, *, gids: str=None):
         """Add guild to global blacklist. 
 
         Give id or trigger inside of a guild.
@@ -455,7 +456,7 @@ class Owner(commands.Cog):
             await respond(ctx, False)
 
     @blacklistglobalguild.command(name='remove', aliases=['rem', 'del', 'rm'])
-    async def _blggr(self, ctx, gids: str=None):
+    async def _blggr(self, ctx: commands.Context, gids: str=None):
         """Removes a guild from the blacklist.
 
         Give id or trigger inside of a guild.
@@ -548,7 +549,7 @@ class Owner(commands.Cog):
                 await ctx.send(embed=embed)
 
     @blacklistglobalcmd.command(name='add', pass_context=True)
-    async def _blgca(self, ctx, cmds: str=None):
+    async def _blgca(self, ctx: commands.Context, cmds: str=None):
         """Add command to global blacklist.
 
         Parameters
@@ -599,7 +600,7 @@ class Owner(commands.Cog):
             await respond(ctx, False)
 
     @blacklistglobalcmd.command(name='remove', aliases=['rem', 'del', 'rm'])
-    async def _blgcr(self, ctx, cmds: str=None):
+    async def _blgcr(self, ctx: commands.Context, cmds: str=None):
         """Removes a command from the blacklist.
 
         Parameters
@@ -654,6 +655,199 @@ class Owner(commands.Cog):
             embed = internalerrorembed(f'Issue removing commands from ' +
                                                           f'global blacklist: {e}')
             await ctx.send(embed=embed)
+
+    """
+    GLOBAL MACRO
+    """
+
+    @commands.group(name='globalmacro', aliases=['globalmacros', 'gblmc', 'gmacro'], pass_context=True)
+    @permissions.is_master()
+    async def _gmacro(self, ctx):
+        """Macro's for the bot owner.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
+        if ctx.invoked_subcommand is None:
+            # parse
+            macro = ' '.join(ctx.message.content.split(' ')[1:])
+            failed = False
+            if macro:
+                try:
+                    m = await self.bot.pg.get_single_global_macro(macro, self.bot.logger)
+                    if not m:
+                        embed = internalerrorembed(f'Could\'t find macro: {macro}')
+                        failed = True
+                except Exception as e:
+                    embed = internalerrorembed(f'Could\'t find macro: {e}')
+                    failed = True
+            else:
+                failed = True
+                embed = internalerrorembed(f'Need to invoke subcommands or give macro to poll')
+            if not failed:
+                await ctx.send(f'{parse(m)[0][1][1]}')
+                await ctx.message.delete()
+                return
+            else:
+                await ctx.send(embed=embed, delete_after=5)
+                await respond(ctx, False)
+                await ctx.message.delete()
+                return
+
+    @_gmacro.command(name='list', aliases=['ls', 'show'], pass_context=True)
+    @permissions.is_master()
+    async def _gmacrols(self, ctx):
+        """List all global macros.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
+        try:
+            failed = False
+            m = await self.bot.pg.get_all_global_macro(self.bot.logger)
+            if not m:
+                embed = internalerrorembed(f'Could\'t get any macros')
+                failed = True
+        except Exception as e:
+            embed = internalerrorembed(f'Could\'t get macros: {e}')
+            failed = True
+        if not failed:
+            embeds = generic_embed(
+                title='Macro List',
+                desc=f'{", ".join([x[0][1] for x in parse(m)])}',
+                fields=[])
+            for embed in embeds:
+                await ctx.send(embed=embed)
+            await ctx.message.delete()
+            return
+        else:
+            await ctx.send(embed=embed, delete_after=5)
+            await respond(ctx, False)
+            await ctx.message.delete()
+            return
+
+    @_gmacro.command(name='add', pass_context=True)
+    @permissions.is_master()
+    async def _gmacroadd(self, ctx, macro: str, *, content: str):
+        """Add a global macro.
+
+        Parameters
+        ----------
+        macro: str
+            name of the macro
+        content: str
+            content to store in macro
+
+        Returns
+        -------
+        """
+        try:
+            m = await self.bot.pg.add_single_global_macro(macro, content, self.bot.logger)
+            if not m:
+                embed = internalerrorembed(f'Could\'t find macro: {macro}')
+                await respond(ctx, False)
+                await ctx.send(embed=embed, delete_after=5)
+                return
+            else:
+                await respond(ctx, True)
+                return
+        except Exception as e:
+            embed = internalerrorembed(f'Could\'t add macro: {e}')
+            await ctx.send(embed=embed, delete_after=5)
+            await respond(ctx, False)
+            return
+
+    @_gmacro.command(name='remove', aliases=['del', 'rm', 'delete'], pass_context=True)
+    @permissions.is_master()
+    async def _gmacrorm(self, ctx, macro: str):
+        """Remove a global macro.
+
+        Parameters
+        ----------
+        macro: str
+            name of the macro
+
+        Returns
+        -------
+        """
+        try:
+            m = await self.bot.pg.delete_single_global_macro(macro, self.bot.logger)
+            if not m:
+                embed = internalerrorembed(f'Could\'t find macro: {macro}')
+                await respond(ctx, False)
+                await ctx.send(embed=embed, delete_after=5)
+                return
+            else:
+                await respond(ctx, True)
+                return
+        except Exception as e:
+            embed = internalerrorembed(f'Could\'t add macro: {e}')
+            await ctx.send(embed=embed, delete_after=5)
+            await respond(ctx, False)
+            return
+    @_gmacro.command(name='set', aliases=['update', 'change'], pass_context=True)
+    @permissions.is_master()
+    async def _gmacroset(self, ctx, macro: str, *, content: str):
+        """Update a macro.
+
+        Parameters
+        ----------
+        macro: str
+            name of macro
+        content: str
+            content to be updated
+
+        Returns
+        -------
+        """
+        try:
+            m = await self.bot.pg.set_single_global_macro(macro, content, self.bot.logger)
+            if not m:
+                embed = internalerrorembed(f'Could\'t find macro: {macro}')
+                await respond(ctx, False)
+                await ctx.send(embed=embed, delete_after=5)
+                return
+            else:
+                await respond(ctx, True)
+                return
+        except Exception as e:
+            embed = internalerrorembed(f'Could\'t set macro: {e}')
+            await ctx.send(embed=embed, delete_after=5)
+            await respond(ctx, False)
+            return
+
+    """
+    GLOBAL REPORTS
+    """
+
+    @commands.group(name='globalreport', aliases=['globalreports', 'greports'], pass_context=True)
+    @permissions.is_master()
+    async def _reports(self, ctx):
+        """Macro's for the bot owner.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
+        if ctx.invoked_subcommand is None:
+            reports_all = await self.bot.pg.get_all_reports()
+            reports_all = parse(reports_all)
+            desc = '**Global Reports**\n'
+            for reports in reports_all:
+                desc += f'`Report #{reports[2][1]}` from <@{reports[0][1]}> at {time_conv(reports[-1][1])}:\n'
+                desc += f'{reports[1][1]}\n'
+            await generic_message(ctx, [ctx.channel], desc, -1, splitwith='')
+            return
+
+
 
 if __name__ == "__main__":
     """Directly Called."""
