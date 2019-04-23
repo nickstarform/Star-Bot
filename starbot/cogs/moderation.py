@@ -12,13 +12,14 @@ import sys
 # relative modules
 from cogs.utilities import (Colours, permissions)
 from cogs.utilities.functions import (current_time,
-    extract_id, flatten,
+    extract_id, flatten, is_id,
     parse, ModAction, bannedmember,
-    get_role, get_member)
+    get_role, get_member, create_fake)
 from cogs.utilities.embed_general import generic_embed
 from cogs.utilities.message_general import generic_message
 from cogs.utilities.embed_dialog import respond, confirm
 from cogs.utilities import embed_errors as eembed
+from cogs.utilities import embed_mod as membed
 from cogs.utilities import embed_log
 from cogs.utilities.guild_manip_functions import createrole
 
@@ -67,12 +68,12 @@ class Moderation(commands.Cog):
     @commands.group(aliases=['editjoinroles', 'changejoinrole'])
     @commands.guild_only()
     @permissions.admin_or_permissions(manage_roles=True)
-    async def changejoinroles(self, ctx):
+    async def changejoinroles(self, ctx: commands.Context):
         """Manage servers joinable/self-assignable roles.
 
         Careful as this includes reaction roles if you have those setup.
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'changejoinroles'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'changejoinroles'):
             return
         if ctx.invoked_subcommand is None:
             assignable_roles = []
@@ -100,11 +101,15 @@ class Moderation(commands.Cog):
         """Add to joinable list.
 
         If the role isn't found, it will create the role.
+        You can either just call `add role1,role2,role3` and
+        if those exist will add them. Otherwise if you do
+        `add base role1,role2,role3` it will create role 1-3
+        as a copy of base with new names.
 
         Parameters
         ----------
-        member: str
-            Member to change
+        base_role: str
+            Base role to create joinable role off of
         roles: str
             id(s)/mentionables of the roles to add
 
@@ -115,7 +120,7 @@ class Moderation(commands.Cog):
             await generic_message(ctx, [ctx.channel], f'You need to specify at least 1 role to add', 5)
             await respond(ctx, False)
             return
-        elif isinstance(roles, type(None)):
+        if isinstance(roles, type(None)):
             roles = base_role
             base_role = None
 
@@ -125,7 +130,7 @@ class Moderation(commands.Cog):
         not_found = []
         if base_role:
             base_role = get_role(ctx, tb)
-        for r in roles.replace(' ', '').split(','):
+        for r in roles.split(','):
             role = get_role(ctx, r)
             if not isinstance(role, type(None)):
                 found_role.append(role)
@@ -293,7 +298,7 @@ class Moderation(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'cleanrole'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'cleanrole'):
             return
         if not await confirm(ctx, f'This will remove everyone from the role and is irreversable.', 10):
             await respond(ctx, False)
@@ -326,11 +331,11 @@ class Moderation(commands.Cog):
     @commands.guild_only()
     async def setrole(self, ctx):
         """Change the user's roles."""
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'setrole'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'setrole'):
             return 
         if ctx.invoked_subcommand is None:
             await respond(ctx, False)
-            ctx.send(embed=embed_errors.internalerrorembed(f'Invoke a subcommand, you most likely meant `add`'), delete_after=5)
+            ctx.send(embed=eembed.internalerrorembed(f'Invoke a subcommand, you most likely meant `add`'), delete_after=5)
             return
 
     @setrole.command(name='add', aliases=['give'])
@@ -425,7 +430,7 @@ class Moderation(commands.Cog):
     @commands.command()
     @permissions.has_permissions(manage_messages=True)
     @commands.guild_only()
-    async def prune(self, ctx: commands.Context, amount: str='10', user: str=None):
+    async def prune(self, ctx: commands.Context, amount: str='10', *, user: str=None):
         """Purge a set number of messages.
 
         Parameters
@@ -438,34 +443,33 @@ class Moderation(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'prune'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'prune'):
             return
         try:
-            _ = int(amount)
+            user = get_member(ctx, user)
         except:
-            tmp = user
-            user = amount
-            amount = tmp
-        try:
-            if int(amount) > 1E6:
-                user = get_member(ctx, a)
-                amount = 10
-        except:
-            pass
-
-        if not isinstance(user, type(None)):
+            t = amount
+            amount, user = user, get_member(ctx, amount)
+        if not amount:
             try:
-                user = get_member(ctx, user)
+                amount = int(t)
             except:
-                user = None
+                amount = 10
+        else:
+            try:
+                amount = int(amount)
+            except Exception as e:
+                await ctx.send(embed=eembed.internalerrorembed(f'Something went wrong with pruning: {e}'), delete_after=15)
+                await respond(ctx, False)
+                return
 
         try:
             await ctx.message.delete()
-            async for message in ctx.channel.history(limit=int(amount)):
-                if user:
-                    if message.author.id != user.id:
-                        continue
-                await message.delete()
+            if user:
+                hist = [m for m in await ctx.channel.history(limit=amount).flatten() if m and m.author.id == user.id]
+            else:
+                hist = [m for m in await ctx.channel.history(limit=amount).flatten() if m]
+            await self._gendelete(ctx, hist)
             await generic_message(ctx, [ctx.channel], f'Deleted messages', 5)
             return
         except discord.Forbidden as e:
@@ -479,45 +483,55 @@ class Moderation(commands.Cog):
     @commands.command()
     @permissions.has_permissions(manage_guild=True)
     @commands.guild_only()
-    async def clearchat(self, ctx):
+    async def clearchat(self, ctx, opt: str=None):
         """Purge a channel.
 
         Use all to signify deleting every message in the channel greedy
 
         Parameters
         ----------
-        amount: int
-            Integer for delete, defaults to 10
-        user: str
-            Id of the user to purge
+        opt: str
+            if set to all, will clear the entirety of the chat
+
 
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'clearchat'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'clearchat'):
             return
         if not await confirm(ctx, f'Do you want clear out this channel? (Irreversable)', 10): # noqa
             return
-
-        hist = [message async for message in ctx.channel.history(limit=100)
-                if message]
+        opt = opt.lower()
+        hist = await ctx.channel.history(limit=100).flatten()
+        for i in range(len(hist)):
+            if not hist[-1 - i]:
+                del hist[-1 - i]
         old = hist[0]
         while len(hist) > 0:
-            failed = False
-            try:
-                await ctx.channel.delete_messages(hist)
-            except Exception as e:
-                failed = True
-            if failed:
-                for message in hist:
-                    try:
-                        await message.delete()
-                    except Exception as e:
-                        pass
-            hist = [message async for message in ctx.channel.history(limit=100)
-                    if message]
-            if ctx.message.clear_content.lower().replace(' ', '') != 'all':
+            await self._gendelete(ctx, hist)
+            hist = await ctx.channel.history(limit=100).flatten()
+            for i in range(len(hist)):
+                if not hist[-1 - i]:
+                    del hist[-1 - i]
+            if opt != 'all':
                 hist = []
+
+    async def _gendelete(self, ctx, messages):
+        try:
+            try:
+                await ctx.channel.delete_messages(messages)
+            except discord.HTTPException:
+                try:
+                    for m in messages:
+                        await m.delete()
+                except Exception as e:
+                    await respond(ctx, False)
+                    await ctx.send(embed=eembed.internalerrorembed(f'Error pruning. {e}'), delete_after=10)
+                    return
+        except Exception as e:
+            await respond(ctx, False)
+            await ctx.send(embed=eembed.internalerrorembed(f'Error pruning. {e}'), delete_after=10)
+            return
 
     """
     KICKING
@@ -538,7 +552,7 @@ class Moderation(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'kick'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'kick'):
             return
         if not ctx.invoked_subcommand:
             content = ' '.join(ctx.message.content.split(' ')[1:])
@@ -661,7 +675,7 @@ class Moderation(commands.Cog):
                      reason: str=None):
         """Log a manual ban.
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'logban'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'logban'):
             return
         member = await bannedmember(ctx, member)
         reason = reason if reason else member.reason
@@ -734,7 +748,7 @@ class Moderation(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'ban'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'ban'):
             return
         if not ctx.invoked_subcommand:
             content = ' '.join(ctx.message.content.split(' ')[1:])
@@ -863,7 +877,7 @@ class Moderation(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'unban'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'unban'):
             return
         if not ctx.invoked_subcommand:
             content = ' '.join(ctx.message.content.split(' ')[1:])
@@ -972,9 +986,9 @@ class Moderation(commands.Cog):
     """
     MESSAGING
     """
-    @commands.command(aliases=['mdm'])
-    @commands.guild_only()
-    @permissions.admin_or_permissions(manage_guild=True)
+    # @commands.command(aliases=['mdm'])
+    # @commands.guild_only()
+    # @permissions.admin_or_permissions(manage_guild=True)
     async def massdm(self, ctx: commands.Context, role: discord.Role, *, message: str):
         """Sends a DM to all Members with the given Role.
         Allows for the following customizations:
@@ -983,7 +997,8 @@ class Moderation(commands.Cog):
           `{server}` is the server through which they are being messaged
           `{sender}` is you, the person sending the message
         """
-
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'massdm'):
+            return
         try:
             await ctx.message.delete()
         except discord.Forbidden:
@@ -1004,6 +1019,302 @@ class Moderation(commands.Cog):
     """
     ADD WARNINGS AND MODERATIONS
     """
+
+    async def resolve_member(self, ctx, member):  
+        """Generic member resolver.
+
+        This is specifically forthe warning and moderation
+        commands.
+
+        Parameters
+        ----------
+        member: str
+            member to resolve
+
+        Returns
+        -------
+        """          
+        user = None
+        if isinstance(member, type(None)):
+            await ctx.send(embed=eembed.internalerrorembed(f'Need to specify a member by id or name.'), delete_after=15)
+            await respond(ctx, False)
+            return
+        try:
+            user = get_member(ctx, member)
+            failed = False
+        except:
+            failed = True
+        if failed or isinstance(member, type(None)) or isinstance(user, type(None)):
+            await ctx.send(embed=eembed.internalerrorembed(f'Member not found or valid: {member}. Will try to resolve assuming you input an id.'), delete_after=15)
+            member = extract_id(member, 'member')
+            if not is_id(member):
+                await ctx.send(embed=eembed.internalerrorembed(f'Not a valid id.'), delete_after=15)
+                return
+            else:
+                member = create_fake(member, 'member')
+        else:
+            member = user
+        return member
+
+    @commands.group(name='warn', aliases=['warnings', 'infractions'])
+    @commands.guild_only()
+    @permissions.has_permissions(manage_roles=True)
+    async def _warn(self, ctx):
+        """Warn a user for their actions.
+
+        This can either take subcommands or you can specify
+        the below params to return a members infractions.
+
+        Parameters
+        ----------
+        member: str
+            member to warn
+        recent: bool
+            Whether to include > 6 months warnings
+
+        Returns
+        -------
+        """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'warn'):
+            return
+        if ctx.invoked_subcommand is None:
+            msg = ctx.message.content
+            msg = ' '.join(msg.split(' ')[1:])
+            try:
+                last = msg.replace(' ', '')[-5:].lower()
+                print('<',last,'>')
+                if last not in ['true', 'false']:
+                    member = msg
+                    recent = True
+                else:
+                    recent = False if last == 'false' else True
+                    member = msg[:-5]
+            except:
+                recent = True
+                member = msg
+            print(recent)
+            om = member
+            member = get_member(ctx, om)
+            if isinstance(member, type(None)):
+                try:
+                    member = create_fake(extract_id(om, 'member'))
+                except:
+                    await respond(ctx, False)
+                    return
+            warnings = None
+            moderations = None
+            try:
+                recent_inf = [await self.bot.pg.get_warning_count(ctx.guild.id, member.id, False),
+                         await self.bot.pg.get_moderation_count(ctx.guild.id, member.id, False)]
+                total_inf = [await self.bot.pg.get_warning_count(ctx.guild.id, member.id, True),
+                         await self.bot.pg.get_moderation_count(ctx.guild.id, member.id, True)]
+                warnings = await self.bot.pg.get_all_warnings(
+                    ctx.guild.id,
+                    member.id,
+                    self.bot.logger,
+                    recent=recent)
+                embeds = membed.warninglistembed(
+                    member, warnings, recent_inf[0] != total_inf[0])
+                for embed in embeds:
+                    await ctx.send(embed=embed)
+                moderations = await self.bot.pg.get_all_moderation(
+                    ctx.guild.id,
+                    member.id,
+                    self.bot.logger,
+                    recent = recent)
+                embeds = membed.modlistembed(
+                    member, moderations, recent_inf[1] != total_inf[1])
+                for embed in embeds:
+                    await ctx.send(embed=embed)
+            except Exception as e:
+                await ctx.send(embed=eembed.internalerrorembed(f'Error trying to get user warnings: {e}'), delete_after=15)
+                self.bot.logger.warning(f'Error trying to get user warnings: {e}')
+                await respond(ctx, False)
+                return
+
+    @_warn.command(name='major', aliases=['critical', 'high'])
+    async def _warnmajor(self, ctx, member: str, *, reason: str):
+        """Major warning.
+
+        Parameters
+        ----------
+        member: str
+            member to warn
+        reason: str
+            reason to warn member < 500 chars
+
+        Returns
+        -------
+        """
+        await self._warnadd(ctx, member, True, reason)
+        om = member
+        member = get_member(ctx, om)
+        if isinstance(member, type(None)):
+            try:
+                member = create_fake(extract_id(om, 'member'), 'member')
+            except:
+                await respond(ctx, False)
+                return
+        return
+
+    @_warn.command(name='minor', aliases=['low', 'lesser'])
+    async def _warnminor(self, ctx, member: str, *, reason: str=None):
+        """Minor warning.
+
+        Parameters
+        ----------
+        member: str
+            member to warn
+        reason: str
+            reason to warn member < 500 chars
+
+        Returns
+        -------
+        """
+        print('Add minor', member, reason)
+        om = member
+        member = get_member(ctx, om)
+        if isinstance(member, type(None)):
+            try:
+                member = create_fake(extract_id(om, 'member'), 'member')
+            except:
+                await respond(ctx, False)
+                return
+        await self._warnadd(ctx, member, False, reason)
+        return
+
+    async def _warnadd(self, ctx, member, dtype: bool, reason: str):
+        if len(reason) > 500:
+            await ctx.send(embed=eembed.internalerrorembed(f'Reason should be less than 500 chars'), delete_after=15)
+            self.bot.logger.warning(f'Warning too long: {e}')
+            await respond(ctx, False)
+            return
+        if not await confirm(ctx, f'You are warning **<@{member.id}>**', 10):
+            return
+        try:
+            count = await self.bot.pg.add_single_warning(
+                ctx.guild.id,
+                ctx.author.id,
+                member.id,
+                reason,
+                dtype, self.bot.logger)
+            embed = membed.warningaddembed(member, ctx.author, reason, dtype, count)
+            await ctx.send(embed=embed)
+            return
+        except Exception as e:
+            await ctx.send(embed=eembed.internalerrorembed(f'Error adding {dtype} warn to user {member}: {e}'), delete_after=15)
+            self.bot.logger.warning(f'Error adding {dtype} warn to user {member}: {e}')
+            await respond(ctx, False)
+            return
+
+    @_warn.command(name='edit', aliases=['e'])
+    async def _warnedit(self, ctx, member: str, index: int=None, dtype: str=None, forgiven: bool=None, *, reason: str=None):
+        """Edit warning.
+
+        Parameters
+        ----------
+        member: str
+            member to warn
+        index: int
+            index of the warning to edit
+        dtype: str
+            set the type of the warning
+        forgiven: bool
+            forgiven true false status
+        reason: str
+            reason to warn member < 500 chars
+
+        Returns
+        -------
+        """
+        print(reason,'><',index,'><',dtype,'><',member)
+        if isinstance(reason, type(None)) or isinstance(index, type(None)) or isinstance(dtype, type(None)) or isinstance(forgiven, type(None)):
+            await ctx.send(
+                "You need to supply the correct parameters <member, index (from 1), warning type, reason>, try again.",
+                delete_after=5)
+            return
+        if len(reason) > 500:
+            await ctx.send(
+                "Reason must be shorter than 500 char",
+                delete_after=5
+            )
+        dtype = True if dtype.lower() == 'major' else False
+        index -= 1
+        om = member
+        member = get_member(ctx, om)
+        if isinstance(member, type(None)):
+            try:
+                member = create_fake(extract_id(om, 'member'), 'member')
+            except:
+                await respond(ctx, False)
+                return
+        try:
+            count = await self.bot.pg.set_single_warning(
+                ctx.guild.id,
+                member.id,
+                ctx.author.id,
+                index,
+                dtype,
+                reason,
+                forgiven,
+                self.bot.logger
+            )
+            local_embed = membed.warningeditembed(member, ctx.author, dtype, reason, count)
+            await ctx.send(embed=local_embed)
+        except Exception as e:
+            await ctx.send(embed=eembed.internalerrorembed(f'Error trying edit warnings for user: {e}'))
+            self.bot.logger.warning(f'Error trying edit warnings for user: {e}')
+
+    @_warn.command(name='rm', aliases=['rem', 'remove', 'delete'])
+    async def _warnrm(self, ctx, member: str, index: int):
+        """Remove a warning.
+
+        Doesn't remove the warning in actuality but sets 
+        it to forgiven
+
+        Parameters
+        ----------
+        member: str
+            member to warn
+        index: int
+            The index of the warning to remove
+
+        Returns
+        -------
+        """
+        om = member
+        member = get_member(ctx, om)
+        index -= 1
+        if isinstance(member, type(None)):
+            try:
+                member = create_fake(extract_id(om, 'member'), 'member')
+            except:
+                await respond(ctx, False)
+                return
+        try:
+            status = await self.bot.pg.delete_single_warning(
+                ctx.guild.id,
+                ctx.author.id,
+                member.id,
+                index,
+                self.bot.logger
+            )
+            count = await self.bot.pg.get_warning_count(ctx.guild.id, member.id, False)
+            local_embed = membed.warningrmembed(member, ctx.author, count)
+            await ctx.send(embed=local_embed)
+            return
+        except Exception as e:
+            await ctx.send(embed=eembed.internalerrorembed(f'Error removing warning for user: {e}'))
+            self.bot.logger.warning(f'Error removing warning for user: {e}')
+            return
+
+    @_warn.error
+    async def _warnerror(self, ctx, error):
+        self.bot.logger.warning(f'Error retrieving/modifying warnings for user {error}')
+        await ctx.send(f'Error retrieving/modifying warnings for user {error}', delete_after=20)
+        await respond(ctx, False)
+        return
+
 
 # end of code
 
