@@ -253,7 +253,7 @@ BLACKLIST
 """
 
 
-async def is_cmd_blacklisted(bot, guild_id: str, cmd: str):
+async def is_cmd_blacklisted(bot, ctx: commands.Context, cmd: str):
     """Check if in guilds.
 
     Parameters
@@ -266,10 +266,14 @@ async def is_cmd_blacklisted(bot, guild_id: str, cmd: str):
     """
     if await bot.pg.is_disallowed_global(cmd):
         return True
-    elif await bot.pg.is_disallowed(guild_id, cmd):
-        return True
+
+    if not isinstance(ctx.guild, type(None)):
+        if await bot.pg.is_disallowed(ctx.guild.id, cmd):
+            return True
+        else:
+            return False
     else:
-        return False
+        return True
 
 
 async def is_blacklisted(bot, message):
@@ -287,15 +291,18 @@ async def is_blacklisted(bot, message):
     bool
         if in true false
     """
-    if await bot.pg.is_blacklist_guild_global(message.guild.id):
-        return True
     if await bot.pg.is_blacklist_user_global(message.author.id):
         return True
-    if await bot.pg.is_blacklist_channel(message.guild.id, message.channel.id):
-        return True
-    if await bot.pg.is_blacklist_user(message.guild.id, message.author.id):
-        return True
-    return False
+    if not isinstance(message.guild, type(None)):
+        if await bot.pg.is_blacklist_guild_global(message.guild.id):
+            return True
+        if await bot.pg.is_blacklist_channel(message.guild.id, message.channel.id):
+            return True
+        if await bot.pg.is_blacklist_user(message.guild.id, message.author.id):
+            return True
+        return False
+    else:
+        return False
 
 if __name__ == "__main__":
     """Directly Called."""
