@@ -51,7 +51,7 @@ class Fun(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'eightball'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'eightball'):
             return
         answers = [
             "It is certain",
@@ -97,7 +97,7 @@ class Fun(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'rate'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'rate'):
             return
         if isinstance(user, type(None)):
             text = ctx.author
@@ -133,7 +133,7 @@ class Fun(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'number'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'number'):
             return
         val = minimum + (maximum - minimum) * random.random()
         await generic_message(ctx, [ctx.channel], f'Random number: {val}', -1)
@@ -156,7 +156,7 @@ class Fun(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'choose'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'choose'):
             return
         delimiters = (',', ';', '|', 'or', ' ')
         choices = [text]
@@ -194,7 +194,7 @@ class Fun(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'roll'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'roll'):
             return
         text = text.lower()
         explicit = False if 'false' in text else True
@@ -242,7 +242,7 @@ class Fun(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'kaga'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'kaga'):
             return
         try:
             url = 'https://api.imgur.com/3/album/WtrQ0/images'
@@ -275,7 +275,7 @@ class Fun(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'jisho'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'jisho'):
             return
         self.connector = aiohttp.TCPConnector(force_close=True)
         self.session = aiohttp.ClientSession(connector=self.connector)
@@ -362,7 +362,7 @@ class Fun(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'anime'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'anime'):
             return
         if not term:
             return
