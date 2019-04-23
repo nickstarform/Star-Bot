@@ -2,6 +2,7 @@
 
 # import internal modules
 import sys
+import os
 
 # import external modules
 import traceback
@@ -22,10 +23,14 @@ initial_extensions = ['cogs.fun',
                       'cogs.owner',
                       'cogs.general',
                       'cogs.moderation',
-                      'cogs.administration',]
+                      'cogs.administration',
+                      'cogs.blacklist',
+                      'cogs.logging',
+                      'cogs.info',
+                      'cogs.listeners']
 
 def run():
-    """Load cogs and build bot.
+    """Load cogs and build self.bot.
 
     Parameters
     ----------
@@ -36,104 +41,34 @@ def run():
     -------
     """
     loop = get_event_loop()
-    bot = loop.run_until_complete(Starbot.get_instance())
-    bot.add_cog(Loader(bot))
+    try:
+        bot = loop.run_until_complete(Starbot.get_instance())
+    except Exception as e:
+        print('Error on startup:', str(e))
+        return loop.run_until_complete(shutdown(bot, reason=e))
+    # bot.add_cog(Extension(bot))
     for cog in initial_extensions:
-        bot.load_extension(f'{cog}')
-    bot.run(Config['token'].value)
+        bot.load_extension(cog)
+        bot._loaded_extensions.append(cog)
 
-class Loader(commands.Cog):
+    try:
+        loop.run_until_complete(bot.run(Config['token'].value))
+    except KeyboardInterrupt as e:
+        return loop.run_until_complete(shutdown(bot, reason=e))
 
-    def __init__(self, bot):
-        self.bot = bot
+async def shutdown(bot, *, reason=None):
+    """Somewhat clean shutdown with basic debug info."""
+    await bot.logout()
 
-    """
-    CODE CONFIGURATION
-    """
-    @commands.command(name='listcogs', hidden=True)
-    @permissions.is_master()
-    async def _list(self, ctx):
-        """List.
+    print(f'\n\nShutting down due to {type(reason).__name__}...\n{"="*30}\n')
+    print(f'{datetime.datetime.utcnow()} || UTC\n\nPython: {sys.version}\nPlatform: {sys.platform}/{os.name}\n'
+          f'Discord: {discord.__version__}\n\n{"="*30}\n')
 
-        Parameters
-        ----------
-        ctx: :func: commands.Context
-            the context command object
+    await asyncio.sleep(1)
 
-        Returns
-        -------
-        """
-        await ctx.send(f'```py\n{initial_extensions}\n```')
-        pass
-
-    @commands.command(name='load', hidden=True)
-    @permissions.is_master()
-    async def _load(self, ctx, *, module):
-        """Loads a module.
-
-        Parameters
-        ----------
-        ctx: :func: commands.Context
-            the context command object
-
-        Returns
-        -------
-        """
-        index = initial_extensions.index(module)
-        if not isinstance(index, int):
-            return
-        try:
-            self.bot.load_extension(f'{initial_extensions[index]}')
-        except Exception as e:
-            await ctx.send(f'```py\n{traceback.format_exc()}\n```')
-        else:
-            await respond(ctx, True)
-
-    @commands.command(name='unload', hidden=True)
-    @permissions.is_master()
-    async def _unload(self, ctx, *, module):
-        """Unload a module.
-
-        Parameters
-        ----------
-        ctx: :func: commands.Context
-            the context command object
-
-        Returns
-        -------
-        """
-        index = initial_extensions.index(module)
-        if not isinstance(index, int):
-            return
-        try:
-            self.bot.unload_extension(f'{initial_extensions[index]}')
-        except Exception as e:
-            await ctx.send(f'```py\n{traceback.format_exc()}\n```')
-        else:
-            await respond(ctx, True)
-
-    @commands.command(name='reload', hidden=True)
-    @permissions.is_master()
-    async def _reload(self, ctx, *, module):
-        """Reloads a module.
-
-        Parameters
-        ----------
-        ctx: :func: commands.Context
-            the context command object
-
-        Returns
-        -------
-        """
-        index = initial_extensions.index(module)
-        if not isinstance(index, int):
-            return
-        try:
-            self.bot.reload_extension(f'{initial_extensions[index]}')
-        except Exception as e:
-            await ctx.send(f'```py\n{traceback.format_exc()}\n```')
-        else:
-            await respond(ctx, True)
+    if isinstance(reason, KeyboardInterrupt):
+        sys.exit(1)  # Systemd will think it failed and restart our service cleanly.
+    sys.exit(0)
 
 if __name__ == '__main__':
     run()
