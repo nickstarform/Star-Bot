@@ -26,6 +26,7 @@ __path__ = __file__.strip('.py').strip(__filename__)
 MAX_DESC_LEN = 2000
 MAX_FIELD_LEN = 1000
 MAX_LEN = 6000
+MAX_FIELD_NUM = 24
 
 
 def generic_embed(title: str, desc: str, fields: list,
@@ -58,34 +59,36 @@ def generic_embed(title: str, desc: str, fields: list,
         footer = current_time()
     if len(fields) > 0:
         ret = []
-        for fi, f in enumerate(fields):
+        for fi, f in enumerate(fields[::-1]):
             f = list(map(str, f))
             if (f[1] == '[]') or (f[1] == ''):
                 f[1] = 'NONE SET'
-            if len(f[1]) > MAX_FIELD_LEN:
+            # print(f'length fields: {len(f[1])}')
+            if len(f[1]) > (MAX_FIELD_LEN - 1 - len(f[0])):
                 n = []
                 i = 1
-                for x in chunks(f[1], MAX_FIELD_LEN - 1):
-                    n.append([f[0] + f'({1})', x])
+                for x in chunks(f[1], MAX_FIELD_LEN - 1 - len(f[0])):
+                    # print(len(x), x)
+                    n.append([f[0] + f'({i})', x])
                     i += 1
-                del fields[fi]
-                fields += n
+                ret += n
             ret.append(f)
         fields = ret
-    print(title, desc, fields, footer)
+    # print(title, desc, fields, footer)
     if (len(title) + len(desc)) > MAX_DESC_LEN:
         desc = desc[:MAX_DESC_LEN - len(title)]
     total_embeds = (sum([len(''.join(x)) for x in fields]) +
-                    len(title) + len(footer) + len(desc)) // MAX_FIELD_LEN + 1
-    print(total_embeds)
-    print(sum([len(''.join(x)) for x in fields]) + len(title) + len(footer) + len(desc))
+                    len(title) + len(footer) + len(desc)) // MAX_LEN + 1 + len(fields) // 25
+    # print(total_embeds)
+    # print(sum([len(''.join(x)) for x in fields]) + len(title) + len(footer) + len(desc))
     url = kwargs['url'] if 'url' in kwargs.keys() else ''
+    fi = 0
     if total_embeds > 1:
         embeds = []
-        tmpi = 0
         title += f' (PageX/{total_embeds})'
         for i in range(total_embeds):
             tmplen = 0
+            tmpi = 0
             ctitle = title.replace('X', str(i + 1))
             embed = discord.Embed(title=ctitle, type='rich',
                                   color=colours.value, desc='', url=url)
@@ -100,14 +103,15 @@ def generic_embed(title: str, desc: str, fields: list,
             if len(footer) > 0:
                 embed.set_footer(text=footer)
             if len(fields) > 0:
-                tmplen += len(''.join(fields[tmpi]))
-                print(tmplen + len(ctitle) + len(footer))
-                while ((tmplen + len(ctitle) + len(footer)) < MAX_LEN) and\
-                        (tmpi < (len(fields) - 1)):
-                    tmplen += len(''.join(fields[tmpi]))
-                    field = fields[tmpi]
+                tmplen += len(''.join(fields[fi]))
+                # print('Len:',tmplen + len(ctitle) + len(footer))
+                while (((tmplen + len(ctitle) + len(footer)) < MAX_LEN) and\
+                        (fi < len(fields)) and (tmpi < 25)):
+                    tmplen += len(''.join(fields[fi]))
+                    field = fields[fi]
                     embed.add_field(name=field[0],
                                     value=field[1])
+                    fi += 1
                     tmpi += 1
             embeds.append(embed)
     else:
@@ -128,8 +132,7 @@ def generic_embed(title: str, desc: str, fields: list,
                 embed.add_field(name=field[0],
                                 value=field[1])
         embeds.append(embed)
-    for x in embeds:
-        print(x.to_dict())
+    print([x.to_dict() for x in embeds])
     return embeds
 
 

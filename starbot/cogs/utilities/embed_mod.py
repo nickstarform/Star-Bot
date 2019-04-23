@@ -127,14 +127,12 @@ def timeout(user_name: str, user_id: str, mod_name: str, mod_id: str,
     ccolour = Colours.COMMANDS
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
-
 """
 WARNINGS
 """
 
 
-def warningeditembed(warn_name: str, warn_id: str, mod_name: str, mod_id: str,
-                     major: bool, reason: str, warning_count: int):
+def warningeditembed(warn_user, mod_user, major: bool, reason: str, warning_count: int):
     """Warning editted.
 
     Parameters
@@ -161,17 +159,17 @@ def warningeditembed(warn_name: str, warn_id: str, mod_name: str, mod_id: str,
     """
     level = 'MAJOR' if major else 'MINOR'
     ctitle = f'User Warning Edited'
-    cdesc = f'{warn_name}: <@{warn_id}>'\
+    cdesc = f'{warn_user.name}: <@{warn_user.id}>'\
             f' has had a warning changed to **{level}** '\
-            f'by {mod_name}: <@{mod_id}> for:\n'\
+            f'by {mod_user.name}: <@{mod_user.id}> for:\n'\
             f'\'**{reason}**\'.\n\n This is their '\
             f'{warning_count} warning.'
-    ccolour = Colours.COMMANDS
+    ccolour = Colours.CHANGE_G
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 
-def warningaddembed(warn_name: str, warn_id: str, mod_name: str, mod_id: str,
-                    reason: str, major: bool, warning_count: int):
+def warningaddembed(warn_user, mod_user, reason: str,
+                    major: bool, warning_count: int):
     """Warning added.
 
     Parameters
@@ -198,17 +196,16 @@ def warningaddembed(warn_name: str, warn_id: str, mod_name: str, mod_id: str,
     """
     level = 'MAJOR' if major else 'MINOR'
     ctitle = f'User Warned'
-    cdesc = f'{warn_name}: <@{warn_id}>'\
+    cdesc = f'{warn_user.name}#{warn_user.discriminator} <@{warn_user.id}>'\
             f' has been given a **{level}** warning '\
-            f'by {mod_name}: <@{mod_id}> for:\n'\
+            f'by {mod_user.name}#{mod_user.discriminator} <@{mod_user.id}> for:\n'\
             f'\'**{reason}**\'.\n\n This is their '\
             f'{warning_count} warning.'
-    ccolour = Colours.COMMANDS
+    ccolour = Colours.CHANGE_G
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 
-def warningrmembed(warn_name: str, warn_id: str, mod_name: str, mod_id: str,
-                   warning_count: int):
+def warningrmembed(warn_user, mod_user, warning_count: int):
     """Warning removed.
 
     Parameters
@@ -230,16 +227,15 @@ def warningrmembed(warn_name: str, warn_id: str, mod_name: str, mod_id: str,
         embedded object to send message
     """
     ctitle = f'User Warning Forgiven'
-    cdesc = f'{warn_name}: <@{warn_id}>'\
+    cdesc = f'{warn_user.name}#{warn_user.discriminator}: <@{warn_user.id}>'\
             f' has been forgiven for a warning '\
-            f'by {mod_name}: <@{mod_id}>.\n\n This is their '\
+            f'by {mod_user.name}#{mod_user.discriminator}: <@{mod_user.id}.\n\n This is their '\
             f'{warning_count} warning.'
-    ccolour = Colours.COMMANDS
+    ccolour = Colours.CHANGE_G
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 
-def warninglistembed(warn_name: str, warn_id: str, warned_user: discord.Member,
-                     infractions: list, unshown: bool):
+def warninglistembed(warned_user, infractions: list, unshown: bool):
     """Warning list display.
 
     Parameters
@@ -261,35 +257,34 @@ def warninglistembed(warn_name: str, warn_id: str, warned_user: discord.Member,
         embedded object to send message
     """
     ctitle = f'Warning List'
-    cdesc = f'{warn_name}: <@{warn_id}> warnings:'
-    cdesc = f'' if infractions else f'User has no warnings.'
+    cdesc = f'**{warned_user.name}#{warned_user.discriminator}**: <@{warned_user.id}> warnings:\n'
+    cdesc += f'\n' if infractions else f'\nUser has no warnings.'
     ccolour = Colours.COMMANDS
     string_list = []
     for index, warning in enumerate(infractions):
-        index = warning['id']
+        index = warning['index_id']
         level = 'MAJOR' if warning['major'] else 'MINOR'
         date = warning['logtime'].strftime('%b %d %Y %H:%M')
         tmp_warning_string = f'({level})'\
                              f' {warning["reason"]} '\
                              f'[{date}]\n'
-        string_list.append([index, tmp_warning_string])
+        string_list.append(f'**{index + 1})** {tmp_warning_string}')
 
-    if not isinstance(warned_user, type(None)):
-        cdesc += f'\n**Join Date:** '\
-                      f'{warned_user.joined_at.strftime("%b %d %Y %H:%M")}'
+    cdesc += f'\n'.join(string_list)
+    cdesc += f'\n**Join Date:** '\
+             f'{warned_user.joined_at.strftime("%b %d %Y %H:%M")}'
 
     if unshown:
         cdesc += f'\n\nThere are more warnings > 6 months ago.'
 
-    return generic_embed(ctitle, cdesc, string_list,
-                         current_time(), ccolour)[0]
+    return generic_embed(ctitle, cdesc, [],
+                         current_time(), ccolour)
 
 """
 MODERATION
 """
 
-def modlistembed(modded_name: str, modded_id: str, modded_user: discord.Member,
-                     infractions: list, unshown: bool):
+def modlistembed(modded_user, infractions: list, unshown: bool):
     """Warning list display.
 
     Parameters
@@ -311,12 +306,12 @@ def modlistembed(modded_name: str, modded_id: str, modded_user: discord.Member,
         embedded object to send message
     """
     ctitle = f'Modaction List'
-    cdesc = f'{modded_name}: <@{modded_id}> modactions:'
-    cdesc = f'' if infractions else f'User has no modactions.'
+    cdesc = f'**{modded_user.name}#{modded_user.discriminator}** <@{modded_user.id}> modactions:'
+    cdesc += f'' if infractions else f'\n\nUser has no modactions.'
     ccolour = Colours.COMMANDS
     string_list = []
     for index, moderation in enumerate(infractions):
-        index = moderation['id']
+        index = moderation['index_id']
         level = ModAction(moderation['action']).name
         date = moderation['logtime'].strftime('%b %d %Y %H:%M')
         tmp_string = f'({level})'\
@@ -333,7 +328,7 @@ def modlistembed(modded_name: str, modded_id: str, modded_user: discord.Member,
         cdesc += f'\n\nThere are more modactions > 6 months ago.'
 
     return generic_embed(ctitle, cdesc, string_list,
-                         current_time(), ccolour)[0]
+                         current_time(), ccolour)
 
 
 def modeditembed(modded_name: str, modded_id: str, mod_name: str, mod_id: str,
@@ -369,7 +364,7 @@ def modeditembed(modded_name: str, modded_id: str, mod_name: str, mod_id: str,
             f'**{action_type.name}** action for:\n'\
             f'\'**{reason}**\'\n\n'\
             f'This is infraction number {infraction_count}'
-    ccolour = Colours.COMMANDS
+    ccolour = Colours.CHANGE_G
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 

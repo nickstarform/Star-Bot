@@ -61,7 +61,7 @@ def split_message(target: str, maxl: int, splitwith: str=''):
         tmpv = target
         while (len(tmpv) > maxl) or (tmpi_n < (len(target) - 1)):
             case = ''
-            print('TEST',tmpv, case, splitwith)
+            # print('TEST',tmpv, case, splitwith)
             if (len(tmpv)+ len(case) + len(splitwith)) > maxl:
                 if '\n' in tmpv:
                     case = '\n'

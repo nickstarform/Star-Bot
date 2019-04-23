@@ -10,7 +10,8 @@ from discord.ext import commands
 # relative modules
 from .colours import Colours
 from .embed_general import generic_embed
-from .functions import current_time
+from . import embed_errors as eembed
+from .functions import current_time, type_force
 
 # global attributes
 __all__ = ('iterator',
@@ -21,7 +22,7 @@ __path__ = __file__.strip('.py').strip(__filename__)
 
 
 async def iterator(ctx: commands.Context, step: dict,
-                   timeout: int, with_confirm: bool=False):
+                   timeout: int, force_type=False, with_confirm: bool=False):
     """Generic iterator embedder.
 
     Will ask a series of questions and save the results
@@ -41,56 +42,67 @@ async def iterator(ctx: commands.Context, step: dict,
         the same dictionary with value overriden
     """
     message = generic_embed(title=f'Please answer these questions.',
-        desc=f'Type `cancel` or `exit` to cancel. Type `-1` to keep original/default value (in square brackets)\n**({timeout}s timer)**:',
+        desc=f'Type `cancel` to cancel or `exit` to quit. Canceling saves no values.\nType `-1` to keep original/default value (in square brackets)\n**({timeout}s timer)**:',
         fields=[],
         colours=Colours.DIALOG_T,
         footer=current_time())[0]
     request = await ctx.send(embed=message)
-    failed = False
+    status = ''
     original = step.copy()
 
     for question in step.keys():
-        tmp_r = await ctx.send(f'{question} [{step[question]}]')
+        if status in ['exit', 'cancel']:
+            break
+        tmp_r = await ctx.send(f'{question} [{step[question]}]:')
         try:
             tmp_m = await ctx.bot.wait_for("message",
                                            timeout=timeout,
                                            check=lambda message:
                                            message.author == ctx.message.author)  # noqa
-            if ('-1' != step[question][:2]):
-                step[question] = tmp_m.content
+            checking = tmp_m.content.lower().replace(' ', '')
+            if (checking in ['-1', 'default', 'same']):
+                status = 'pass'
+                pass
+            elif ('cancel' == checking):
+                status = 'cancel'
+            elif (checking in ['exit', 'quit']):
+                status = 'exit'
             else:
-                continue
-            if ('cancel' == step[question][:6].lower()) or\
-               ('exit' == step[question][:4].lower()):
-                failed = True
-                break
+                print(force_type, tmp_m.content, step[question], type(step[question]))
+                if force_type:
+                    step[question] = type_force(tmp_m.content, type(step[question]))
+                else:
+                    step[question] = tmp_m.content
+                status = 'pass'
+                pass
         except asyncio.TimeoutError:
-            failed = True
-            break
+            status = 'timeout'
+            pass
         except Exception as e:
             print(f'Error in parsing message: {e}')
-            await ctx.send(embed=eembed.internalerrorembed(f'Error in parsing message: {e}'), delete_after=5)
-            break
+            await ctx.send(embed=eembed.internalerrorembed(f'Error in parsing message, leaving default: {e}'), delete_after=15)
+            pass
         try:
+            if status != 'timeout':
+                await tmp_m.delete()
             await tmp_r.delete()
-            await tmp_m.delete()
         except Exception as e:
             print(f'Error in deleting message: {e}')
-            await ctx.send(embed=eembed.internalerrorembed(f'Error in deleting message: {e}'), delete_after=5)
-        if failed:
-            break
-
+            await ctx.send(embed=eembed.internalerrorembed(f'Error in deleting message: {e}'), delete_after=15)
     try:
         await request.delete()
-        if not failed:
+        if status not in ['cancel', 'timeout']:
             await respond(ctx, True)
         else:
             await respond(ctx, False)
-            return False
     except Exception as e:
         print(f'Error in deleting/reacting to message: {e}')
         await ctx.send(embed=eembed.internalerrorembed(f'Error in deleting/reacting to message: {e}'), delete_after=5)
-    return step
+        return False, False
+    if status not in ['cancel', 'timeout']:
+        return original, step
+    else:
+        return False, False
 
 
 async def confirm(ctx: commands.Context, message: str, timeout: int):

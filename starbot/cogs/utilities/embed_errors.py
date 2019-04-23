@@ -82,11 +82,11 @@ def internalerrorembed(message: str):
     """
     ccolour = Colours.ERROR
     ctitle = f'Error with command!'
-    cdesc = f'{message}'
+    cdesc = f'{message}\n\nIf you believe this is in error, contact the bot-owner <@{Config.owner_id.value}>  or <@{Config.devel_id.value}>. You can also join the support server [Click!]({Config.support_server.value}).'
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 
-def panicerrorembed():
+def panicerrorembed(argument: str=''):
     """Something Failed Majorly.
 
     Parameters
@@ -97,7 +97,7 @@ def panicerrorembed():
     """
     ccolour = Colours.CATASTROPHIC
     ctitle = f'INTERNAL ERROR!'
-    cdesc = f'Contact the bot-owner <@{Config.owner_id.value}> ' +\
+    cdesc = f'{argument}\nContact the bot-owner <@{Config.owner_id.value}> ' +\
         f'or the bot-developer <@{Config.devel_id.value}>.\nYou ' +\
         f'can also join the bot support server ' +\
         f'[Click!]({Config.support_server.value}).'
