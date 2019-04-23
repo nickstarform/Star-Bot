@@ -11,6 +11,10 @@ from .owner import Owner
 from .general import General
 from .moderation import Moderation
 from .administration import Administration
+from .blacklist import Blacklist
+from .logging import Logger
+from .info import Info
+from . import listeners
 
 # global attributes
 __all__ = ('utilities',
@@ -18,7 +22,12 @@ __all__ = ('utilities',
            'Fun',
            'General',
            'Moderation',
-           'Administration')
+           'Administration',
+           'Blacklist',
+           'Info',
+           'Logger',
+           'listeners'
+           )
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 

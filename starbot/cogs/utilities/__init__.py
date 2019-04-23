@@ -20,7 +20,6 @@ from . import message_general
 from . import permissions
 from . import guild_manip_functions
 
-
 # global attributes
 __all__ = ('Colours',
            'Controller',
@@ -34,7 +33,7 @@ __all__ = ('Colours',
            #'help_format', 
            'message_general', 
            'permissions',
-           'guild_manip_functions')
+           'guild_manip_functions',)
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
