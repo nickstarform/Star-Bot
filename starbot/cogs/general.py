@@ -1,30 +1,26 @@
 """."""
 
 # internal modules
-import urllib
-import aiohttp
-import re
-import urllib.parse
 import random
-import math
-import datetime
+import textwrap
+import subprocess
+import os
+import sys
 
 # external modules
 import discord
 from discord.ext import commands
-from discord.utils import snowflake_time
-import requests
+import asyncio
 
 # relative modules
-from cogs.utilities import (Colours, permissions)
-from cogs.utilities.functions import (current_time, extract_id,
-    get_role, get_member, parse, time_conv, flatten) # noqa
-from cogs.utilities.embed_general import generic_embed, MAX_LEN
-from cogs.utilities.message_general import generic_message
-from cogs.utilities.embed_dialog import respond
+from cogs.utilities import (permissions,)
+from cogs.utilities.functions import (current_time,
+    get_role, parse, flatten) # noqa
+from cogs.utilities.embed_dialog import respond, confirm
 from cogs.utilities import embed_errors as eembeds
-from cogs.utilities import embed_general as gembed
 from cogs.utilities.embed_mod import guildreport
+from cogs.utilities.embed_general import generic_embed
+from cogs.utilities.guild_manip_functions import createrole
 
 # global attributes
 __all__ = ('General',)
@@ -42,47 +38,6 @@ class General(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         super().__init__()
-
-    """
-    PERMISSIONS
-    """
-    @commands.command(name='permissions', aliases=['perms', 'permission'])
-    @commands.guild_only()
-    async def _perms(self, ctx: commands.Context, *, user: str=None):
-        """Get your permissions.
-
-        If you have > manage role perms then you can
-        get the permissions level of other users.
-
-        Parameters
-        ----------
-        user: str
-            Optional parameter of a user
-
-        Returns
-        -------
-        """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'permissions'):
-            return
-        if not user:
-            target = ctx.author
-        else:
-            if not ctx.channel.permissions_for(ctx.author).manage_roles:
-                embed = eembeds.userpermissionerrorembed('permissions [user]. Use the normal permission command', 'manage_roles')
-                await ctx.send(embed=embed, delete_after=5)
-                await respond(ctx, False)
-                return
-            else:
-                target = get_member(ctx, user)
-        perms = ctx.channel.permissions_for(target)
-        perms = list(map(lambda x: str(x).upper() + '`', [': `'.join(map(str, x)) for x in perms]))
-        title = f'Permissions for {target.name}: {target.id}\n'
-        desc = 'User is bot Owner/Dev\n' if (str(target.id) == self.bot.config.owner_id.value) or (str(target.id) == self.bot.config.devel_id.value) else ''
-        desc += 'User is guild owner\n' if (str(target.id) == str(ctx.guild.owner.id)) else ''
-        desc += '\n'
-        fields = "\n".join(perms)
-        await generic_message(ctx, [ctx.channel], f'{title}{desc}{fields}\n\n{current_time()}', -1)
-        return
 
     """
     ADDING REPORT FUNCTION
@@ -109,7 +64,7 @@ class General(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'report'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'report'):
             return
         rchan = await self.bot.pg.get_report_channel(ctx.guild.id, self.bot.logger)
         guild_owner = ctx.guild.owner
@@ -126,7 +81,7 @@ class General(commands.Cog):
             await self.bot.pg.add_report(ctx.author.id, f'FromUser: <@{ctx.author.id}>, Messages:\n{t}', self.bot.logger)  # noqa
         except Exception as e:
             self.bot.logger.warning(f'Error adding report: {e}')
-            print(e)
+            # print(e)
             pass
         for embed in embeds:
             fail = False
@@ -184,7 +139,7 @@ class General(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'suggest'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'suggest'):
             return
         # check if DM
         pass
@@ -215,27 +170,10 @@ class General(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'remindme'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'remindme'):
             return
         pass
 
-
-    @commands.command(aliases=['id', 'snowflake'])
-    @commands.guild_only()
-    async def snowflakeid(self, ctx: commands.Context, *, argument: str):
-        """Add or remove a user to blacklist global list.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'snowflakeid'):
-            return
-        argument = int(extract_member_id(argument))
-        dt = time_conv(snowflake_time(argument))
-        await generic_message(ctx, [ctx.channel], f'`{dt}`', -1)
 
     @commands.group(aliases=['say', 'repeat'])
     @commands.guild_only()
@@ -250,7 +188,7 @@ class General(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'echo'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'echo'):
             return
         if ctx.invoked_subcommand is None:
             await ctx.channel.send(f'{message}')
@@ -284,136 +222,6 @@ class General(commands.Cog):
                 return
 
     """
-    GENERAL STATS
-    """
-    @commands.command()
-    async def ping(self, ctx):
-        """Add or remove a user to blacklist global list.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'ping'):
-            return
-        latency = self.bot.latency * 1000
-        embedping = generic_embed(title="Ping!",
-            fields=[[f"🏓 Latency", latency]],
-            desc="Ping the bot!",
-            color=Colours.COMMANDS)[0]
-        await ctx.send(embed=embedping)
-
-    @commands.command(aliases=['botstats', 'botinfo', 'support', 'botinvite', 'invitebot'])
-    @commands.guild_only()
-    async def stats(self, ctx):
-        """Prints out general stats/links for the bot.
-
-        Parameters
-        ----------
-
-        Returns
-        ----------
-        """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'stats'):
-            return
-        now = datetime.datetime.utcnow()
-        uptime = time_conv(now - self.bot.uptime)
-
-        glist = self.bot.guilds
-        all_u = self.bot.users
-        bot = len([u for u in all_u if u.bot])
-        fields = []
-        v = (self.bot.config.githash.value, self.bot.config.version.value)
-
-        # Guild Info
-        fields.append(['Guild Count', len(glist)])
-        fields.append(['User Count', f'{len(all_u)}({bot}bots)'])
-        fields.append(['Bot Invite', f'[Invite link Click!]({self.bot.config.bot_key.value}) to invite {ctx.guild.me.mention} to your server!'])
-        fields.append(['Support invite', f'[Invite link Click!]({self.bot.config.support_server.value}) to join the bot {ctx.guild.me.mention}\'s support server!'])
-        fields.append(['Github', f'[External link Click!]({self.bot.config.github.value}) to view the bot {ctx.guild.me.mention}\'s GitHub repo!'])
-        fields.append(['Uptime', uptime])
-        fields.append(['Version', v[1]])
-        fields.append(['GitHash', v[0]])
-
-        embeds = generic_embed(
-            title=f'Bot Stats',
-            desc='',
-            fields=fields,
-            footer=current_time()
-        )
-        for embed in embeds:
-            await ctx.send(embed=embed)
-
-    @commands.command(aliases=['server_info', 'guild_info', 'serverinfo'])
-    @commands.guild_only()
-    async def guildinfo(self, ctx):
-        """Show server information."""
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'guildinfo'):
-            return
-        guild = ctx.guild
-        online = len([m.status for m in guild.members if m.status != discord.Status.offline])
-        total_users = len(guild.members)
-        text_channels = len(guild.text_channels)
-        voice_channels = len(guild.voice_channels)
-        passed = ctx.message.created_at - guild.created_at
-        created_at = f"This guild has been around for {time_conv(passed)}!"
-        fields = []
-        title = 'Info on: ' + guild.name
-        fields.append(["Region", str(guild.region)])
-        fields.append(["Users", f"{online}/{total_users}"])
-        fields.append(["Text Channels", str(text_channels)])
-        fields.append(["Voice Channels", str(voice_channels)])
-        fields.append(["Roles", str(len(guild.roles))])
-        fields.append(["Owner", str(guild.owner.mention)])
-        fields.append(["Server ID", str(guild.id)])
-        fields.append(["Created", guild.created_at])
-
-        if guild.icon_url:
-            embeds = generic_embed(title=title, desc=created_at, fields=fields, footer=current_time(), url=guild.icon_url)
-        else:
-            embeds = generic_embed(title=title, desc=created_at, fields=fields, footer=current_time())
-
-        for embed in embeds:
-            await ctx.send(embed=embed)
-
-    @commands.command(aliases=['getuser'])
-    @commands.guild_only()
-    async def userinfo(self, ctx: commands.Context, *, user: str):
-        """Get info on a user.
-
-        Parameters
-        ----------
-        roles: str
-            roles to ping, can be comma separated
-
-        Returns
-        ----------
-        """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'userinfo'):
-            return
-        user = get_member(ctx, user)
-        if not user:
-            await respond(ctx, False)
-            return
-        title = f'User info for: {user.mention}'
-        desc = ''
-        fields = []
-        fields.append(['User\'s Username', user.name])
-        fields.append(['User\'s Nickname', user.nick])
-        fields.append(['User\'s Discrim', user.discriminator])
-        fields.append(['UserId', user.id])
-        fields.append(['Roles', ', '.join([x.name for x in user.roles])])
-        fields.append(['Creation Date', time_conv(user.user.created_at)])
-        fields.append(['Joined', time_conv(user.joined_at)])
-        fields.append(['Avatar', user.avatar_url])
-        embeds = generic_embed(title=title, desc=desc, fields=fields, url=avatar_url, footer=current_time())
-
-        for embed in embeds:
-            ctx.send(embed=embed)
-
-    """
     ROLE COMMANDS
     """
     @commands.command(aliases=['ping_role'])
@@ -430,7 +238,7 @@ class General(commands.Cog):
         Returns
         ----------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'pingrole'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'pingrole'):
             return
         roles = flatten([get_role(ctx, x) for x in roles.split(',')])
         if isinstance(roles, type(None)) or len(roles) == 0:
@@ -446,111 +254,87 @@ class General(commands.Cog):
         for role in roles:
             await role[0].edit(mentionable=role[1])
 
-    @commands.command(aliases=['roleinfo'])
-    @commands.guild_only()
-    async def inrole(self, ctx: commands.Context, *, roles: str):
-        """Ping roles.
-
-        Parameters
-        ----------
-        roles: str
-            roles to ping, can be comma separated
-
-        Returns
-        ----------
-        """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'inrole'):
-            return
-        role = get_role(ctx, roles)
-        if isinstance(role, type(None)):
-            await respond(ctx, False)
-            return
-        try:
-            if await self.bot.pg.is_single_joininfo(ctx.guild.id, role.id):
-                t = await self.bot.pg.get_single_joininfo(ctx.guild.id, role.id, self.bot.logger)
-                desc = f'Info about the role:\n{parse(t)[0][-2][1]}'
-            else:
-                desc = ''
-            embeds = generic_embed(
-                title=f'Users in role: {role.name}',
-                desc=desc,
-                fields=[['Users', ', '.join([x.mention for x in role.members])]],
-                footer=current_time())
-        except Exception as e:
-            self.bot.logger.info(f'Error getting role info: {e}')
-            print(f'Error getting role info: {e}')
-            await respond(ctx, False)
-            return
-        for embed in embeds:
-            await ctx.send(embed=embed)
-            return
-
-    @commands.group(name='role', aliases=['joinrole', 'rolejoin', 'iam'])
+    @commands.group(name='roles', aliases=['role', 'joinrole', 'rolejoin', 'iam', 'a'])
     @commands.guild_only()
     async def _role(self, ctx):
-        """Ping roles.
+        """Joinable roles.
 
         Parameters
         ----------
-        roles: str
-            roles to ping, can be comma separated
 
         Returns
         ----------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx.guild.id, 'role'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'role'):
             return
-        try:
-            run = False
-            if (ctx.invoked_subcommand is None):
-                roles = ' '.join(ctx.message.clean_content.split(' ')[1:])
-                run = True
-            elif (ctx.subcommand_passed.lower() == 'add'):
-                roles = ' '.join(ctx.message.clean_content.split(' ')[2:])
-                run = True
-            if run:
-                roles = flatten([get_role(ctx, role) for role in roles.replace(' ', '').split(',')])
-                if isinstance(roles, type(None)) or len(roles) == 0:
-                    await ctx.channel.send(embed=eembeds.internalerrorembed(f'Roles: <@&{">,<&".join(roles)}> not found!'), delete_after=5)
-                    await respond(ctx, False)
+        if (ctx.invoked_subcommand is None):
+            roles = await self.bot.pg.get_all_joinable_roles(ctx.guild.id)
+            # print(roles)
+            roles = flatten([get_role(ctx, str(role)) for role in roles])
+            # print(roles)
+            if len(roles) > 0:
+                embeds = generic_embed(
+                    title='Joinable Roles',
+                    desc=", ".join([r.name for r in roles]),
+                    fields=[],
+                    footer=current_time())
+                for embed in embeds:
+                    await ctx.send(embed=embed)
                     return
-                base = ctx.author.roles
-                base += roles
-                await ctx.author.edit(roles=base)
-                await respond(ctx, True)
+            else:
+                await ctx.channel.send(embed=eembeds.internalerrorembed(f'No joinable roles found in guild'), delete_after=5)
+                await respond(ctx, False)
+            return
+
+    @_role.command(name='add', aliases=['in', 'join'])
+    async def _roleadd(self, ctx: commands.Context, *, roles: str):
+        """Join roles.
+
+        Parameters
+        ----------
+        roles: str
+            roles to join, comma separated
+
+        Returns
+        ----------
+        """
+        try:
+            roles = flatten([get_role(ctx, role) for role in roles.split(',')])
+            if isinstance(roles, type(None)) or len(roles) == 0:
+                await ctx.channel.send(embed=eembeds.internalerrorembed(f'Roles: <@&{">,<&".join(roles)}> not found!'), delete_after=5)
+                await respond(ctx, False)
+                return
+            joinableroles = await self.bot.pg.get_all_joinable_roles(ctx.guild.id)
+            if len(joinableroles) == 0:
+                await ctx.channel.send(embed=eembeds.internalerrorembed(f'No joinable roles found'), delete_after=5)
+                await respond(ctx, False)
+                return
+            jroles = []
+            for role in roles:
+                if role.id in joinableroles:
+                    jroles.append(role)
+            base = ctx.author.roles
+            base += jroles
+            await ctx.author.edit(roles=base)
+            await respond(ctx, True)
         except Exception as e:
             print('Error adding single joinrole to user:', e)
             await respond(ctx, False)
         pass
 
-    @_role.command(name='add')
-    async def _roleadd(self, ctx: commands.Context, *, roles: str):
-        """Ping roles.
-
-        Parameters
-        ----------
-        roles: str
-            roles to ping, can be comma separated
-
-        Returns
-        ----------
-        """
-        pass
-
-    @_role.command(name='remove', aliases=['rm', 'del', 'not'])
+    @_role.command(name='remove', aliases=['rm', 'del', 'not', 'leave'])
     async def _rolerm(self, ctx: commands.Context, *, roles: str):
-        """Ping roles.
+        """Leave roles.
 
         Parameters
         ----------
         roles: str
-            roles to ping, can be comma separated
+            roles to leave, comma separated
 
         Returns
         ----------
         """
         try:
-            roles = roles.replace(' ', '')
             member = ctx.author
             roles = flatten([get_role(ctx, x) for x in roles.split(',')])
             roles = list(set(member.roles) - set(roles))
@@ -561,13 +345,281 @@ class General(commands.Cog):
             await respond(ctx, False)
         pass
 
+    """
+    COLOUR CMDS
+    """
+    def _does_colourrole_exist(self, guild, role):
+        role = role.strip('#')
+        role = f'#{role}'
+        for r in guild.roles:
+            if r.name.lower() == role.lower():
+                return True
+        return False
+
+    def _is_hex(self, role):
+        role = role.strip('#')
+        try:
+            _ = int(role, 16)
+            return True
+        except:
+            return False
+
+    def _is_colourrole(self, role):
+        role = role.name.lower().strip('#')
+        try:
+            _ = int(role, 16)
+            return True
+        except:
+            return False
+
+    def _clamp(self, x):
+        return max(0, min(x, 255))
+
+    def _random_rgb(self):
+        return [self._clamp(random.randint(0, 254)) for x in range(3)]
+
+    def _rgb_2_hex(self, x):
+        return "#{0:02x}{1:02x}{2:02x}".format(*x)
+
+    def _hex_2_rgb(self, x):
+        x = x.strip('#')
+        a = x[0:2], x[2:4], x[4:-1]
+        r, g, b = [int(x, 16) for x in a]
+        return r, g, b
+
+    def _random_hex(self):
+        return self._rgb_2_hex(self._random_rgb()).upper()
+
+    @commands.group(name='colour', aliases=['color', 'colors',
+                                            'colours', 'colourrole'])
+    @commands.guild_only()
+    async def _colour(self, ctx):
+        """Hex colour roles.
+
+        Parameters
+        ----------
+
+        Returns
+        ----------
+        """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'colour'):
+            return
+        if not self.bot.guild_settings[ctx.guild.id]['colour_enabled']:
+            await ctx.send(embed=eembeds.internalerrorembed(f'Colour role not enabled here.'), delete_after=15)
+            await respond(ctx, False)
+            return
+        if (ctx.invoked_subcommand is None):
+            roles = [r for r in ctx.guild.roles if self._is_colourrole(r)]
+            if len(roles) > 0:
+                embeds = generic_embed(
+                    title='Colour joinable Roles',
+                    desc=", ".join([r.name for r in roles]),
+                    fields=[],
+                    footer=current_time())
+                for embed in embeds:
+                    await ctx.send(embed=embed)
+                    return
+            else:
+                await ctx.channel.send(embed=eembeds.internalerrorembed(f'No colour roles found in guild. Set your own!'), delete_after=5)
+                await respond(ctx, False)
+            return
+
+    @_colour.command(name='add')
+    async def _colouradd(self, ctx: commands.Context, role: str):
+        """Hex colour role to add.
+
+        Parameters
+        ----------
+        role: str
+            Hex color role `#FFFFFF`
+
+        Returns
+        ----------
+        """
+        await self._colour_genrm(ctx)
+        await self._colour_createadd(ctx, role)
+        return
+
+    @_colour.command(name='remove', aliases=['rm', 'del', 'leave'])
+    async def _colourrm(self, ctx: commands.Context):
+        """Hex colour role to remove.
+
+        Parameters
+        ----------
+        roles: str
+            roles to ping, can be comma separated
+
+        Returns
+        ----------
+        """
+        await self._colour_genrm(ctx)
+        return
+
+    async def _colour_genrm(self, ctx: commands.Context):
+        rolecheck = [x for x in ctx.author.roles
+                     if self._is_hex(x.name)]
+        if len(rolecheck) > 0:
+            # remove from role
+            role = rolecheck[0]
+            base = list(set(ctx.author.roles) - set(rolecheck))
+            if len(base) != len(ctx.author.roles):
+                try:
+                    success = await ctx.author.edit(roles=base)
+                    await respond(ctx, True)
+                    return
+                except Exception as e:
+                    await ctx.channel.send(embed=eembeds.internalerrorembed(f'Couldn\'t set your roles, removal: {e}'), delete_after=15)
+                    await respond(ctx, False)
+                    return
+            else:
+                await respond(ctx, True)
+                return
+        else:
+            await respond(ctx, True)
+            return
+
+
+    @_colour.command(name='show', aliases=['list', 'ls'])
+    async def _colourshow(self, ctx: commands.Context):
+        """Already set colour roles.
+
+        Parameters
+        ----------
+
+        Returns
+        ----------
+        """
+        roles = [r for r in ctx.guild.roles if self._is_colourrole(r)]
+        if len(roles) > 0:
+            embeds = generic_embed(
+                title='Colour joinable Roles',
+                desc=", ".join([r.name for r in roles]),
+                fields=[],
+                footer=current_time())
+            for embed in embeds:
+                await ctx.send(embed=embed)
+                return
+        else:
+            await ctx.channel.send(embed=eembeds.internalerrorembed(f'No colour roles found in guild. Set your own!'), delete_after=5)
+            await respond(ctx, False)
+        return
+
+    @_colour.command(name='random', aliases=['rnd'])
+    async def _colourrnd(self, ctx: commands.Context):
+        """Ping roles.
+
+        Parameters
+        ----------
+        roles: str
+            roles to ping, can be comma separated
+
+        Returns
+        ----------
+        """
+        role = self._random_hex()
+        await self._colour_genrm(ctx)
+        await self._colour_createadd(ctx, role)
+        return
+
+
+    async def _colour_createadd(self, ctx: commands.Context, role: str):
+        """Ping roles.
+
+        Parameters
+        ----------
+        roles: str
+            roles to ping, can be comma separated
+
+        Returns
+        ----------
+        """
+        role = f"#{role.upper().strip('#')}"
+        if self._does_colourrole_exist(ctx.guild, role):
+            # set user to join it
+            role = discord.utils.find(lambda r: r.name.upper() == role, ctx.guild.roles)
+            base = ctx.author.roles
+            base.append(role)
+            try:
+                success = await ctx.author.edit(roles=base)
+                await respond(ctx, True)
+                return
+            except Exception as e:
+                await ctx.channel.send(embed=eembeds.internalerrorembed(f'Couldn\'t set your roles in colourcreateddd: {e}'), delete_after=15)
+                await respond(ctx, False)
+                return
+        else:
+            # create role
+            # set user to join
+            base_role = await self.bot.pg.get_colourtemplate(ctx.guild.id, self.bot.logger)
+            base_role = base_role[0].items().__next__()[1]
+            if base_role:
+                success = await createrole(self.bot, ctx, role, base_role, color=True)
+                base = ctx.author.roles
+                if success[0]:
+                    base.append(success[1])
+                    try:
+                        await ctx.author.edit(roles=base)
+                        await respond(ctx, True)
+                        return
+                    except Exception as e:
+                        await ctx.channel.send(embed=eembeds.internalerrorembed(f'Something went wrong in colourcreateadd editting roles: {e}'), delete_after=15)
+                        await respond(ctx, False)
+                        return
+            else:
+                await ctx.channel.send(embed=eembeds.internalerrorembed(f'The colour role hasn\'t been setup properly. Yell at your admins'), delete_after=15)
+                await respond(ctx, False)
+                return
+        await ctx.channel.send(embed=eembeds.internalerrorembed(f'Something went wrong in colourcreateadd'), delete_after=15)
+        await respond(ctx, False)
+        return
+
+    @_colour.command(name='prune', aliases=['purge', 'clean'])
+    @permissions.is_admin()
+    async def _colourprune(self, ctx: commands.Context, ignore: bool=False):
+        """This will prune out inactive colour roles or active ones.
+
+        Parameters
+        ----------
+        ignore: bool
+            if True will remove all colour roles
+
+        Returns
+        ----------
+        """
+        if not await confirm(ctx, f'This will manually prune inactive colour roles and is irreversable. You set ignore={ignore}. If `True` it will remove roles with members in them too.', 10):
+                await respond(ctx, False)
+                return
+        to_del = []
+        for r in ctx.guild.roles:
+            if self._is_colourrole(r):
+                if (len(r.members) == 0) or ignore:
+                    to_del.append(r.name)
+                    try:
+                        await r.delete()
+                    except Exception as e:
+                        await ctx.channel.send(embed=eembeds.internalerrorembed(f'Something went wrong in colour pruning: {e}'), delete_after=15)
+                        await respond(ctx, False)
+                        return
+        embeds = generic_embed(
+            title='Colour Roles Pruned',
+            desc=f', '.join(to_del),
+            fields=[],
+            footer=current_time())
+        for embed in embeds:
+            await ctx.send(embed=embed)
+        await respond(ctx, True)
+        return
+
+    """
+    CODING
+    """
+    # get readthedocs for master branch
 
 
 if __name__ == "__main__":
     """Directly Called."""
 
     print('Testing module')
-    test()
     print('Test Passed')
 
 # end of code
