@@ -20,7 +20,7 @@ __path__ = __file__.strip('.py').strip(__filename__)
 
 # Basic functions
 
-async def createrole(bot, ctx, create_role_name: str, role_copy_id: str=None):
+async def createrole(bot, ctx, create_role_name: str, role_copy_id: str=None, color: bool=False):
     """Create a role.
 
     Parameters
@@ -33,22 +33,24 @@ async def createrole(bot, ctx, create_role_name: str, role_copy_id: str=None):
     Returns
     -------
     """
+    create_role_name = f'#{create_role_name.strip("#")}'
     try:
         if not isinstance(role_copy_id, type(None)):
-            role = role_copy_id
+            role = ctx.guild.get_role(int(role_copy_id))
         else:
-            role = ctx.guild.default_role     
+            role = ctx.guild.default_role
         perms = role.permissions if role.permissions else None
-        colour = role.colour if role.permissions else discord.Colour.default()
+        colour = discord.Colour(int(f'0x{create_role_name.strip("#")}', 16)) if color else discord.Colour.default()
         hoist = role.hoist if role.hoist else False
-        pos = role.position if role.position else 0
         men = role.mentionable if role.mentionable else False
-        r = await ctx.guild.create_role(name=create_role_name, )
+        r = await ctx.guild.create_role(name=create_role_name, permissions=perms, colour=colour,
+                                        hoist=hoist, mentionable=men)
     except Exception as e:
-        bot.logger(f'Error creating role: {e}')
+        bot.logger.warning(f'Error creating role: {e}')
         return [False, False]
     return [True, r]
 
+# Edit message
 
 
 
