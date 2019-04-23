@@ -6,6 +6,7 @@ from enum import Enum
 import re
 from typing import Optional
 from time import sleep
+import math
 
 # external modules
 from asyncpg import Record
@@ -28,13 +29,63 @@ __all__ = ('current_time',
            'get_role',
            'get_member',
            'get_channel',
-           'lessen_list')
+           'lessen_list',
+           'create_fake',
+           'type_force',
+           'Timer')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
 
 # Basic functions
 
+def type_force(val: str, dtype):
+    if isinstance(val, dtype):
+        return val
+    else:
+        if isinstance(dtype, list) or isinstance(dtype, tuple):
+            val = val.strip('[').strip(']')
+            val = val.split(',')
+            if dtype == list:
+                return val
+            else:
+                return tuple(val)
+        elif isinstance(dtype, int):
+            return int(val)
+        elif isinstance(dtype, float):
+            return float(val)
+        elif isinstance(dtype, bool):
+            if val.lower() == 'true':
+                return True
+            else:
+                return False
+        else:
+            return val
+
+def create_fake(target_id: str, dtype: str='member'):
+    if dtype == 'member':
+        return create_fake_user(target_id)
+
+
+def create_fake_user(user_id: str):
+    member = fake_object(int(user_id))
+    member.name = 'GenericUser'
+    member.discriminator = '0000'
+    member.joined_at = datetime.datetime.utcnow()
+    return member
+
+class fake_object:
+
+    def __init__(self, snowflake):
+        self.id = int(snowflake)
+        self.name = ''
+        self.created_at = datetime.datetime.utcnow()
+
+    def __repr__(self):
+        return ''.format()
+
+    def __eq__(self, other):
+        return self.id == other.id
 
 class ModAction(Enum):
     """Moderation Types.
@@ -67,7 +118,7 @@ def chunks(l, n):
         yield l[i:i + n]
 
 
-def parse(record) -> Optional[list]:
+def parse(records):
     """Parsing Record values.
 
     Parameters
@@ -82,10 +133,12 @@ def parse(record) -> Optional[list]:
     """
     try:
         ret = []
-        if isinstance(record, list):
-            ret = [list(r.items()) for r in record]
+        if isinstance(records, list):
+            for record in records:
+                ret.append([[key, val] for (key, val) in record.items()])
             return ret
-        return list(record.items())
+        else:
+            return [[key, val] for (key, val) in records.items()]
     except AttributeError:
         return []
 
@@ -104,20 +157,25 @@ def time_conv(dt: datetime):
     """
     if isinstance(dt, datetime.timedelta):
         dt = dt.total_seconds()
-        y = int(dt // int(60. * 60. * 24. * 365.25))
-        r = int(dt % int(60. * 60. * 24. * 365.25))
+        y = int(abs(dt) // int(60. * 60. * 24. * 365.25))
+        r = int(abs(dt) % int(60. * 60. * 24. * 365.25))
+        mo = int(r // int(60. * 60. * 24.* 30))
+        r = int(r % int(60. * 60. * 24. * 30))
         d = int(r // int(60. * 60. * 24.))
         r = int(r % int(60. * 60. * 24.))
         h = int(r // int(60. * 60.))
         r = int(r % int(60. * 60.))
         m = int(r // int(60.))
         s = int(r % int(60.))
-        strings = ['years', 'days', 'hours', 'minutes', 'seconds']
+        strings = ['years', 'months', 'days', 'hours', 'minutes', 'seconds']
         ret = []
-        for i, f in enumerate([y, d,h,m,s]):
+        for i, f in enumerate([y, mo, d, h, m, s]):
             if f != 0:
                 ret.append(f'{f} {strings[i]}')
-        return ' '.join(ret)
+        if dt < 0:
+            return ' '.join(ret) + ' ago'
+        else:
+            return ' '.join(ret)
     return dt.strftime('%A, %b %d %Y %H:%M')
 
 
@@ -162,7 +220,8 @@ def clean_command(argument: str):
     return argument[i:]
 
 
-def clean_str(argument: str, dtype:str='role'):
+def clean_str(argument: str, dtype: str='role'):
+    argument = str(argument)
     general = argument.replace('<', '').replace('>', '')\
                       .replace('@', '')
     if dtype == 'role':
@@ -214,10 +273,9 @@ def get_channel(ctx, argument: str):
         ret = extract_id(argument, 'channel')
         if not ret:
             ret = discord.utils.find(lambda m: (m.id == ret) or
-                (m.name.lower() == cleaned) or # noqa
-                (m.nick.lower() == cleaned), ctx.guild.channels) # noqa
+                (m.name.lower() == cleaned), ctx.guild.channels) # noqa
         else:
-            return ctx.guild.get_role(int(ret))
+            return ctx.guild.get_channel(int(ret))
         if ret:
             return ret
     except:
@@ -237,7 +295,7 @@ def get_role(ctx, argument: str):
     discord.Role
         role object to return
     """
-    cleaned = clean_str(argument).lower()
+    cleaned = clean_str(argument, 'role').lower()
     try:
         ret = extract_id(argument, 'role')
         if not ret:
@@ -271,7 +329,7 @@ def get_member(ctx, argument: str):
     else:
         ret = ctx.guild.get_member(int(ret))
     if not ret:
-        ret = ctx.guild.get_member_named(t)
+        ret = ctx.guild.get_member_named(t_st)
     if ret:
         return ret
     else:
@@ -297,24 +355,29 @@ def extract_id(argument: str, dtype: str='member'):
         return argument
     if dtype == 'member':
         regexes = (
-            r'\\?\<\@?([0-9]{17})\>',  # '<@!?#17+>'
-            r'\\?\<\@?([0-9]+)\>',  # '<@!?#+>'
-            r'?([0-9]{17})',  # '!?#17+>'
-            r'?([0-9]+)',  # '!?#+>'
+            r'\<?\@?(\d{17,})\>?',  # '<@!?#17+>'
+            r'\<?\@?(\d{1,})\>?',  # '<@!?#+>'
+            r'?(\d{17,})',  # '!?#17+>'
+            r'?(\d{1,})',  # '!?#+>'
         )
     elif dtype == 'role':
         regexes = (
-            r'\\?\<\@\&?([0-9]{17})\>',  # '<@!?#17+>'
-            r'\\?\<\@\&?([0-9]+)\>',  # '<@!?#+>'
-            r'?([0-9]{17})',  # '!?#17+>'
-            r'?([0-9]+)',  # '!?#+>'
+            r'\<?\@?\&?(\d{17,})\>?',  # '<@!?#17+>'
+            r'\<?\@?\&?(\d{1,})\>?',  # '<@!?#+>'
+            r'?(\d{17,})',  # '!?#17+>'
+            r'?(\d{1,})',  # '!?#+>'
+        )
+    elif dtype == 'channel':
+        regexes = (
+            r'\<?\#?(\d{17,})\>?',  # '<@!?#17+>'
+            r'\<?\#?(\d{1,})\>?',  # '<@!?#+>'
+            r'?(\d{17,})',  # '!?#17+>'
+            r'?(\d{1,})',  # '!?#+>'
         )
     else:
         regexes = (
-            r'\\?\<\#?([0-9]{17})\>',  # '<@!?#17+>'
-            r'\\?\<\#?([0-9]+)\>',  # '<@!?#+>'
-            r'?([0-9]{17})',  # '!?#17+>'
-            r'?([0-9]+)',  # '!?#+>'
+            r'?(\d{17,})',  # '!?#17+>'
+            r'?(\d{1,})',  # '!?#+>'
         )
     i = 0
     member_id = ''
@@ -390,7 +453,7 @@ def extract_time(argument: str):
     str
         the bare id
     """
-    regex = r'([0-9]*y)?([0-9]*mo)?([0-9]*w)?([0-9]*d)?([0-9]*h)?([0-9]*m)?([0-9]*s)?'  # noqa
+    regex = r'(\d*y)?(\d*mo)?(\d*w)?(\d*d)?(\d*h)?(\d*m)?(\d*s)?'  # noqa
     reg_map = (
         1. * 60. * 60. * 24. * 365.25,  # 'y'
         1. * 60. * 60. * 24. * (365.25 / 12.),  # 'mo
@@ -458,6 +521,34 @@ def lessen_list(ilist: list, amount: int):
             i = len(ilist)
         i += 1
     return ret
+
+class Timer:
+    """Context manager to measure how long the indented block takes to run."""
+
+    def __init__(self):
+        self.start: float = None
+        self.end: float = None
+
+    def __enter__(self):
+        self.start = time.perf_counter()
+        return self
+
+    async def __aenter__(self):
+        return self.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.end = time.perf_counter()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        return self.__exit__(exc_type, exc_val, exc_tb)
+
+    def __str__(self):
+        return f'{self.duration:.3f}ms'
+
+    @property
+    def duration(self):
+        """Duration in ms."""
+        return (self.end - self.start) * 1000
 
 # end of code
 
