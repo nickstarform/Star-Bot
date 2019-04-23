@@ -540,7 +540,7 @@ class Controller():
 
 
     """
-    GUILD DB ACTIONS
+    GUILD META ACTIONS
     """
 
     async def add_guild(self, guild_id: str):
@@ -556,38 +556,36 @@ class Controller():
         Returns
         ----------
         """
-        print('Schema:',self.schema)
         cols = {
-                'guild_id': ['$1', int(guild_id)],
-                'prefix': ['$2', '!'],
-                'voice_roles': ['$3', []],
-                'voice_channels': ['$4', []],
-                'cleared_channels': ['$5', []],
-                'modlog_channels': ['$6', []],
-                'logging_channels': ['$7', []],
-                'welcome_message': ['$8', ''],
-                'welcome_channels': ['$9', []],
-                'report_channel': ['$10', 0],
-                'rules_channel': ['$11', 0],
-                'joinable_roles': ['$12', []],
-                'blacklist_channels': ['$13', []],
-                'blacklist_users': ['$14', []],
-                'ban_footer': ['$15', 'This is an automated message'],
-                'kick_footer': ['$16', 'This is an automated message'],
-                'faq': ['$17', ''],
-                'rules': ['$18', ''],
-                'misc': ['$19', ''],
-                'bots': ['$20', ''],
-                'channels': ['$21', ''],
-                'autoroles': ['$22', []],
-                'disallowed_commands': ['$23', []],
+                'guild_id': ['', int(guild_id)],
+                'prefix': ['', '!'],
+                'voice_roles': ['', []],
+                'voice_channels': ['', []],
+                'cleared_channels': ['', []],
+                'modlog_channels': ['', []],
+                'logging_channels': ['', []],
+                'welcome_message': ['', ''],
+                'welcome_channels': ['', []],
+                'report_channel': ['', 0],
+                'joinable_roles': ['', []],
+                'blacklist_channels': ['', []],
+                'blacklist_users': ['', []],
+                'ban_footer': ['', 'This is an automated message'],
+                'kick_footer': ['', 'This is an automated message'],
+                'autoroles': ['', []],
+                'disallowed_commands': ['', []],
+                'colour_template': ['', 0],
         }
+        for i, k in enumerate(cols.keys()):
+            cols[k][0] = f'${i + 1}'
+        print(cols)
         sql = f"""
             INSERT INTO {self.schema}.guilds ({','.join(cols.keys())}) VALUES 
                 ({','.join([cols[key][0] for key in cols.keys()])});
             """
+        print(sql)
 
-        await self.pool.execute(sql,*[cols[key][1] for key in cols.keys()])
+        return await self.pool.execute(sql,*[cols[key][1] for key in cols.keys()])
 
     async def get_guild_settings(self):
         """Main settings for guild.
@@ -617,10 +615,44 @@ class Controller():
             """
         rets = await self.pool.fetch(sql)
         for row in rets:
-            main[row['guild_id']] = {}
+            main[int(row['guild_id'])] = {}
             for setting in settings:
                 if setting != 'guild_id':
                     main[row['guild_id']][setting] = row[setting]
+        return main
+
+    async def get_single_guild_settings(self, guild_id: str):
+        """Main settings for guild.
+
+        Parameters
+        ----------
+
+        Returns
+        ----------
+        dict
+            dictionary of the main settings for guilds
+        """
+        main = {}
+        settings = (
+            'guild_id',
+            'prefix',
+            'modlog_enabled',
+            'voice_logging',
+            'logging_enabled',
+            'invites_allowed',
+            'colour_enabled',
+            'pm_welcome',
+            'voice_role_enabled')
+        sql = f"""
+            SELECT {', '.join(settings)}
+                FROM {self.schema}.guilds WHERE guild_id = $1;
+            """
+        rets = await self.pool.fetch(sql, int(guild_id))
+        rets = rets[0]
+        main[int(rets['guild_id'])] = {}
+        for setting in settings:
+            if setting != 'guild_id':
+                main[int(rets['guild_id'])][setting] = rets[setting]
         return main
 
     async def get_guild(self, guild_id: str, logger):
@@ -648,6 +680,162 @@ class Controller():
             logger.warning(f'Error getting guild settings {e}')
             return False
 
+    async def drop_guild(self, guild_id: str, logger):
+        """All settings for guild.
+
+        Parameters
+        ----------
+        guild_id: str
+            id for the guild
+        logger: Logger
+            logger instance for the bot
+
+        Returns
+        ----------
+        tuple
+            tuple of results or false
+        """
+        sql = f"""
+            DELETE FROM {self.schema}.guilds
+                WHERE guild_id = $1;
+            """
+        try:
+            return await self.pool.execute(sql, int(guild_id))
+        except Exception as e:
+            logger.warning(f'Error removing guild settings {e}')
+            return False
+
+    """
+    Guild Actions
+    """
+
+    async def add_giveaway(self, *args, logger):
+        """Add Giveaway to guild.
+
+        Parameters
+        ----------
+        args:
+            The exact parameters in keys
+
+        Returns
+        ----------
+        boolean
+            success true or false
+        """
+        keys = ('guild_id',
+                'channel_id',
+                'countdown_message_id',
+                'gifter_id',
+                'content',
+                'num_winners',
+                'starttime',
+                'endtime',)
+        sql = f"""
+            INSERT INTO {self.schema}.giveaway
+                (_KEYS_,winners_id,status) VALUES (_VALS_,${len(keys)+1},DEFAULT);
+        """
+        sql = sql.replace('_KEYS_', ','.join(keys))
+        sql = sql.replace('_VALS_', '$' + ',$'.join(map(str, range(1, len(keys) + 1))))
+
+        try:
+            await self.pool.execute(sql, *args, [])
+            return True
+        except Exception as e:
+            logger.warning(f'Error adding giveaway {args}: {e}')
+            return False
+
+    async def update_giveaway(self, message_id, keys, vals, logger):
+        """Add Giveaway to guild.
+
+        Parameters
+        ----------
+        args:
+            The exact parameters in keys
+
+        Returns
+        ----------
+        boolean
+            success true or false
+        """
+        sql = f"""
+            UPDATE {self.schema}.giveaway SET _KEYS_ WHERE countdown_message_id=${len(keys)+1};
+        """
+        tmp = ''
+        for i in range(len(keys)):
+            tmp += f'{keys[i]}=${i + 1}'
+            if i < (len(keys) - 1):
+                tmp += ','
+        sql = sql.replace('_KEYS_', tmp)
+        try:
+            await self.pool.execute(sql, *vals, int(message_id))
+            return True
+        except Exception as e:
+            logger.warning(f'Error fixing giveaway {keys}, {vals}: {e}')
+            return False
+
+    async def get_single_giveaways(self, message_id: str, only_active: bool, logger):
+        """Get all Giveaways from guild.
+
+        Parameters
+        ----------
+        args:
+            The exact parameters in keys
+
+        Returns
+        ----------
+        boolean
+            success true or false
+        """
+        if only_active:
+            sql = f"""
+                SELECT * FROM {self.schema}.giveaway WHERE countdown_message_id=$1 and status=FALSE;
+            """
+        else:
+            sql = f"""
+                SELECT * FROM {self.schema}.giveaway WHERE countdown_message_id=$1;
+            """
+        try:
+            results = await self.pool.fetch(sql, int(message_id))
+        except Exception as e:
+            logger.warning(f'Error getting giveaway: {e}')
+            return False
+        if len(results) > 0:
+            return dict(results[0])
+        else:
+            return False
+
+    async def get_all_giveaways(self, only_active: bool, logger):
+        """Get all Giveaways from guild.
+
+        Parameters
+        ----------
+        args:
+            The exact parameters in keys
+
+        Returns
+        ----------
+        boolean
+            success true or false
+        """
+        default = {}
+        if only_active:
+            sql = f"""
+                SELECT countdown_message_id, endtime FROM {self.schema}.giveaway WHERE status=FALSE;
+            """
+        else:
+            sql = f"""
+                SELECT countdown_message_id, endtime FROM {self.schema}.giveaway;
+            """
+        ret = []
+        try:
+            results = await self.pool.fetch(sql)
+            if not isinstance(results, type(None)):
+                for r in results:
+                    default[r['countdown_message_id']] = r['endtime']
+        except Exception as e:
+            logger.warning(f'Error getting giveaway: {e}')
+        return default
+
     async def add_disallowed(self, guild_id: str, cmd: str, logger): # noqa
         """Add Disallowed guilds Commands.
 
@@ -671,6 +859,48 @@ class Controller():
             return True
         except Exception as e:
             logger.warning(f'Error adding cmd to disallowed  {cmd}: {e}')
+            return False
+
+    async def get_colourtemplate(self, guild_id: str, logger): # noqa
+        """Get the colourrole Template.
+
+        Parameters
+        ----------
+
+        Returns
+        ----------
+        boolean
+            success true or false
+        """
+        sql = f"""
+            SELECT colour_template FROM {self.schema}.guilds
+                 WHERE guild_id = $1;
+        """
+        try:
+            return await self.pool.fetch(sql, int(guild_id))
+        except Exception as e:
+            logger.warning(f'Error getting template for colourrole: {e}')
+            return []
+
+    async def set_colourtemplate(self, guild_id: str, role_id: str, logger): # noqa
+        """Get the colourrole Template.
+
+        Parameters
+        ----------
+
+        Returns
+        ----------
+        boolean
+            success true or false
+        """
+        sql = f"""
+            UPDATE {self.schema}.guilds
+                 SET colour_template = $1 WHERE guild_id = $2;
+        """
+        try:
+            return await self.pool.execute(sql, int(role_id), int(guild_id))
+        except Exception as e:
+            logger.warning(f'Error setting template for colourrole: {e}')
             return False
 
     async def rem_disallowed(self, guild_id: str, cmd: str, logger): # noqa
@@ -748,10 +978,10 @@ class Controller():
             list of all autoroles
         """
         sql = f"""
-            SELECT joinable_roles FROM {self.schema}.guilds
+            SELECT autoroles FROM {self.schema}.guilds
             WHERE guild_id = $1;
         """
-        role_list = await self.pool.fetchval(sql, int(guild_id))
+        role_list = await self.pool.fetch(sql, int(guild_id))
         return role_list
 
     async def is_role_autorole(self, guild_id: str, role_id: str):
@@ -1047,6 +1277,7 @@ class Controller():
             success true or false
         """
         channel_list = await self.get_all_modlogs(int(guild_id))
+        channel_list = parse(channel_list)[0][1]
         channel_list.remove(int(channel_id))
         sql = f"""
             UPDATE {self.schema}.guilds
@@ -1306,6 +1537,7 @@ class Controller():
             success true or false
         """
         channel_list = await self.get_all_welcome_channels(int(guild_id), logger)
+        channel_list = parse(channel_list)[0][1]
         channel_list.remove(int(channel_id))
         sql = f"""
             UPDATE {self.schema}.guilds
@@ -1596,6 +1828,7 @@ class Controller():
             success true or false
         """
         channel_list = await self.get_all_logger_channels(int(guild_id))
+        channel_list = parse(channel_list)[0][1]
         channel_list.remove(int(channel_id))
         sql = f"""
             UPDATE {self.schema}.guilds
@@ -1748,6 +1981,7 @@ class Controller():
             true or false
         """
         channel_list = await self.get_all_voice_channels(int(guild_id))
+        channel_list = parse(channel_list)[0][1]
         channel_list.remove(int(channel_id))
         sql = f"""
             UPDATE {self.schema}.guilds
@@ -1861,6 +2095,7 @@ class Controller():
             true or false
         """
         role_list = await self.get_all_voice_roles(int(guild_id))
+        role_list = parse(role_list)[0][1]
         role_list.remove(int(channel_id))
         sql = f"""
             UPDATE {self.schema}.guilds
@@ -1881,209 +2116,31 @@ class Controller():
             return False
         return True
 
-    async def set_channels(self, guild_id: str, message: str):
-        """Set channel flag.
+    async def set_colour_enabled(self, guild_id: str, status: bool):
+        """Set colour role enabled.
 
         Parameters
         ----------
         guild_id: str
             id for the guild
-        message: str
-            message to store
+        status: bool
 
         Returns
         ----------
         boolean
-            status true or false
+            true or false
         """
         sql = f"""
             UPDATE {self.schema}.guilds
-                SET channels = $1
+                SET colour_enabled = $1
                 WHERE guild_id = $2;
         """
-        await self.pool.execute(sql, message, int(guild_id))
+        try:
+            await self.pool.execute(sql, status, int(guild_id))
+            return True
+        except:
+            return False
 
-    async def set_bots(self, guild_id: str, message: str):
-        """Set bots flag.
-
-        Parameters
-        ----------
-        guild_id: str
-            id for the guild
-        message: str
-            message to store
-
-        Returns
-        ----------
-        boolean
-            status true or false
-        """
-        sql = f"""
-            UPDATE {self.schema}.guilds
-                SET bots = $1
-                WHERE guild_id = $2;
-        """
-        await self.pool.execute(sql, message, int(guild_id))
-
-    async def set_misc(self, guild_id: str, message: str):
-        """Set misc flag.
-
-        Parameters
-        ----------
-        guild_id: str
-            id for the guild
-        message: str
-            message to store
-
-        Returns
-        ----------
-        boolean
-            status true or false
-        """
-        sql = f"""
-            UPDATE {self.schema}.guilds
-                SET misc = $1
-                WHERE guild_id = $2;
-        """
-        await self.pool.execute(sql, message, int(guild_id))
-
-    async def set_faq(self, guild_id: str, message: str):
-        """Set faq flag.
-
-        Parameters
-        ----------
-        guild_id: str
-            id for the guild
-        message: str
-            message to store
-
-        Returns
-        ----------
-        boolean
-            status true or false
-        """
-        sql = f"""
-            UPDATE {self.schema}.guilds
-                SET faq = $1
-                WHERE guild_id = $2;
-        """
-        await self.pool.execute(sql, message, int(guild_id))
-
-    async def set_rules(self, guild_id: str, message: str):
-        """Set rules flag.
-
-        Parameters
-        ----------
-        guild_id: str
-            id for the guild
-        message: str
-            message to store
-
-        Returns
-        ----------
-        boolean
-            status true or false
-        """
-        sql = f"""
-            UPDATE {self.schema}.guilds
-                SET rules = $1
-                WHERE guild_id = $2;
-        """
-        await self.pool.execute(sql, message, int(guild_id))
-
-    async def set_channels(self, guild_id: str, message: str):
-        """Set channel flag.
-
-        Parameters
-        ----------
-        guild_id: str
-            id for the guild
-        message: str
-            message to store
-
-        Returns
-        ----------
-        boolean
-            status true or false
-        """
-        sql = f"""
-            UPDATE {self.schema}.guilds
-                SET channels = $1
-                WHERE guild_id = $2;
-        """
-        await self.pool.execute(sql, message, int(guild_id))
-
-    async def get_bots(self, guild_id: str):
-        """Get bots flag.
-
-        Parameters
-        ----------
-        guild_id: str
-            id for the guild
-
-        Returns
-        ----------
-        str
-            the message
-        """
-        sql = f"""
-            SELECT bots FROM {self.schema}.guilds WHERE guild_id = $1;
-        """
-        return await self.pool.execute(sql, int(guild_id))
-
-    async def get_misc(self, guild_id: str):
-        """Get misc flag.
-
-        Parameters
-        ----------
-        guild_id: str
-            id for the guild
-
-        Returns
-        ----------
-        str
-            the message
-        """
-        sql = f"""
-            SELECT misc FROM {self.schema}.guilds WHERE guild_id = $1;
-        """
-        return await self.pool.execute(sql, int(guild_id))
-
-    async def get_faq(self, guild_id: str):
-        """Get rules flag.
-
-        Parameters
-        ----------
-        guild_id: str
-            id for the guild
-
-        Returns
-        ----------
-        str
-            the message
-        """
-        sql = f"""
-            SELECT rules FROM {self.schema}.guilds WHERE guild_id = $1;
-        """
-        return await self.pool.execute(sql, int(guild_id))
-
-    async def get_rules(self, guild_id: str):
-        """Get rules flag.
-
-        Parameters
-        ----------
-        guild_id: str
-            id for the guild
-
-        Returns
-        ----------
-        str
-            the message
-        """
-        sql = f"""
-            SELECT rules FROM {self.schema}.guilds WHERE guild_id = $1;
-        """
-        return await self.pool.execute(sql, int(guild_id))
 
     async def set_invites_allowed(self, guild_id: str, status: bool):
         """Set are invites allowed from no mods.
@@ -2104,7 +2161,11 @@ class Controller():
                 SET invites_allowed = $1
                 WHERE guild_id = $2;
         """
-        await self.pool.execute(sql, status, int(guild_id))
+        try:
+            await self.pool.execute(sql, status, int(guild_id))
+            return True
+        except:
+            return False
 
     async def add_blacklist_channel(self, guild_id: str, channel_id: str, logger): # noqa
         """Add blacklisted channel.
@@ -2250,6 +2311,7 @@ class Controller():
             return status true or false
         """
         user_list = await self.get_all_blacklist_users(int(guild_id))
+        user_list = parse(user_list)[0][1]
         user_list.remove(int(user_id))
         sql = f"""
             UPDATE {self.schema}.guilds
@@ -2330,7 +2392,7 @@ class Controller():
                 guild_id = $1 AND user_id = $2 ORDER BY index_id DESC LIMIT 1;
         """
         try:
-            val = await self.pool.fetch(sql, int(guild_id),  int(user_id))
+            val = await self.pool.fetchval(sql, int(guild_id),  int(user_id))
             val = parse(val[0])[0][1]
             return val + 1
         except Exception as e:
@@ -2357,15 +2419,15 @@ class Controller():
         """
         if include:
             sql = f"""
-                SELECT COUNT(userid) FROM {self.schema}.moderation
-                    WHERE guild_id = $1 AND userid = $2;
+                SELECT COUNT(user_id) FROM {self.schema}.moderation
+                    WHERE guild_id = $1 AND user_id = $2;
             """
         else:
             sql = f"""
-                SELECT COUNT(userid) FROM {self.schema}.moderation
-                    WHERE guild_id = $1 AND userid = $2 AND forgiven = False;
+                SELECT COUNT(user_id) FROM {self.schema}.moderation
+                    WHERE guild_id = $1 AND user_id = $2 AND forgiven = False;
             """
-        return await self.pool.fetchval(sql, int(guild_id),  int(user_id), include)
+        return await self.pool.fetchval(sql, int(guild_id),  int(user_id))
 
     async def add_single_moderation(self, guild_id: str, mod_id: str,
                                     target_id: str, reason: str,
@@ -2563,11 +2625,11 @@ class Controller():
             index of next valid warning for the user
         """
         sql = f"""
-            SELECT id FROM {self.schema}.warnings WHERE
-                guild_id = $1 AND user_id = $2 ORDER BY id DESC LIMIT 1;
+            SELECT index_id FROM {self.schema}.warnings WHERE
+                guild_id = $1 AND user_id = $2 ORDER BY index_id DESC LIMIT 1;
         """
         try:
-            return await self.pool.fetch(sql, int(guild_id),  int(user_id)) + 1
+            return await self.pool.fetchval(sql, int(guild_id),  int(user_id)) + 1
         except Exception as e:
             logger.warning(f'Error indexing warnings: {e}')
             return 0
@@ -2592,19 +2654,19 @@ class Controller():
         """
         if include:
             sql = f"""
-                SELECT COUNT(userid) FROM {self.schema}.warnings
-                    WHERE guild_id = $1 AND userid = $2;
+                SELECT COUNT(user_id) FROM {self.schema}.warnings
+                    WHERE guild_id = $1 AND user_id = $2;
             """
         else:
             sql = f"""
-                SELECT COUNT(userid) FROM {self.schema}.warnings
-                    WHERE guild_id = $1 AND userid = $2 AND forgiven = False;
+                SELECT COUNT(user_id) FROM {self.schema}.warnings
+                    WHERE guild_id = $1 AND user_id = $2 AND forgiven = False;
             """
-        return await self.pool.fetchval(sql, int(guild_id),  int(user_id), include)
+        return await self.pool.fetchval(sql, int(guild_id),  int(user_id))
 
     async def add_single_warning(self, guild_id: str, mod_id: str,
                                  target_id: str, reason: str,
-                                 major: bool):
+                                 major: bool, logging):
         """Add warning to db.
 
         Parameters
@@ -2626,6 +2688,7 @@ class Controller():
             success true or false
         """
         index = await self.get_warning_index(int(guild_id), int(target_id), logging)
+        print('Index:',index)
         sql = f"""
             INSERT INTO {self.schema}.warnings (guild_id,
                 mod_id, user_id, index_id,
@@ -2635,12 +2698,13 @@ class Controller():
         await self.pool.execute(
             sql,
             int(guild_id),
-            mod_id,
+            int(mod_id),
             int(target_id),
-            index,
+            int(index),
             reason,
             major
         )
+        return await self.get_warning_count(guild_id, target_id, False)
 
     async def get_all_warnings(self, guild_id: str, user_id: str,
                                logger, recent: bool=False):
@@ -2663,7 +2727,7 @@ class Controller():
         if recent:
             sql = f"""
                 SELECT * FROM {self.schema}.warnings
-                    WHERE guild_id = $1 AND user_id = $2 AND
+                    WHERE guild_id = $1 AND user_id = $2 AND forgiven = FALSE AND
                     (logtime >= DATE_TRUNC('month',
                     now()) - INTERVAL '6 month');
             """
@@ -2672,6 +2736,7 @@ class Controller():
                 SELECT * FROM {self.schema}.warnings
                     WHERE guild_id = $1 AND user_id = $2;
             """
+        print(sql)
         try:
             return await self.pool.fetch(sql, int(guild_id),  int(user_id))
         except Exception as e:
@@ -2740,13 +2805,13 @@ class Controller():
                 user_id = $6 AND index_id = $7;
         """
         try:
-            await self.pool.execute(sql, reason, mod_id,
+            await self.pool.execute(sql, reason, int(mod_id),
                                     major,
                                     status, int(guild_id),
-                                     int(user_id), int(index))
+                                     int(target_id), int(index))
         except Exception as e:
             logger.warning(f'Error setting warnings {e}')
-        return await self.get_warning_count(int(guild_id),  int(user_id), False)
+        return await self.get_warning_count(int(guild_id),  int(target_id), False)
 
     async def delete_single_warning(self, guild_id: str, forg_mod_id: str,
                                     user_id: str, index: str, logger):
@@ -2772,10 +2837,12 @@ class Controller():
             number of warnings
         """
         forgiven_message = f' **Forgiven by <@{forg_mod_id}>** ' +\
-            'on {datetime.datetime.now()}'
+            f'on {datetime.datetime.now()}'
         original = await self.get_single_warning(int(guild_id),  int(user_id),
-                                                 index, logger)
-        return await self.set_single_warning(original[0:4],
+                                                 int(index), logger)
+        original = [x for x in original[0].values()]
+        print(original)
+        return await self.set_single_warning(*original[0:4], original[6],
                                              original[4] + forgiven_message,
                                              True, logger)
 
@@ -2857,7 +2924,7 @@ class Controller():
         return True
 
     async def set_single_joininfo(self, guild_id: str, target_id: str, info: str, logger):
-        """Set a single moderation db.
+        """Set a single joinable info.
 
         Parameters
         ----------
@@ -2952,7 +3019,7 @@ class Controller():
                 guild_id = $1 ORDER BY id DESC LIMIT 1;
         """
         try:
-            return await self.pool.fetch(sql, int(guild_id)) + 1
+            return await self.pool.fetchval(sql, int(guild_id)) + 1
         except Exception as e:
             logger.warning(f'Error removing quote: {e}')
             return 0
@@ -3712,6 +3779,135 @@ class Controller():
         except Exception as e:
             logger.warning(f'Error getting reacts: {e}')
             return False
+
+    async def get_single_record(self, guild_id, key, logger):
+        """Get a single records in the guild.
+
+        This is fine tuned and MUST match the exact specifications
+        size of a record row for schema.guild. If it is unable to match
+        it will not change that value and continue.
+
+        Parameters
+        ----------
+        guild_id: str
+            guild id
+        key: str:
+            the exact col name
+
+        Returns
+        -------
+        bool:
+            True or false for success
+        """
+        sql = f"""
+            SELECT {key} FROM {self.schema}.guilds WHERE guild_id = $1;
+        """
+        try:
+            current = await self.pool.fetchval(sql, int(guild_id))
+        except Exception as e:
+            logger.warning(f'Error getting current guild val: {e}')
+            return False
+        if isinstance(current, type(None)):
+            logger.warning(f'Error getting current guild val: {e}')
+            return False
+        return current
+
+    async def set_single_record(self, guild_id, key, value, logger):
+        """Set a single records in the guild.
+
+        This is fine tuned and MUST match the exact specifications
+        size of a record row for schema.guild. If it is unable to match
+        it will not change that value and continue.
+
+        Parameters
+        ----------
+        guild_id: str
+            guild id
+        key: str:
+            the exact col name
+        value: str
+            the value to input to 
+
+        Returns
+        -------
+        bool:
+            True or false for success
+        """
+        current = await self.get_single_record(guild_id, key, logger)
+        dtype = type(current)
+        sql = f"""
+            UPDATE {self.schema}.guilds SET {key} = $1 WHERE guild_id = $2;
+        """
+        try:
+            current = await self.pool.fetchval(sql, dtype(value), int(guild_id))
+            return True
+        except Exception as e:
+            logger.warning(f'Error setting current guild val: {e}')
+            return False
+        return False
+
+    async def set_multiple_records(self, guild_id, inv: dict, logger):
+        """Set numerous records in the guild.
+
+        This is fine tuned and MUST match the exact specifications
+        size of a record row for schema.guild. If it is unable to match
+        it will not change that value and continue.
+
+        Parameters
+        ----------
+        guild_id: str
+            guild id
+        inv: dict
+            input values in dictionary form. Key is the SAME as in schema. guild val must match the type too.
+
+        Returns
+        -------
+        tuple[lists]
+            a tuple of lists. tuple[0] keys that succeeded, tuple[1] keys that failed
+        """
+        passed = []
+        failed = []
+        for key in inv:
+            val = inv[key]
+            try:
+                if ('channels' in key) or ('users' in key) or ('roles' in key):
+                    if len(val) > 0:
+                        val = list(map(int, val.split(',')))
+                elif ('commands' in key) or ('subreddit' in key) or ('twitch' in key) or\
+                     ('twitter' in key)  or ('github' in key):
+                    if len(val) > 0:
+                        val = list(map(str, val.split(',')))
+                elif ('voice_enabled' in key) or ('invites_allowed' in key) or\
+                     ('voice_logging' in key) or ('modlog_enabled' in key) or\
+                     ('logging_enabled' in key) or ('pm_welcome' in key) or\
+                     ('colour_enabled' in key) or ('pm_welcome' in key):
+                     if val.lower() in ['false', 'no', 'stop']:
+                        val = False
+                     else:
+                        val = True
+                elif ('colour_template' in key):
+                    val = int(val)
+                elif 'prefix' in key:
+                    val = str(val)[:2]
+                passed.append(key)
+                inv[key] = val
+            except:
+                failed.append(key)
+                continue
+        p = []
+        if len(passed) > 0:
+            for x in passed:
+                try:
+                    success = await self.set_single_record(guild_id, x, inv[x], logger)
+                    if success:
+                        p.append(x)
+                    else:
+                        failed.append(x)
+                except Exception as e:
+                    logger.warning(f'Failed on {e}')
+                    failed.append(x)
+                    continue
+        return p, failed
 
 # end of code
 

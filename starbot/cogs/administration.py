@@ -2,19 +2,31 @@
 
 # internal modules
 import psutil
+import heapq
+import os
+from io import BytesIO
+import sys
+import datetime
+import random
 
 # external modules
 import traceback
 import discord
 from discord.ext import commands
-import sys
+import matplotlib
+import matplotlib.pyplot as plt
+import asyncio
 
 # relative modules
 from cogs.utilities import (Colours, permissions)
-from cogs.utilities.functions import (current_time, extract_id, get_member, get_role, parse, get_channel, flatten)
+from cogs.utilities.functions import (current_time, extract_id,
+                                      get_member, get_role,
+                                      parse, get_channel, flatten,
+                                      extract_time, time_conv)
 from cogs.utilities.embed_general import generic_embed
-from cogs.utilities.embed_dialog import respond
-from cogs.utilities.embed_errors import internalerrorembed
+from cogs.utilities.message_general import generic_message
+from cogs.utilities.embed_dialog import respond, iterator, confirm
+from cogs.utilities.embed_errors import internalerrorembed, panicerrorembed
 
 # global attributes
 __all__ = ('Administration',)
@@ -22,16 +34,34 @@ __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
 
+# setup matplotlib correctly
+plt.switch_backend('agg')
+
+
 def setup(bot):
     bot.add_cog(Administration(bot))
     print('Loaded Administration')
+
+
+def __unload(self):
+    self._giveaway_task.cancel()
+
+
+class NoWinnerFound(Exception):
+    def __init__(self, message, errors=None):
+        super().__init__(message)
+        self.errors = errors
+    pass
 
 
 class Administration(commands.Cog):
     """Administrative commands."""
 
     def __init__(self, bot):
+        """Administrative commands."""
         self.bot = bot
+        self._giveaway_task = bot.loop.create_task(self.giveaway_loop())
+        self.emoji = f'\U0001f5f3'
         super().__init__()
 
     """
@@ -40,9 +70,15 @@ class Administration(commands.Cog):
     @commands.command()
     @permissions.is_admin()
     @commands.guild_only()
-    async def change_nickname(self, ctx: commands.Context, *, new_username: str):
-        """
-        Changes bot username
+    async def change_nickname(self, ctx: commands.Context,
+                              *, new_username: str):
+        """Change the bot nickname.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         """
         bot_user = ctx.guild.me
         try:
@@ -52,857 +88,17 @@ class Administration(commands.Cog):
             await respond(ctx, False)
             self.bot.logger.warning(f'Error changing bots nickname: {e}')
 
-    @commands.group(aliases=['changeprefix', 'setprefix', 'getprefix'])
-    @commands.guild_only()
-    @permissions.is_admin()
-    async def prefix(self, ctx):
-        """
-        Either returns current prefix or sets new one
-        """
-        if ctx.invoked_subcommand is None:
-            local_embed = discord.Embed(
-                title=f'Current prefix is: '
-                f'\'{self.bot.server_settings[ctx.guild.id]["prefix"]}\'',
-                description=' ',
-                color=0x419400
-            )
-            await ctx.send(embed=local_embed)
-
-    @prefix.command()
-    async def change(self, ctx: commands.Context, prefix):
-        """
-        Sets the prefix for the server
-        """
-        if len(prefix.strip()) > 2:
-            local_embed = discord.Embed(
-                title=f'Prefix must be less than or equal to two characters',
-                description=' ',
-                color=0x651111
-            )
-            await ctx.send(embed=local_embed)
-            return
-        try:
-            success = await self.bot.pg_utils.set_prefix(
-                ctx.guild.id,
-                prefix,
-                self.bot.logger
-            )
-            if success:
-                self.bot.server_settings[ctx.guild.id]['prefix'] = prefix
-                local_embed = discord.Embed(
-                    title=f'Server prefix set to \'{prefix}\'',
-                    description=' ',
-                    color=0x419400
-                )
-        except Exception as e:
-            local_embed = embeds.InternalErrorEmbed()
-            ctx.send(local_embed)
-
-    """
-    BLACKLIST
-    """
-    @commands.group(aliases=['blu'], pass_context=True)
-    @permissions.is_admin()
-    @commands.guild_only()
-    async def blacklistuser(self, ctx):
-        """Add or remove a user to blacklist list.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        """
-        if ctx.invoked_subcommand is None:
-            users = await self.bot.pg.get_all_blacklist_users(ctx.guild.id)
-            users = parse(users)[0][0][1]
-            users = [get_member(ctx, str(x)) for x in users]
-            users = [x.mention for x in flatten(users)]
-            if isinstance(users, type(None)):
-                users = []
-            if len(users) > 0:
-                title = 'Users in blacklist'
-                desc = ','.join(users)
-            else:
-                desc = ''
-                title = 'No users in blacklist'
-            embeds = generic_embed(
-                title=title,
-                desc=desc,
-                fields=[],
-                footer=current_time(),
-                colours=Colours.COMMANDS
-            )
-            for embed in embeds:
-                await ctx.send(embed=embed)
-
-    @blacklistuser.command(name='add', pass_context=True)
-    async def _blua(self, ctx: commands.Context, *, uids: str):
-        """Add user to blacklist.
-
-        Parameters
-        ----------
-        uids: str
-            List of id, comma separated
-
-        Returns
-        -------
-        """
-        added_users = []
-        msg = uids.replace(' ', '')
-        if ',' in msg:
-            users = [get_member(ctx, x) for x in msg.split(',')]
-        else:
-            users = [get_member(ctx, msg)]
-
-        try:
-            for user in flatten(users):
-                success = await self.bot.pg.add_blacklist_user(ctx.guild.id, user.id, self.bot.logger)
-                if success:
-                    added_users.append(user.mention)
-            if added_users:
-                title = 'Users added into blacklist'
-                desc = ', '.join(added_users)
-                embeds = generic_embed(
-                    title=title,
-                    desc=desc,
-                    fields=[],
-                    colours=Colours.COMMANDS,
-                    footer=current_time()
-                )
-            else:
-                self.bot.logger.info(f'Error adding users to blacklist')
-                embed = internalerrorembed(f'Error adding users to blacklist')
-                await ctx.send(embed=embed)
-                return
-            for embed in embeds:
-                await ctx.send(embed=embed)
-        except Exception as e:
-            self.bot.logger.info(f'Error adding users to global blacklist {e}')
-            embed = internalerrorembed(f'Error adding users to global blacklist {e}')
-            await ctx.send(embed=embed)
-
-    @blacklistuser.command(name='remove', aliases=['rem', 'del', 'rm'])
-    async def _blur(self, ctx: commands.Context, *, uids: str):
-        """Removes a user from the blacklist.
-
-        Parameters
-        ----------
-        uids: str
-            List of users
-
-        Returns
-        -------
-        """
-        removed_users = []
-        user_notfound = []
-        msg = uids.replace(' ', '')
-        if ',' in msg:
-            users = [get_member(ctx, x) for x in msg.split(',')]
-        else:
-            users = [get_member(ctx, msg)]
-        try:
-            for user in flatten(users):
-                success = False
-                try:
-                    success = await self.bot.pg.rem_blacklist_user(user.id, self.bot.logger)
-                except:
-                    user_notfound.append(user.mention)
-                if success:
-                    removed_users.append(user.mention)
-                else:
-                    user_notfound.append(user.mention)
-
-            fields = []
-            if removed_users:
-                fields.append(['PASS', ', '.join([f'{x}' for x in removed_users])])
-            if user_notfound:
-                fields.append(['FAIL', ', '.join([f'{x}' for x in user_notfound])])
-            title = 'Users blacklisting'
-            desc = ''
-            embeds = generic_embed(
-                title=title,
-                desc=desc,
-                fields=fields,
-                colours=Colours.COMMANDS,
-                footer=current_time()
-            )
-            for embed in embeds:
-                await ctx.send(embed=embed)
-        except Exception as e:
-            self.bot.logger.warning(f'Issue removing users from ' +
-                                    f'global blacklist: {e}')
-            embed = internalerrorembed(f'Issue removing users from ' +
-                                                          f'global blacklist: {e}')
-            await ctx.send(embed=embed)
-
-    @commands.group(aliases=['blc'], pass_context=True)
-    @permissions.is_admin()
-    @commands.guild_only()
-    async def blacklistchannel(self, ctx):
-        """Channel blacklistings.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        """
-        if ctx.invoked_subcommand is None:
-            channels = await self.bot.pg.get_all_blacklist_channels(ctx.guild.id)
-            channels = [ctx.guild.get_channel(int(g)) for g in channels]
-            if isinstance(channels, type(None)):
-                channels = []
-            else:
-                channels = [str(x.id) for x in flatten(channels)]
-            if len(channels) > 0:
-                desc = '<#'
-                desc += '>, <#'.join(channels)
-                desc += '>'
-                title = 'Blacklisted Channels'
-            else:
-                desc = ''
-                title = 'No channels in blacklist'
-            embeds = generic_embed(
-                title=title,
-                desc=desc,
-                fields=[],
-                footer=current_time(),
-                colours=Colours.COMMANDS
-            )
-            for embed in embeds:
-                await ctx.send(embed=embed)
-
-    @blacklistchannel.command(name='add', pass_context=True)
-    async def _blca(self, ctx: commands.Context, *, cids: str=None):
-        """Add channel to blacklist.
-
-        Give id/mentionable or trigger inside of a channel.
-
-        Parameters
-        ----------
-        cids: str
-            list of channels
-
-        Returns
-        -------
-        """
-        added_channel = []
-        if cids is not None:
-            msg = cids.replace(' ', '')
-            if ',' in msg:
-                channels = [self.bot.get_channel(int(extract_id(x, 'channel'))) for x in msg.split(',')]
-            else:
-                channels = [self.bot.get_channel(int(extract_id(msg, 'channel')))]
-            channels = flatten(channels)
-        else:
-            channels = [ctx.channel]
-        try:
-            for channel in channels:
-                success = await self.bot.pg.add_blacklist_channel(ctx.guild.id, channel.id, self.bot.logger)
-                if success:
-                    added_channel.append(channel.mention)
-            if added_channel:
-                title = 'Channels added into blacklist'
-                desc = ', '.join(added_channel)
-                embeds = generic_embed(
-                    title=title,
-                    desc=desc,
-                    fields=[],
-                    colours=Colours.COMMANDS,
-                    footer=current_time()
-                )
-            else:
-                self.bot.logger.info(f'Error adding channels to blacklist')
-                embed = internalerrorembed(f'Error adding channels to blacklist')
-                await respond(ctx, False)
-                await ctx.send(embed=embed, delete_after=5)
-                return
-            for embed in embeds:
-                await ctx.send(embed=embed)
-        except Exception as e:
-            self.bot.logger.info(f'Error adding channel to blacklist {e}')
-            embed = internalerrorembed(f'Error adding channels to blacklist {e}')
-            await respond(ctx, False)
-            await ctx.send(embed=embed, delete_after=5)
-
-    @blacklistchannel.command(name='remove', aliases=['rem', 'del', 'rm'])
-    async def _blcr(self, ctx: commands.Context, *, cids: str=None):
-        """Removes a channel from the blacklist.
-
-        Give id/mentionable or trigger inside of a channel.
-
-        Parameters
-        ----------
-        cids: str
-           Channel name, id, etc
-
-        Returns
-        -------
-        """
-        removed_channel = []
-        channel_notfound = []
-        if cids is not None:
-            msg = cids.replace(' ', '')
-            if ',' in msg:
-                channels = [self.bot.get_channel(int(extract_id(x, 'channel'))) for x in msg.split(',')]
-            else:
-                channels = [self.bot.get_channel(int(extract_id(msg, 'channel')))]
-            channels = flatten(channels)
-        else:
-            channels = [ctx.channel]
-        try:
-            for channel in channels:
-                success = False
-                try:
-                    success = await self.bot.pg.rem_blacklist_channel(ctx.guild.id, channel.id, self.bot.logger)
-                except ValueError:
-                    channel_notfound.append(channel)
-                if success:
-                    removed_channel.append(channel.mention)
-                else:
-                    channel_notfound.append(channel.mention)
-            fields = []
-            if removed_channel:
-                fields.append(['PASS.)', ', '.join(removed_channel)])
-            if channel_notfound:
-                fields.append(['FAIL.)', ', '.join(channel_notfound)])
-            title = 'Channel blacklisting Removed'
-            desc = ''
-            embeds = generic_embed(
-                title=title,
-                desc=desc,
-                fields=fields,
-                colours=Colours.COMMANDS,
-                footer=current_time()
-            )
-            for embed in embeds:
-                await ctx.send(embed=embed)
-        except Exception as e:
-            self.bot.logger.warning(f'Issue removing channels from ' +
-                                    f' blacklist: {e}')
-            embed = internalerrorembed(f'Issue removing channel from ' +
-                                                          f' blacklist: {e}')
-            await ctx.send(embed=embed, delete_after=5)
-
-    @commands.group(aliases=['commands', 'blcm'], pass_context=True)
-    @permissions.is_admin()
-    @commands.guild_only()
-    async def blacklistcmd(self, ctx):
-        """Add or remove a command to blacklist list.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        """
-        if ctx.invoked_subcommand is None:
-            cmds = await self.bot.pg.get_all_disallowed(ctx.guild.id)
-            cmds = [x[0][1] for x in parse(cmds)]
-            if isinstance(cmds, type(None)):
-                cmds = []
-            if len(cmds) > 0:
-                title = 'Commands blacklisted'
-                desc = ', '.join(cmds)
-            else:
-                desc = ''
-                title = 'No commands in blacklist'
-            embeds = generic_embed(
-                title=title,
-                desc=desc,
-                fields=[],
-                footer=current_time(),
-                colours=Colours.COMMANDS
-            )
-            for embed in embeds:
-                await ctx.send(embed=embed)
-
-    @blacklistcmd.command(name='add', pass_context=True)
-    async def _blcma(self, ctx: commands.Context, *, cmds: str):
-        """Add command to blacklist.
-
-        Parameters
-        ----------
-        cmds: str
-            Commands
-
-        Returns
-        -------
-        """
-        added_cmds = []
-        if cmds in ['all', 'everything']:
-            msg = ','.join([x.name for x in self.bot.commands])
-        else:
-            msg = cmds.replace(' ', '')
-        if ',' in msg:
-            cmds = [x for x in msg.split(',')]
-        else:
-            cmds = [msg]
-
-        try:
-            for cmd in cmds:
-                success = await self.bot.pg.add_disallowed(ctx.guild.id, cmd, self.bot.logger)
-                if success:
-                    added_cmds.append(cmd)
-            if added_cmds:
-                title = 'Commands added into blacklist'
-                desc = ', '.join(added_cmds)
-                embeds = generic_embed(
-                    title=title,
-                    desc=desc,
-                    fields=[],
-                    colours=Colours.COMMANDS,
-                    footer=current_time()
-                )
-            else:
-                self.bot.logger.info(f'Error adding Commands to blacklist')
-                embed = internalerrorembed(f'Error adding Commands to blacklist')
-                await ctx.send(embed=embed, delete_after=5)
-                return
-            for embed in embeds:
-                await ctx.send(embed=embed)
-        except Exception as e:
-            self.bot.logger.info(f'Error adding Commands to blacklist {e}')
-            embed = internalerrorembed(f'Error adding Commands to blacklist {e}')
-            await ctx.send(embed=embed, delete_after=5)
-
-    @blacklistcmd.command(name='remove', aliases=['rem', 'del', 'rm'])
-    async def _blcmr(self, ctx: commands.Context, *, cmds: str):
-        """Removes a command from the blacklist.
-
-        Parameters
-        ----------
-        cmds: str
-            List of cmds, comma separated
-
-        Returns
-        -------
-        """
-        removed_cmds = []
-        cmds_notfound = []
-        if cmds in ['all', 'everything']:
-            msg = ','.join([x.name for x in self.bot.commands])
-        else:
-            msg = cmds.replace(' ', '')
-        if ',' in msg:
-            cmds = [x for x in msg.split(',')]
-        else:
-            cmds = [msg]
-        cmds = [x for x in cmds if x != '']
-        try:
-            for cmd in cmds:
-                success = False
-                try:
-                    success = await self.bot.pg.rem_disallowed(ctx.guild.id, cmd, self.bot.logger)
-                except ValueError:
-                    cmds_notfound.append(cmd)
-                if success:
-                    removed_cmds.append(cmd)
-                else:
-                    cmds_notfound.append(cmd)
-            fields = []
-            if removed_cmds:
-                fields.append(['PASS.)', ', '.join(removed_cmds)])
-            if cmds_notfound:
-                fields.append(['FAIL.)', ', '.join(cmds_notfound)])
-            title = 'Command blacklisting'
-            desc = ''
-            embeds = generic_embed(
-                title=title,
-                desc=desc,
-                fields=fields,
-                colours=Colours.COMMANDS,
-                footer=current_time()
-            )
-            for embed in embeds:
-                await ctx.send(embed=embed)
-        except Exception as e:
-            self.bot.logger.warning(f'Issue removing commands from ' +
-                                    f'blacklist: {e}')
-            embed = internalerrorembed(f'Issue removing commands from ' +
-                                                          f'blacklist: {e}')
-            await ctx.send(embed=embed, delete_after=5)
-
-    """
-    MODLOG
-    """
-
-    @commands.group()
-    @commands.guild_only()
-    @permissions.is_admin()
-    async def modlog(self, ctx):
-        """
-        Adds or removes a channel to modlog list
-        """
-        if ctx.invoked_subcommand is None:
-            desc = ''
-            modlogs = await self.bot.pg_utils.get_modlogs(
-                ctx.guild.id)
-            for channel in ctx.guild.channels:
-                if channel.id in modlogs:
-                    desc += f'{channel.name} \n'
-            local_embed = discord.Embed(
-                title=f'Current modlog list is: ',
-                description=desc,
-                color=0x419400
-            )
-            await ctx.send(embed=local_embed)
-
-    @modlog.command(aliases=['add'])
-    async def add_channel(self, ctx):
-        """
-        Adds channel to modlog list
-        """
-        added_channels = []
-        desc = ''
-        try:
-            success = await \
-                self.bot.pg_utils.add_modlog_channel(
-                    ctx.guild.id, ctx.message.channel.id, self.bot.logger
-                )
-            if success:
-                added_channels.append(ctx.message.channel.name)
-            if added_channels:
-                for channel in added_channels:
-                    desc += f'{channel} \n'
-                local_embed = discord.Embed(
-                    title=f'Channels added to modlog list:',
-                    description=desc,
-                    color=0x419400
-                )
-                self.bot.server_settings[ctx.guild.id]['modlog_enabled'] = True
-            else:
-                self.bot.logger.info(f'slktjsaj')
-                local_embed = embeds.InternalErrorEmbed()
-            await ctx.send(embed=local_embed)
-        except Exception as e:
-            self.bot.logger.info(f'Error adding channels {e}')
-            local_embed = embeds.InternalErrorEmbed()
-            await ctx.send(embed=local_embed)
-
-    @modlog.command(aliases=['rem', 'remove'])
-    async def remove_channel(self, ctx):
-        """
-        Removes a channel from the modlog list
-        """
-        removed_channels = []
-        absent_channels = []
-        desc = ''
-        try:
-            try:
-                success = False
-                success = await \
-                    self.bot.pg_utils.rem_modlog_channel(
-                        ctx.guild.id, ctx.message.channel.id, self.bot.logger
-                    )
-            except ValueError:
-                absent_channels.append(ctx.message.channel.name)
-            if success:
-                removed_channels.append(ctx.message.channel.name)
-            if removed_channels:
-                for channel in removed_channels:
-                    desc += f'{channel} \n'
-                local_embed = discord.Embed(
-                    title=f'Channels removed from modlog list:',
-                    description=desc,
-                    color=0x419400
-                )
-                modlogs = await self.bot.pg_utils.get_modlogs(
-                    ctx.guild.id)
-                if not modlogs:
-                    self.bot.server_settings[ctx.guild.id]['modlog_enabled']\
-                        = False
-                if absent_channels:
-                    desc = ''
-                    for channel in absent_channels:
-                        desc += f'{channel}\n'
-                    local_embed.add_field(
-                        name='Channels not in modlog list :',
-                        value=desc
-                    )
-            elif absent_channels:
-                desc = ''
-                for channel in absent_channels:
-                    desc += f'{channel}\n'
-                local_embed = discord.Embed(
-                    title=f'Channels not in modlog list: ',
-                    description=desc,
-                    color=0x651111
-                )
-            else:
-                local_embed = discord.Embed(
-                    title=f'Internal error, please contact @dashwav#7785',
-                    description=' ',
-                    color=0x651111
-                )
-            await ctx.send(embed=local_embed)
-        except Exception as e:
-            self.bot.logger.warning(f'Issue: {e}')
-            local_embed = embeds.InternalErrorEmbed()
-            await ctx.send(embed=local_embed)
-    """
-    VOICELOG
-    """
-
-    @commands.group(aliases=['vclogs', 'prescence_logging'])
-    @commands.guild_only()
-    @permissions.is_admin()
-    async def voice_logging(self, ctx):
-        """
-        Enables and disables logging to channel.
-        """
-        if ctx.invoked_subcommand is None:
-            desc = ''
-            voicelogs = await self.bot.pg_utils.get_voice_channels(
-                ctx.guild.id)
-            for channel in ctx.guild.channels:
-                if channel.id in voicelogs:
-                    desc += f'{channel.name} \n'
-            local_embed = discord.Embed(
-                title=f'Current voice log channel list is: ',
-                description=desc,
-                color=0x419400
-            )
-            await ctx.send(embed=local_embed)
-
-    @voice_logging.command(name='enable')
-    async def _enable(self, ctx):
-        """
-        Adds channel to the log channel list.
-        """
-        added_channels = []
-        desc = ''
-        try:
-            success = await \
-                self.bot.pg_utils.add_voice_channel(
-                    ctx.guild.id, ctx.message.channel.id, self.bot.logger
-                )
-            if success:
-                added_channels.append(ctx.message.channel.name)
-            if added_channels:
-                for channel in added_channels:
-                    desc += f'{channel} \n'
-                local_embed = discord.Embed(
-                    title=f'Channels added to voice log channel list:',
-                    description=desc,
-                    color=0x419400
-                )
-            else:
-                local_embed = discord.Embed(
-                    title=f'Internal error, please contact @dashwav#7785',
-                    description=' ',
-                    color=0x651111
-                )
-            await ctx.send(embed=local_embed)
-        except Exception as e:
-            self.bot.logger.info(f'Error adding channels {e}')
-            local_embed = discord.Embed(
-                title=f'Internal issue, please contact @dashwav#7785',
-                description=' ',
-                color=0x651111
-            )
-            await ctx.send(embed=local_embed)
-
-    @voice_logging.command(name='disable', aliases=['rem'])
-    async def _disable(self, ctx):
-        """
-        Removes channel from the log channel list
-        """
-        removed_channels = []
-        absent_channels = []
-        desc = ''
-        try:
-            try:
-                success = False
-                success = await \
-                    self.bot.pg_utils.rem_voice_channel(
-                        ctx.guild.id, ctx.message.channel.id, self.bot.logger
-                    )
-            except ValueError as e:
-                absent_channels.append(ctx.message.channel.name)
-            if success:
-                removed_channels.append(ctx.message.channel.name)
-            if removed_channels:
-                for channel in removed_channels:
-                    desc += f'{channel} \n'
-                local_embed = discord.Embed(
-                    title=f'Channels removed from voice log channel list:',
-                    description=desc,
-                    color=0x419400
-                )
-                if absent_channels:
-                    desc = ''
-                    for channel in absent_channels:
-                        desc += f'{channel}\n'
-                    local_embed.add_field(
-                        name='Channels not in voice log channel list :',
-                        value=desc
-                    )
-            elif absent_channels:
-                desc = ''
-                for channel in absent_channels:
-                    desc += f'{channel}\n'
-                local_embed = discord.Embed(
-                    title=f'Channels not in voice log channel list: ',
-                    description=desc,
-                    color=0x651111
-                )
-            else:
-                local_embed = discord.Embed(
-                    title=f'Internal error, please contact @dashwav#7785',
-                    description=' ',
-                    color=0x651111
-                )
-            await ctx.send(embed=local_embed)
-        except Exception as e:
-            self.bot.logger.warning(f'Issue: {e}')
-            local_embed = discord.Embed(
-                title=f'Internal issue, please contact @dashwav#7785',
-                description=' ',
-                color=0x651111
-            )
-            await ctx.send(embed=local_embed)
-
-    """
-    GENERAL LOG
-    """
-
-    @commands.group()
-    @commands.guild_only()
-    @permissions.is_admin()
-    async def logging(self, ctx):
-        """
-        Enables and disables logging to channel.
-        """
-        if ctx.invoked_subcommand is None:
-            desc = ''
-            modlogs = await self.bot.pg_utils.get_logger_channels(
-                ctx.guild.id)
-            for channel in ctx.guild.channels:
-                if channel.id in modlogs:
-                    desc += f'{channel.name} \n'
-            local_embed = discord.Embed(
-                title=f'Current log channel list is: ',
-                description=desc,
-                color=0x419400
-            )
-            await ctx.send(embed=local_embed)
-
-    @logging.command()
-    async def enable(self, ctx):
-        """
-        Adds channel to the log channel list.
-        """
-        added_channels = []
-        desc = ''
-        try:
-            success = await \
-                self.bot.pg_utils.add_logger_channel(
-                    ctx.guild.id, ctx.message.channel.id, self.bot.logger
-                )
-            if success:
-                added_channels.append(ctx.message.channel.name)
-            if added_channels:
-                for channel in added_channels:
-                    desc += f'{channel} \n'
-                local_embed = discord.Embed(
-                    title=f'Channels added to log channel list:',
-                    description=desc,
-                    color=0x419400
-                )
-                self.bot.server_settings[ctx.guild.id]['logging_enabled']\
-                    = True
-            else:
-                local_embed = discord.Embed(
-                    title=f'Internal error, please contact @dashwav#7785',
-                    description=' ',
-                    color=0x651111
-                )
-            await ctx.send(embed=local_embed)
-        except Exception as e:
-            self.bot.logger.info(f'Error adding channels {e}')
-            local_embed = discord.Embed(
-                title=f'Internal issue, please contact @dashwav#7785',
-                description=' ',
-                color=0x651111
-            )
-            await ctx.send(embed=local_embed)
-
-    @logging.command(aliases=['rem'])
-    async def disable(self, ctx):
-        """
-        Removes channel from the log channel list
-        """
-        removed_channels = []
-        absent_channels = []
-        desc = ''
-        try:
-            try:
-                success = False
-                success = await \
-                    self.bot.pg_utils.rem_logger_channel(
-                        ctx.guild.id, ctx.message.channel.id, self.bot.logger
-                    )
-            except ValueError as e:
-                absent_channels.append(ctx.message.channel.name)
-            if success:
-                removed_channels.append(ctx.message.channel.name)
-            if removed_channels:
-                for channel in removed_channels:
-                    desc += f'{channel} \n'
-                local_embed = discord.Embed(
-                    title=f'Channels removed from log channel list:',
-                    description=desc,
-                    color=0x419400
-                )
-                logs = await self.bot.pg_utils.get_logger_channels(
-                    ctx.guild.id)
-                if not logs:
-                    self.bot.server_settings[ctx.guild.id]['logging_enabled']\
-                        = False
-                if absent_channels:
-                    desc = ''
-                    for channel in absent_channels:
-                        desc += f'{channel}\n'
-                    local_embed.add_field(
-                        name='Channels not in log channel list :',
-                        value=desc
-                    )
-            elif absent_channels:
-                desc = ''
-                for channel in absent_channels:
-                    desc += f'{channel}\n'
-                local_embed = discord.Embed(
-                    title=f'Channels not in log channel list: ',
-                    description=desc,
-                    color=0x651111
-                )
-            else:
-                local_embed = discord.Embed(
-                    title=f'Internal error, please contact @dashwav#7785',
-                    description=' ',
-                    color=0x651111
-                )
-            await ctx.send(embed=local_embed)
-        except Exception as e:
-            self.bot.logger.warning(f'Issue: {e}')
-            local_embed = discord.Embed(
-                title=f'Internal issue, please contact @dashwav#7785',
-                description=' ',
-                color=0x651111
-            )
-            await ctx.send(embed=local_embed)
-
     """
     MODIFY CONFIGURATION
     """
 
-    @commands.group()
+    @commands.group(aliases=['configure'])
     @permissions.is_admin()
     @commands.guild_only()
     async def config(self, ctx):
         """Display Config.
+
+        Use `config setup` to setup all your guild params.
 
         Parameters
         ----------
@@ -913,298 +109,389 @@ class Administration(commands.Cog):
         if ctx.invoked_subcommand is None:
             gid = ctx.guild.id
             try:
-                config = await self.bot.pg.get_guild(gid, self.bot.logger)
-                config = parse(config)
-                guild = await self.bot.fetch_guild(gid)
-                ctitle = f'{guild.name} Configuration'
+                tmp = await self.bot.pg.get_guild(gid, self.bot.logger)
+                tmp = [[key, val] for (key, val) in tmp.items()]
+                config = []
+                for i in range(len(tmp)):
+                    row = tmp[i][0]
+                    if 'channels' in row and isinstance(tmp[i][1], list):
+                        config.append([row, [f'<#{x}>' for x in tmp[i][1]]])
+                    elif 'roles' in row and isinstance(tmp[i][1], list):
+                        config.append([row, [f'<@&{x}>' for x in tmp[i][1]]])
+                    elif 'users' in row and isinstance(tmp[i][1], list):
+                        config.append([row, [f'<@{x}>' for x in tmp[i][1]]])
+                    else:
+                        config.append([row, tmp[i][1]])
+                ctitle = f'{ctx.guild.name} Configuration'
                 cdesc = ''
-                fields = config
 
                 embeds = generic_embed(
                     title=ctitle,
                     desc=cdesc,
-                    fields=fields,
+                    fields=config,
                     footer=current_time(),
                     colours=Colours.COMMANDS
                 )
                 for embed in embeds:
                     await ctx.send(embed=embed)
             except Exception as e:
-                await ctx.send(embed=internalerrorembed(f'Problem checking guild config: {e}'), delete_after=5)
+                await ctx.send(embed=internalerrorembed(f'Problem checking guild config: {e}'), delete_after=5)  # noqa
                 await respond(ctx, False)
-                self.bot.logger.warning(f'Error trying to return guild config: {e}')
+                self.bot.logger.warning(f'Error trying to return guild config: {e}')  # noqa
 
-    @commands.group()
-    @commands.guild_only()
-    @permissions.is_admin()
-    async def footer(self, ctx):
-        """
-        Ban/kick footer command. If no subcommand is
-        invoked, it will return the current ban/kick footer
-        """
-        ban_footer = await self.bot.pg_utils.get_ban_footer(
-            ctx.guild.id,
-            self.bot.logger
-        )
-        kick_footer = await self.bot.pg_utils.get_kick_footer(
-            ctx.guild.id,
-            self.bot.logger
-        )
-        footer_msg = f'**Ban Footer**:\n\n{ban_footer}\n\n'\
-                     f'**Kick Footer:**\n\n{kick_footer}'
-        if ctx.invoked_subcommand is None:
-            local_embed = discord.Embed(
-                title=f'Current welcome message: ',
-                description=footer_msg
-            )
-            await ctx.send(embed=local_embed)
+    @config.command(name='setup', aliases=['start', 'first'])
+    async def _configsetup(self, ctx: commands.Context):
+        """General setup for guild settings..
 
-    @footer.command(name='set_ban')
-    async def set_ban_footer(self, ctx: commands.Context, *, footer_string):
-        """
-        Attempts to set kick/ban footer to string passed in
-        """
-        if not footer_string:
-            local_embed = discord.Embed(
-                title=f'No string detected, I need a string parameter to work',
-                description=' ',
-                color=0x651111
-            )
-            await ctx.send(embed=local_embed)
-            return
-        success = await self.bot.pg_utils.set_ban_footer(
-            ctx.guild.id,
-            footer_string,
-            self.bot.logger
-        )
-        if success:
-            desc = footer_string.replace(
-                f'%user%', ctx.message.author.mention)
-            local_embed = discord.Embed(
-                title=f'Footer message set:',
-                description=f'**Preview:**\n{desc}',
-                color=0x419400
-            )
-        else:
-            local_embed = discord.Embed(
-                title=f'Internal error occured, please contact @dashwav#7785',
-                description=' ',
-                color=0x651111
-            )
-        await ctx.send(embed=local_embed)
-        return
+        This will step through all of the parameters to set for the guild.
+        You will have the ability to keep the old values.
 
-    @footer.command(name='set_kick')
-    async def set_kick_footer(self, ctx: commands.Context, *, footer_string):
-        """
-        Attempts to set kick/ban footer to string passed in
-        """
-        if not footer_string:
-            local_embed = discord.Embed(
-                title=f'No string detected, I need a string parameter to work',
-                description=' ',
-                color=0x651111
-            )
-            await ctx.send(embed=local_embed)
-            return
-        success = await self.bot.pg_utils.set_kick_footer(
-            ctx.guild.id,
-            footer_string,
-            self.bot.logger
-        )
-        if success:
-            desc = footer_string.replace(
-                f'%user%', ctx.message.author.mention)
-            local_embed = discord.Embed(
-                title=f'Footer message set:',
-                description=f'**Preview:**\n{desc}',
-                color=0x419400
-            )
-        else:
-            local_embed = discord.Embed(
-                title=f'Internal error occured, please contact @dashwav#7785',
-                description=' ',
-                color=0x651111
-            )
-        await ctx.send(embed=local_embed)
-        return
+        Parameters
+        ----------
 
-
-    @commands.group()
-    @commands.guild_only()
-    @permissions.has_permissions(manage_roles=True)
-    async def invites(self, ctx):
+        Returns
+        -------
         """
-        Enables/Disables autodeletion of invites
-        """
-        if ctx.invoked_subcommand is None:
-            allowed = self.bot.server_settings[ctx.guild.id]["invites_allowed"]
-            local_embed = discord.Embed(
-                title=f'Invites are:',
-                description=f"{'Allowed' if allowed else 'Disallowed'}",
-                color=0x419400
-            )
-            await ctx.send(embed=local_embed)
-
-    @invites.command(aliases=['enable'])
-    async def allow(self, ctx):
-        """
-        Disables autodeletion of invites
-        """
+        # gather the settings
         try:
-            await self.bot.pg_utils.set_invites_allowed(
-                ctx.guild.id, True)
+            params = None
+            e = None
+            params = await self.bot.pg.get_guild(ctx.guild.id, self.bot.logger)
+            failed = False
+        except Exception as ec:
+            e = ec
+            failed = True
+        if isinstance(params, type(None)) or failed:
+            await ctx.send(embed=internalerrorembed(f'Problem checking guild config: {e}'), delete_after=5)  # noqa
+            await respond(ctx, False)
+            self.bot.logger.warning(f'Error trying to return guild config: {e}')  # noqa
+            return
+        # now start question logic
+        questions = {}
+        params = [[key, val] for (key, val) in params.items()]
+        for i in range(len(params)):
+            key, val = params[i]
+            if key not in ('currtime', 'guild_id'):
+                dt = str(type(val)).strip('< class').strip('>')
+                if (('id' in key) or ('channel' in key) or ('role' in key) or ('user' in key)):  # noqa
+                    key = f'Please set the value for {key}. Must be id ({dt})'
+                else:
+                    key = f'Please set the value for {key} ({dt})'
+                questions[key] = val
+        # ask questions now
+        try:
+            questions, final = await iterator(ctx, questions, 10, True, False)
         except Exception as e:
-            local_embed = embeds.InternalErrorEmbed()
-            self.bot.logger.warning(f'Error setting invites allowed: {e})')
-            await ctx.send(embed=local_embed)
-        self.bot.server_settings[ctx.guild.id]['invites_allowed'] = True
-        local_embed = discord.Embed(
-                title=f'Invites are now:',
-                description=f'Allowed',
-                color=0x419400
-            )
-        await ctx.send(embed=local_embed)
-
-    @invites.command(aliases=['disable', 'delete'])
-    async def disallow(self, ctx):
-        """
-        Enables autodeletion of invites
-        """
-        try:
-            await self.bot.pg_utils.set_invites_allowed(
-                ctx.guild.id, False)
-        except Exception as e:
-            local_embed = embeds.InternalErrorEmbed()
-            self.bot.logger.warning(f'Error setting invites disallowed: {e})')
-            await ctx.send(embed=local_embed)
+            await ctx.send(embed=internalerrorembed(f'Problem checking set config: {e}'), delete_after=5)  # noqa
+            await respond(ctx, False)
+            self.bot.logger.warning(f'Error trying to set guild config: {e}')  # noqa
             return
-        self.bot.server_settings[ctx.guild.id]['invites_allowed'] = False
-        local_embed = discord.Embed(
-                title=f'Invites are now:',
-                description=f'Disallowed',
-                color=0x419400
-            )
-        await ctx.send(embed=local_embed)
-
-
-    @commands.group()
-    @commands.guild_only()
-    @permissions.is_admin()
-    async def welcome(self, ctx):
-        """
-        Welcome message command. If no subcommand is
-        invoked, it will return the current welcome message
-        """
-        if not await permissions.is_channel_blacklisted(self, ctx):
+        if not final:
             return
-        welcome_msg = await self.bot.pg_utils.get_welcome_message(
-            ctx.guild.id,
-            self.bot.logger
-        )
-        if ctx.invoked_subcommand is None:
-            local_embed = discord.Embed(
-                title=f'Current welcome message: ',
-                description=welcome_msg
-            )
-            await ctx.send(embed=local_embed)
+        # gather the difference between original and response
+        for key in list(final.keys()):
+            if key in questions.keys():
+                if final[key] == questions[key]:
+                    final.pop(key)
+                    continue
+            val = final[key]
+            final.pop(key)
+            key = key[len('Please set the value for '):].split(' ')[0].strip('.')  # noqa
+            final[key] = val
 
-    @welcome.command(name='set')
-    async def setwelcome(self, ctx: commands.Context, *, welcome_string):
-        """
-        Attempts to set welcome message to string passed in
-        """
-        if not await permissions.is_channel_blacklisted(self, ctx):
-            return
-        if not welcome_string:
-            local_embed = discord.Embed(
-                title=f'No string detected, I need a string parameter to work',
-                description=' ',
-                color=0x651111
-            )
-            await ctx.send(embed=local_embed)
-            return
-        success = await self.bot.pg_utils.set_welcome_message(
-            ctx.guild.id,
-            welcome_string,
-            self.bot.logger
-        )
-        if success:
-            desc = welcome_string.replace(
-                f'%user%', ctx.message.author.mention)
-            local_embed = discord.Embed(
-                title=f'Welcome message set:',
-                description=f'**Preview:**\n{desc} ',
-                color=0x419400
-            )
+        # now read back these to user
+        config = [[key, val] for (key, val) in final.items()]
+        questions.clear()
+        for i in range(len(config)):
+            row = config[i][0]
+            if 'channels' in row and isinstance(config[i][1], list):
+                config[i] = [row, [f'<#{x}>' for x in config[i][1]]]
+            elif 'roles' in row and isinstance(config[i][1], list):
+                config[i] = [row, [f'<@&{x}>' for x in config[i][1]]]
+            elif 'users' in row and isinstance(config[i][1], list):
+                config[i] = [row, [f'<@{x}>' for x in config[i][1]]]
+        ctitle = f'{ctx.guild.name} Configuration'
+        if len(config) > 0:
+            cdesc = 'These are the values that have been asked to changed.'
         else:
-            local_embed = discord.Embed(
-                title=f'Internal error occured, please contact @dashwav#7785',
-                description=' ',
-                color=0x651111
-            )
-        await ctx.send(embed=local_embed)
+            cdesc = 'No values changed'
+
+        embeds = generic_embed(
+            title=ctitle,
+            desc=cdesc,
+            fields=config,
+            footer=current_time(),
+            colours=Colours.COMMANDS
+        )
+        for embed in embeds:
+            await ctx.send(embed=embed)
+        if len(config) == 0:
+            return
+        await ctx.send('Are these changes okay? [y/n]', delete_after=15)
+        responded = await ctx.bot.wait_for("message",
+                                           timeout=15,
+                                           check=lambda message:
+                                           message.author == ctx.message.author)  # noqa
+        if responded.content.lower()[0] != 'y':
+            await respond(ctx, False)
+            await responded.delete()
+            return
+        else:
+            await responded.delete()
+        # now apply changes
+        passed, failed = await self.bot.pg.set_multiple_records(ctx.guild.id, final, self.bot.logger)  # noqa
         return
 
-    @welcome.command(aliases=['on'])
-    async def enable(self, ctx):
-        """
-        Enables the welcome message in this channel
-        """
-        if not await permissions.is_channel_blacklisted(self, ctx):
-            return
-        success = await self.bot.pg_utils.add_welcome_channel(
-            ctx.guild.id, ctx.message.channel.id, self.bot.logger
-        )
-        if success:
-            local_embed = discord.Embed(
-                title=f'Channel Added:',
-                description=f'{ctx.message.channel.name} '
-                'was added to welcome list.',
-                color=0x419400
-            )
-        else:
-            local_embed = discord.Embed(
-                title=f'Internal error, please contact @dashwav#7785',
-                description=' ',
-                color=0x651111
-            )
-        await ctx.send(embed=local_embed)
+    @config.command(name='change', aliases=['set', 'fix'])
+    async def _configset(self, ctx: commands.Context, key: str, *, val: str):
+        """Change a specific guild configuration.
 
-    @welcome.command(aliases=['off'])
-    async def disable(self, ctx):
+        This is fine tuned and MUST match the exact specifications
+        size of a record row for schema.guild. If it is unable to match
+        it will not change that value and continue.
+
+        Parameters
+        ----------
+        key: str:
+            the exact col name
+        value: str
+            the value to input to
+
+        Returns
+        -------
         """
-        Enables the welcome message in this channel
-        """
-        if not await permissions.is_channel_blacklisted(self, ctx):
+        # gather guild
+        guild = ctx.guild
+        gid = guild.id
+        # get values at first
+        try:
+            old = await self.bot.pg.get_single_record(gid, key, self.bot.logger)
+            # verify change
+            if not await confirm(ctx, f'Do you want to change {guild.name} <{gid}> [<@{guild.owner.id}>] guild config of {key} from {old} to {val}?', 10):
+                return
+        except Exception as e:
+            await ctx.send(embed=internalerrorembed(f'Problem checking guild config: {e}'), delete_after=5)
+            await respond(ctx, False)
+            self.bot.logger.warning(f'Error trying to return guild config: {e}')
+            return
+        # now set values
+        try:
+            success = await self.bot.pg.set_single_record(gid, key, val, self.bot.logger)
+            if not success:
+                await ctx.send(embed=internalerrorembed(f'Couldnt set guild config.'), delete_after=5)
+                await respond(ctx, False)
+                return
+        except Exception as e:
+            await ctx.send(embed=internalerrorembed(f'Problem setting guild config: {e}'), delete_after=5)
+            await respond(ctx, False)
+            self.bot.logger.warning(f'Error trying to setting guild config: {e}')
             return
         try:
-            success = await self.bot.pg_utils.rem_welcome_channel(
-                ctx.guild.id, ctx.message.channel.id, self.bot.logger
-            )
-        except ValueError:
-            local_embed = discord.Embed(
-                title=f'This channel is already not'
-                'in the welcome channel list',
-                description=' ',
-                color=0x651111
-            )
-            await ctx.send(embed=local_embed)
+            await ctx.send(f'Changed {gid} guild config', delete_after=15)
+            await respond(ctx, True)
+        except Exception as e:
+            await ctx.send(embed=internalerrorembed(f'Problem return guild config: {e}'), delete_after=5)
+            await respond(ctx, False)
+            self.bot.logger.warning(f'Error trying to return guild config: {e}')
+        return
+
+    @config.command(name='prefix')
+    async def _prefixchange(self, ctx: commands.Context, prefix: str):
+        """Set prefix for guild.
+
+        Must be <= 2 chars
+
+        Parameters
+        ----------
+        prefix: str
+            Prefix to set
+
+        Returns
+        -------
+        """
+        if len(prefix.strip()) > 2:
+            await generic_message(ctx, [ctx.channel], f'Prefix `{prefix.strip()}` invalid. It needs to be <= 2 chars.', 5)
+            await respond(ctx, False)
             return
-        if success:
-            local_embed = discord.Embed(
-                title=f'Channel removed:',
-                description=f'{ctx.message.channel.name} '
-                'was removed from welcome list.',
-                color=0x419400
+        try:
+            success = await self.bot.pg.set_prefix(
+                ctx.guild.id,
+                prefix,
+                self.bot.logger
             )
+            if success:
+                self.bot.guild_settings[ctx.guild.id]['prefix'] = prefix
+            await generic_message(ctx, [ctx.channel], f'Prefix `{prefix.strip()}` has been set.', 5)
+            await respond(ctx, True)
+        except Exception as e:
+            local_embed = internalerrorembed('Something went wrong setting the prefix.')
+            await ctx.send(embed=local_embed, delete_after=5)
+            await respond(ctx, False)
+            return
+
+    @config.command(name='banfooter', aliases=['setban', 'setbanfooter'])
+    async def _set_ban_footer(self, ctx: commands.Context, *, footer: str):
+        """Set ban footer.
+
+        Parameters
+        ----------
+        footer: str
+            String of ban footer to set
+
+        Returns
+        -------
+        """
+        try:
+            success = await self.bot.pg.set_ban_footer(
+                ctx.guild.id,
+                footer,
+                self.bot.logger
+            )
+            await generic_message(ctx, [ctx.channel], f'Ban footer has been set to `{footer}`.', 15)
+            await respond(ctx, True)
+        except Exception as e:
+            local_embed = internalerrorembed('Something went wrong setting the ban footer.')
+            await ctx.send(embed=local_embed, delete_after=5)
+            await respond(ctx, False)
+            return
+
+    @config.command(name='kickfooter', aliases=['setkickfooter', 'setkick'])
+    async def _set_kick_footer(self, ctx: commands.Context, *, footer: str):
+        """Set kick footer.
+
+        Parameters
+        ----------
+        footer: str
+            String to set footer to
+
+        Returns
+        -------
+        """
+        try:
+            success = await self.bot.pg.set_ban_footer(
+                ctx.guild.id,
+                footer,
+                self.bot.logger
+            )
+            await generic_message(ctx, [ctx.channel], f'Ban footer has been set to `{footer}`.', 15)
+            await respond(ctx, True)
+        except Exception as e:
+            local_embed = internalerrorembed('Something went wrong setting the ban footer.')
+            await ctx.send(embed=local_embed, delete_after=5)
+            await respond(ctx, False)
+            return
+
+    @config.command(name='setinvites')
+    async def _invites(self, ctx, status: bool):
+        """Toggle autodeletion of invites.
+
+        Parameters
+        ----------
+        status: bool
+            status of invites allow (True doesn't delete)
+
+        Returns
+        ----------
+        """
+        try:
+            success = await self.bot.pg.set_invites_allowed(
+                ctx.guild.id,
+                status)
+            await generic_message(ctx, [ctx.channel], f'External discord invite has been set to `{status}`.', 15)
+            await respond(ctx, True)
+        except Exception as e:
+            local_embed = internalerrorembed('Something went wrong setting the invites.')
+            await ctx.send(embed=local_embed, delete_after=5)
+            await respond(ctx, False)
+            return
+
+    @config.command(name='setcolour', aliases=['enablecolour'])
+    async def _enablecolour(self, ctx, status: bool):
+        """Toggle ability to use colour roles.
+
+        Parameters
+        ----------
+        status: bool
+            If true users can join colour roles
+
+        Returns
+        ----------
+        """
+        try:
+            success = await self.bot.pg.set_colour_enabled(
+                ctx.guild.id,
+                status)
+            if success:
+                self.bot.guild_settings[ctx.guild.id]['colour_enabled'] = status
+                await generic_message(ctx, [ctx.channel], f'Colour role has been set to `{status}`.', 15)
+                await respond(ctx, True)
+                return
+            else:
+                await respond(ctx, False)
+                return
+        except Exception as e:
+            local_embed = internalerrorembed('Something went wrong setting the colour role status.')
+            await ctx.send(embed=local_embed, delete_after=5)
+            await respond(ctx, False)
+            return
+
+    @config.command(name='colourtemplate', aliases=['colourrole'])
+    async def _setcolourtemplate(self, ctx, *, role: str):
+        """Toggle ability to use colour roles.
+
+        Parameters
+        ----------
+        status: bool
+            If true users can join colour roles
+
+        Returns
+        ----------
+        """
+        base_role = get_role(ctx, role)
+        if base_role:
+            success = await self.bot.pg.set_colourtemplate(ctx.guild.id, base_role.id, self.bot.logger)
         else:
-            local_embed = discord.Embed(
-                title=f'Internal error, please contact @dashwav#7785',
-                description=' ',
-                color=0x651111
-            )
-        await ctx.send(embed=local_embed)
+            success = False
+
+        if success:
+            await respond(ctx, True)
+            return
+        else:
+            await generic_message(ctx, [ctx.channel], f'Something went wrong with setting template colour role <@&{role}>.', 15)
+            await respond(ctx, False)
+            return
+
+    @config.command(name='welcomemessage', aliases=['setwelcome', 'changewelcome'])
+    @commands.guild_only()
+    async def _welcomemessage(self, ctx, *, content: str=None):
+        """Set the welcome message.
+
+        Use `\%server\%, \%user\% to specify either.`
+
+        Parameters
+        ----------
+        content: str
+            content to set the welcome message to
+
+        Returns
+        -------
+        """
+        if content is None:
+            local_embed = internalerrorembed('Please also give the content to se the welcome message to. Use `\%server\%, \%user\% to specify either.`')
+            await ctx.send(embed=local_embed, delete_after=20)
+            return
+        try:
+            success = await self.bot.pg.set_welcome_message(
+                ctx.guild.id,
+                content,
+                self.bot.logger)
+            await generic_message(ctx, [ctx.channel], f'Welcome message has been set to `{content}`.', 15)
+            await respond(ctx, True)
+        except Exception as e:
+            local_embed = internalerrorembed('Something went wrong welcome channel.')
+            await ctx.send(embed=local_embed, delete_after=5)
+            await respond(ctx, False)
+            return
 
     """
     CHATSTATS
@@ -1225,9 +512,15 @@ class Administration(commands.Cog):
         title.set_va("top")
         title.set_ha("center")
         plt.gca().axis("equal")
-        colors = ['r', 'darkorange', 'gold', 'y', 'olivedrab', 'green', 'darkcyan', 'mediumblue', 'darkblue', 'blueviolet', 'indigo', 'orchid', 'mediumvioletred', 'crimson', 'chocolate', 'yellow', 'limegreen','forestgreen','dodgerblue','slateblue','gray']
+        colors = ('r', 'darkorange', 'gold', 'y', 'olivedrab',
+                  'green', 'darkcyan', 'mediumblue', 'darkblue',
+                  'blueviolet', 'indigo', 'orchid',
+                  'mediumvioletred', 'crimson', 'chocolate',
+                  'yellow', 'limegreen', 'forestgreen',
+                  'dodgerblue', 'slateblue', 'gray')
         pie = plt.pie(sizes, colors=colors, startangle=0)
-        plt.legend(pie[0], labels, bbox_to_anchor=(0.7, 0.5), loc="center", fontsize=10,
+        plt.legend(pie[0], labels, bbox_to_anchor=(0.7, 0.5),
+                   loc="center", fontsize=10,
                    bbox_transform=plt.gcf().transFigure, facecolor='#ffffff')
         plt.subplots_adjust(left=0.0, bottom=0.1, right=0.45)
         image_object = BytesIO()
@@ -1235,29 +528,39 @@ class Administration(commands.Cog):
         image_object.seek(0)
         return image_object
 
-    @commands.command(pass_context=True, no_pm=True)
-    @commands.cooldown(1, 10, commands.BucketType.channel)
+    @commands.command(name='chatchart', aliases=['chartchat', 'chatstats'])
+    @commands.cooldown(1, 30, commands.BucketType.channel)
     @permissions.is_admin()
-    async def chatchart(self, ctx: commands.Context, channel: str):
+    async def _charting(self, ctx: commands.Context, channel: str=None):
+        """Generate pie chart of ast 5000 messages in channel.
+
+        Parameters
+        ----------
+        channel: str
+            Optional channel to pass
+
+        Returns
+        -------
         """
-        Generates a pie chart, representing the last 5000 messages in the specified channel.
-        """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'chatchart'):
+            return
         e = discord.Embed(description="Loading...", colour=0x00ccff)
         e.set_thumbnail(url="https://i.imgur.com/vSp4xRk.gif")
-        em = await self.bot.say(embed=e)
-        
+        em = await ctx.send(embed=e)
         if channel is None:
             channel = ctx.message.channel
+        else:
+            channel = get_channel(ctx, channel)
         history = []
         if not channel.permissions_for(ctx.message.author).read_messages == True:
-            await self.bot.delete_message(em)
-            return await self.bot.say("You're not allowed to access that channel.")
+            await em.delete()
+            return await ctx.send("You're not allowed to access that channel.")
         try:
-            async for msg in self.bot.logs_from(channel, 5000):
+            async for msg in channel.history(limit=5000):
                 history.append(msg)
         except discord.errors.Forbidden:
-            await self.bot.delete_message(em)
-            return await self.bot.say("No permissions to read that channel.")
+            await em.delete()
+            return await ctx.send("No permissions to read that channel.")
         msg_data = {'total count': 0, 'users': {}}
 
         for msg in history:
@@ -1286,14 +589,362 @@ class Administration(commands.Cog):
                                       if y == 'percent'], key=lambda x: x[1])
         others = 100 - sum(x[1] for x in top_ten)
         img = self.create_chart(top_ten, others, channel)
-        await self.bot.delete_message(em)
-        await self.bot.send_file(ctx.message.channel, img, filename="chart.png")
+        await em.delete()
+        await ctx.send(file=discord.File(fp=img, filename="chart.png"))
 
+    @_charting.error
+    async def charting_error(self, ctx, error):
+        await ctx.send(f'{error}', delete_after=5)
+        await respond(ctx, False)
+        return
 
-def check_folders():
-    if not os.path.exists("data/chatchart"):
-        print("Creating data/chatchart folder...")
-        os.makedirs("data/chatchart")
+    """
+    GIVEAWAY
+    """
+    def giveaway_start_message(self, description, gifter, endtime):
+        # startup giveaway🎊
+        title = f'🎉Giveaway Started🎉'
+        embeds = generic_embed(
+            title=title,
+            desc=f'{description} given by {gifter.mention}\nReact with {self.emoji} to win!\n',
+            color=Colours.CHANGE_G,
+            fields=[],
+            footer=f'Current: {current_time()}•Ends: {time_conv(endtime)}',
+        )[0]
+        return embeds
+
+    @commands.group(name='giveaway', aliases=['raffle', ])
+    @permissions.is_admin()
+    async def _giveaway(self, ctx: commands.Context):
+        """Bulk giveaway commands. Will just list any active.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
+        if isinstance(ctx.invoked_subcommand, type(None)):
+            title = f'Current Giveaways'
+            if len(self.bot.current_giveaways) == 0:
+                desc = 'No active giveaways'
+                fields = []
+            else:
+                desc = ''
+                fields = [[key, val] for key, val in self.bot.current_giveaways.items()]
+                for i, f in enumerate(fields):
+                    f = await self.bot.pg.get_single_giveaways(f[0], True, self.bot.logger)
+                    if not f:
+                        continue
+                    message = await ctx.channel.fetch_message(int(f['countdown_message_id']))
+                    tmp = message.jump_url
+                    time = time_conv(f['endtime'] - datetime.datetime.utcnow())
+                    if time[-3:] == 'ago':
+                        time = f'Ended {time}'
+                    else:
+                        time = f'Ends in {time}'
+                    fields[i][1] = f'{f["content"]}\n[Giveaway Count]({tmp})\n{time}'
+            embeds = generic_embed(title=title, desc=desc, fields=fields, footer=current_time(), colors=Colours.COMMANDS)
+            for embed in embeds:
+                await ctx.send(embed=embed)
+            pass
+
+    @_giveaway.command(name='create', aliases=['start', ])
+    async def _giveawaycreate(self, ctx: commands.Context, num_winners: int,
+                              time: str, gifter: str, *, description: str):
+        """Start a new Giveaway.
+
+        Parameters
+        ----------
+        num_winners: int
+            number of winners
+        time: str
+            time from now for the giveaway to end supports
+            #y#mo#w#d#h#m#s format
+        gifter: str
+            id/mention of the gifter
+
+        Returns
+        -------
+        """
+        if len(description) > 40:
+            await respond(ctx, False)
+            await ctx.send(embed=internalerrorembed(f'Description is too long. Try again'), delete_after=15)
+            return
+        # gather time
+        try:
+            time = datetime.timedelta(seconds=extract_time(time))  # noqa time in seconds from now
+            currtime = datetime.datetime.utcnow()
+            endtime = currtime + time
+        except Exception as e:
+            self.bot.logger.warning(f'Time set invalid {e}')
+            await respond(ctx, False)
+            await ctx.send(embed=internalerrorembed(f'Time set invalid {e}. Try again'), delete_after=15)
+            return
+        # gather user
+        try:
+            gifter = get_member(ctx, gifter)
+        except discord.NotFound as e:
+            self.bot.logger.warning(f'gifter invalid {e}')
+            await ctx.send(embed=internalerrorembed(f'Couldn\'t set the gifter {e}.'), delete_after=15)
+            return
+
+        # startup giveaway🎊
+        if num_winners > 1:
+            embeds = self.giveaway_start_message(description + f'\n{num_winners} winners!', gifter, endtime)
+        else:
+            embeds = self.giveaway_start_message(description + f'\n{num_winners} winner!', gifter, endtime)
+        msg = await ctx.send(embed=embeds)
+        await msg.add_reaction(self.emoji)
+
+        # now add to db and cache
+        try:
+            status = await self.bot.pg.add_giveaway(ctx.guild.id, ctx.channel.id, msg.id, gifter.id, description, num_winners, currtime, endtime, logger=self.bot.logger)
+            if status:
+                self.bot.current_giveaways[msg.id] = endtime
+                await ctx.message.delete()
+        except Exception as e:
+            self.bot.logger.warning(f'Something went wrong {e}')
+            await ctx.send(embed=panicerrorembed(f'Something went terribly wrong. {e}'), delete_after=15)
+            return
+
+        if self._giveaway_task.done():
+            self._giveaway_task = self.bot.loop.create_task(self.giveaway_loop())
+        return
+
+    @_giveaway.command(name='cancel', aliases=['stop', 'quit'])
+    async def _gcancel(self, ctx: commands.Context, message_id: int):
+        """Cancel a giveaway early, no winners.
+
+        Parameters
+        ----------
+        message_id: int
+            id of the message to cancel. Has to be the countdown message
+
+        Returns
+        -------
+        """
+        try:
+            message = await ctx.channel.fetch_message(message_id)
+        except (discord.NotFound, discord.HTTPException) as e:
+            await ctx.send(embed=internalerrorembed(f'Couldn\'t find message with ID {message_id} in the giveaway channel! {e}'), delete_after=15)
+            await respond(ctx, False)
+            return
+        giveaway = await self.bot.pg.get_single_giveaways(message_id, True, self.bot.logger)
+        if not giveaway:
+            return
+        if not await confirm(ctx, f'Are you sure you want to stop this giveaway with no winners: **{giveaway}**', 15):
+            return
+        await self.giveaway_removal(ctx.channel, giveaway, [])
+        await ctx.send(f'Giveaway has been removed', delete_after=15)
+        await ctx.message.delete()
+        return
+
+    @_giveaway.command(name='end', aliases=['early',])
+    async def _gend(self, ctx: commands.Context, message_id: int):
+        """Stop a giveaway early, choose winners.
+
+        Parameters
+        ----------
+        message_id: int
+            id of the message to cancel. Has to be the countdown message
+
+        Returns
+        -------
+        """
+        try:
+            message = await ctx.channel.fetch_message(message_id)
+        except (discord.NotFound, discord.HTTPException) as e:
+            await ctx.send(embed=internalerrorembed(f'Couldn\'t find message with ID {message_id} in the giveaway channel! {e}'), delete_after=15)
+            await respond(ctx, False)
+            return
+        if message.id not in self.bot.current_giveaways.keys():
+            return
+        if not await confirm(ctx, f'Are you sure you want to stop this giveaway and choose winners: **{message.jump_url}**', 15):
+            return
+        await self.bot.pg.update_giveaway(giveaway['countdown_message_id'], ['endtime'], [datetime.datetime.utcnow()], self.bot.logger)
+        giveaway = await self.bot.pg.get_single_giveaways(message_id, True, self.bot.logger)
+        await self.gteardown(giveaway)
+        await ctx.message.delete()
+        return
+
+    @_giveaway.command(name='reroll')
+    async def _reroll(self, ctx: commands.Context, message_id: int, num_winners: int):
+        """Reroll a giveaway based on a message/giveaway ID.
+
+        Parameters
+        ----------
+        message_id: int
+            id of the message to reroll. Has to be the countdown message
+        num_winners: int
+            number of winners
+
+        Returns
+        -------
+        """
+        try:
+            message = await ctx.channel.fetch_message(message_id)
+        except (discord.NotFound, discord.HTTPException) as e:
+            await ctx.send(embed=internalerrorembed(f'Couldn\'t find message with ID {message_id} in the giveaway channel! {e}'), delete_after=15)
+            await respond(ctx, False)
+            return
+
+        # don't allow rerolling a giveaway which is running
+        if message.id in self.bot.current_giveaways.keys():
+            await ctx.send(embed=internalerrorembed('This giveaway is still running! Rerolling can only be done after it has ended.'), delete_after=15)
+            await respond(ctx, False)
+            return
+
+        # gather giveaway
+        try:
+            giveaway = await self.bot.pg.get_single_giveaways(message_id, False, self.bot.logger)
+            users = await self.roll_user(message, giveaway)
+        except (AttributeError, IndexError) as e:
+            await respond(ctx, False)
+            return await ctx.send(embed=internalerrorembed(f'Couldn\'t find message with ID {message_id} in the giveaway channel! {e}'), delete_after=15)
+
+        if not giveaway:
+            await respond(ctx, False)
+            return
+
+        try:
+            winner = await self.roll_user(message, giveaway)
+            winner = winner[:min([num_winners, len(winner)])]
+        except NoWinnerFound as e:
+            await ctx.send(e)
+            await respond(ctx, False)
+            return
+        else:
+            content = ''
+            if len(winner) == 0:
+                await ctx.send(embed=internalerrorembed(f'Something went wrong rerolling{e}'), delete_after=15)
+                return
+            elif len(winner) == 1:
+                content += f'The giveaway **{giveaway["content"]}** has been rerolled and {winner[0].mention} is a new winner!'
+            else:
+                content += f'The giveaway **{giveaway["content"]}** has been rerolled and {[w.mention for w in winner]} are the new winners!'
+            await ctx.send(content)
+            winner = [w.id for w in winner]
+            await self.bot.pg.update_giveaway(giveaway['countdown_message_id'], ['winners_id'], [winner + giveaway['winners_id']], self.bot.logger)
+        await ctx.message.delete()
+        return
+
+    async def giveaway_loop(self):
+        # run until Config.__len__ returns 0
+        try:
+            # Data isn't loaded until ready
+            await self.bot.wait_until_ready()
+            coros = []
+        except Exception as e:
+            self.bot.logger.warning(f'Error with giveaway loop startup: {e}')
+        try:
+            i = 0
+            le = len(self.bot.current_giveaways)
+            while i < le:
+                keys = list(self.bot.current_giveaways.keys())
+                message_id, endtime = keys[i], self.bot.current_giveaways[keys[i]]
+                now = datetime.datetime.utcnow()
+                remaining = endtime - now
+                remaining = int(remaining.total_seconds())
+                if remaining <= 0:
+                    giveaway = await self.bot.pg.get_single_giveaways(message_id, True, self.bot.logger)
+                    await self.gteardown(giveaway)
+                else:
+                    coros.append(await self.gtimer(message_id, remaining))
+                i += 1
+            await asyncio.gather(*coros)
+        except Exception as e:
+            self.bot.logger.warning(f'Error with giveaway loop: {e}')
+
+    async def gtimer(self, message_id: int, remaining: int):
+        """Helper function for starting the raffle countdown.
+
+        This function will silently pass when the unique raffle id is not found or
+        if a raffle is empty. It will call `gteardown` if the ID is still
+        current when the sleep call has completed.
+        Parameters
+        ----------
+        guild : Guild
+            The guild object
+        message_id : int
+            giveaway message id
+        remaining : int
+            Number of seconds remaining until the raffle should end
+        """
+        await asyncio.sleep(remaining)
+        giveaway = await self.bot.pg.get_single_giveaways(message_id, False, self.bot.logger)
+        if giveaway:
+            await self.gteardown(giveaway)
+
+    async def gteardown(self, giveaway):
+        try:
+            winners = []
+            guild = self.bot.get_guild(giveaway['guild_id'])
+            channel = guild.get_channel(giveaway['channel_id'])
+            message = await channel.fetch_message(giveaway['countdown_message_id'])
+            message_id = message.id
+        except discord.NotFound as e:
+            pass
+        except Exception as e:
+            self.bot.logger.warning(f'Error with giveaway teardown: {e}')
+        else:
+            winners = await self.roll_user(message, giveaway)
+        if len(winners) > 0:
+            winners = [w.id for w in winners]
+            await self.bot.pg.update_giveaway(message_id, ['winners_id', ], [winners,], self.bot.logger)
+            win_msg = await self.giveaway_message(channel, winners, giveaway)
+            await self.bot.pg.update_giveaway(message_id, ['status', 'winner_message_id'], [True, win_msg.id], self.bot.logger)
+            giveaway = await self.bot.pg.get_single_giveaways(message_id, False, self.bot.logger)
+            await self.giveaway_complete(message, giveaway)
+        await self.giveaway_removal(channel, giveaway, winners)
+        pass
+
+    async def roll_user(self, message: discord.Message, giveaway) -> discord.Member:
+        # work on this to handle if num winners > num reactors
+        try:
+            reaction = next(filter(lambda x: x.emoji == self.emoji, message.reactions), None)
+        except StopIteration:  # if a moderator deleted the emoji for some reason
+            raise NoWinnerFound('Couldn\'t find giveaway emoji on specified message')
+
+        users = [user for user in await reaction.users().flatten() if message.guild.get_member(user.id) and not user.bot]
+        if not users:
+            raise NoWinnerFound('No human reacted with the giveaway emoji on this message')
+            return []
+        else:
+            sampling = random.sample(users, min(len(users), giveaway['num_winners']))
+            return sampling
+
+    async def giveaway_removal(self, channel: discord.TextChannel, giveaway, winners: list):
+        message_id = giveaway['countdown_message_id']
+        del self.bot.current_giveaways[message_id]
+        if len(winners) > 0:
+            pass
+        else:
+            await self.bot.pg.update_giveaway(message_id, ['status', 'winners_id', 'winner_message_id'], [True, [], 0], self.bot.logger)
+        pass
+
+    async def giveaway_complete(self, message, giveaway):
+        embed = message.embeds[0]
+        winner = giveaway["winners_id"]
+        winner = [await message.guild.fetch_member(x) for x in winner]
+        embed.title = f'🎉Giveaway Ended🎉'
+        thing = giveaway['content']
+        if len(winner) == 1:
+            embed.description = f'{winner[0].mention} won {thing}!'
+        else:
+            embed.description = f'\n{",".join([w.mention for w in winner])} won {thing}!'
+        tmp = message.jump_url
+
+        embed.description += f'\nCheckout [the win message]({tmp})'
+        await message.edit(embed=embed)
+
+    async def giveaway_message(self, channel, winners, giveaway):
+        message = 'Congratulations '
+        winners = list(map(lambda w: channel.guild.get_member(int(w)), winners))
+        message += f','.join([x.mention for x in winners])
+        message += f'. You won **{giveaway["content"]}**'
+        message += f' DM <@{giveaway["gifter_id"]}>'
+        return await channel.send(message)
 
 if __name__ == "__main__":
     """Directly Called."""

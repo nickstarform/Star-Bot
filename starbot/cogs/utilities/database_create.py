@@ -10,17 +10,19 @@ from asyncpg.pool import Pool
 # relative modules
 
 # global attributes
-__all__ = ('make_tables', 'tables')
+__all__ = ('make_tables', )
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
-tables = ('glob', 'glob_reports', 'guilds',
-          'moderation', 'warnings', 'macros',
-          'quotes', 'remindme', 'joinableinfo',
-          'reacts')
-
 
 async def make_tables(pool: Pool, schema: str):
+    await pool.execute('CREATE SCHEMA IF NOT EXISTS {};'.format(schema))
+    tables = define_tables(schema)
+    for t in tables:
+        await pool.execute(t)
+
+
+def define_tables(schema: str):
     """Configuration Constructor.
 
     Verify input configuration against a template.
@@ -34,10 +36,9 @@ async def make_tables(pool: Pool, schema: str):
 
     Returns
     ----------
-    str
-        Either the yaml token if required or false.
+    tuple[str]
+        sql statements to generate the sql db
     """
-    await pool.execute('CREATE SCHEMA IF NOT EXISTS {};'.format(schema))
 
     globalmacros = f"""
     CREATE TABLE IF NOT EXISTS {schema}.globalmacros (
@@ -81,7 +82,7 @@ async def make_tables(pool: Pool, schema: str):
     CREATE TABLE IF NOT EXISTS {schema}.guilds (
         guild_id BIGINT,
         prefix varchar(2),
-        voice_role_enabled BOOLEAN DEFAULT FALSE,
+        voice_enabled BOOLEAN DEFAULT FALSE,
         voice_roles BIGINT ARRAY,
         invites_allowed BOOLEAN DEFAULT TRUE,
         voice_logging BOOLEAN DEFAULT FALSE,
@@ -94,10 +95,10 @@ async def make_tables(pool: Pool, schema: str):
         welcome_message TEXT,
         welcome_channels BIGINT ARRAY,
         pm_welcome BOOLEAN DEFAULT FALSE,
-        send_welcome_channel BOOLEAN DEFAULT FALSE,
         report_channel BIGINT,
         rules_channel BIGINT,
         colour_enabled BOOLEAN DEFAULT FALSE,
+        colour_template BIGINT,
         autoroles BIGINT ARRAY,
         joinable_roles BIGINT ARRAY,
         blacklist_channels BIGINT ARRAY,
@@ -109,11 +110,6 @@ async def make_tables(pool: Pool, schema: str):
         github TEXT ARRAY,
         ban_footer TEXT,
         kick_footer TEXT,
-        faq TEXT,
-        rules TEXT,
-        misc TEXT,
-        bots TEXT,
-        channels TEXT,
         currtime TIMESTAMP DEFAULT current_timestamp,
         PRIMARY KEY (guild_id)
     );"""
@@ -178,6 +174,22 @@ async def make_tables(pool: Pool, schema: str):
         PRIMARY KEY (id)
     );"""
 
+    giveaway = f"""
+    CREATE TABLE IF NOT EXISTS {schema}.giveaway (
+        status BOOLEAN DEFAULT FALSE,
+        guild_id BIGINT DEFAULT 0,
+        channel_id BIGINT DEFAULT 0,
+        num_winners INT DEFAULT 0,
+        countdown_message_id BIGINT  DEFAULT 0,
+        winner_message_id BIGINT DEFAULT 0,
+        winners_id BIGINT ARRAY,
+        gifter_id BIGINT DEFAULT 0,
+        content TEXT,
+        endtime TIMESTAMP,
+        starttime TIMESTAMP DEFAULT current_timestamp,
+        PRIMARY KEY (countdown_message_id)
+    );"""
+
     joinableinfo = f"""
     CREATE TABLE IF NOT EXISTS {schema}.joinableinfo (
         guild_id BIGINT,
@@ -201,19 +213,10 @@ async def make_tables(pool: Pool, schema: str):
         PRIMARY KEY (base_message_id, react_id)
     );"""
 
-    await pool.execute(globalmacros)
-    await pool.execute(globcl)
-    await pool.execute(globul)
-    await pool.execute(globgl)
-    await pool.execute(glob_reports)
-    await pool.execute(guilds)
-    await pool.execute(moderation)
-    await pool.execute(warnings)
-    await pool.execute(macros)
-    await pool.execute(quotes)
-    await pool.execute(remindme)
-    await pool.execute(joinableinfo)
-    await pool.execute(reacts)
+
+    return (globalmacros, globcl, globul, globgl, glob_reports,
+            guilds, moderation, warnings, macros, quotes,
+            remindme, joinableinfo, reacts, giveaway)
 
 # end of code
 
