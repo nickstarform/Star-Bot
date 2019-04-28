@@ -7,13 +7,15 @@ from time import time, sleep
 from logging import Formatter, INFO, StreamHandler, getLogger
 import importlib
 import sys
+from collections import Counter
 
 # external modules
+from discord.ext import commands
 from discord.ext.commands import Bot
 
 # relative modules
 from cogs.utilities import Controller, permissions
-from cogs.utilities.functions import current_time
+from cogs.utilities.functions import current_time, flatten
 from config import Config
 
 # global attributes
@@ -26,7 +28,7 @@ class Starbot(Bot):
 
     def __init__(self, config, logger,
                  pg: Controller,
-                 guild_settings: dict, current_giveaways: dict):
+                 guild_settings: dict, current_giveaways: dict, blglobal: list):
         """Initialization."""
         self.pg = pg
         self.guild_settings = guild_settings
@@ -36,6 +38,16 @@ class Starbot(Bot):
         self.logger = logger
         self.config = config
         self.proc = psutil.Process()
+        self.blglobal = blglobal
+
+        # in case of even further spam, add a cooldown mapping
+        # for people who excessively spam commands
+        self.spam_control = commands.CooldownMapping.from_cooldown(10, 12.0, commands.BucketType.user)
+
+        # A counter to auto-ban frequent spammers
+        # Triggering the rate limit 5 times in a row will auto-ban the user from the bot.
+        self._auto_spam_count = Counter()
+
         super().__init__(command_prefix=self.get_prfx)
 
     @classmethod
@@ -59,7 +71,17 @@ class Starbot(Bot):
                 sleep(5)
         guild_settings = await pg.get_guild_settings()
         current_giveaways = await pg.get_all_giveaways(True, logger)
-        return cls(Config, logger, pg, guild_settings, current_giveaways)
+
+        # initalize blacklisting
+        tmp = await pg.get_all_blacklist_guild_global()
+        logger.info(f'Blacklisted guilds: {tmp}')
+        blglobal = [x['guild_id'] for x in tmp]
+        tmp = await pg.get_all_blacklist_users_global()
+        logger.info(f'Blacklisted users: {tmp}')
+        tmp = [x['user_id'] for x in tmp]
+        blglobal += tmp
+        blglobal = flatten(blglobal)
+        return cls(Config, logger, pg, guild_settings, current_giveaways, blglobal)
 
     async def get_prfx(self, bot, message):
         try:
@@ -86,18 +108,30 @@ class Starbot(Bot):
                          f'Git Hash: {self.config["githash"].value}')
 
     async def on_message(self, ctx):
+        # user is bot, ignore
         if ctx.author.bot:
             return
+        # user is dev or owner always run
         if (int(ctx.author.id) == int(self.config.devel_id.value)) or\
            (int(ctx.author.id) == int(self.config.owner_id.value)):
             await self.process_commands(ctx)
-        elif not await permissions.is_blacklisted(self, ctx):
-            if not isinstance(ctx.guild, type(None)):
-                if not self.guild_settings[ctx.guild.id]['invites_allowed'] and\
-                ('discord.gg' in ctx.content):
-                    ctx.delete()
+        # check if user global bl
+        elif (ctx.author.id not in self.bot.blglobal):
+            if isinstance(ctx.guild, type(None)):
+                # handle reports
+                return
+            # see if guild global bl
+            if (ctx.guild.id in self.bot.blglobal):
+                await ctx.guild.leave()
+                return
+            # check if user/channel bl on guild level
+            if  (((ctx.author.id not in self.bot.guild_settings['blacklist_users']) and
+                  (ctx.message.channel.id not in self.bot.guild_settings['blacklist_channels'])) or
+                 (ctx.author.id == ctx.guild.owner.id)):
+                if not self.guild_settings[ctx.guild.id]['invites_allowed'] and ('discord.gg' in ctx.content):
+                    await ctx.delete()
                     return
-            await self.process_commands(ctx)
+                await self.process_commands(ctx)
         else:
             return
 

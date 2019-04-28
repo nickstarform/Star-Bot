@@ -52,7 +52,7 @@ def run():
         bot._loaded_extensions.append(cog)
 
     try:
-        loop.run_until_complete(bot.run(Config['token'].value))
+        loop.run_until_complete(bot.run(Config['token'].value, reconnect=True))
     except KeyboardInterrupt as e:
         return loop.run_until_complete(shutdown(bot, reason=e))
 
