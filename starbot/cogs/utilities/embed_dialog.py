@@ -156,7 +156,7 @@ async def confirm(ctx: commands.Context, message: str, timeout: int):
     return True
 
 
-async def respond(ctx: commands.Context, status: bool):
+async def respond(ctx: commands.Context, status: bool, message: discord.Message=None):
     """Respond/react to message.
 
     Parameters
@@ -173,9 +173,15 @@ async def respond(ctx: commands.Context, status: bool):
     """
     try:
         if status:
-            await ctx.message.add_reaction(r'✅')
+            if not isinstance(message, type(None)):
+                await message.add_reaction(r'✅')
+            else:
+                await ctx.message.add_reaction(r'✅')
         else:
-            await ctx.message.add_reaction(r'❌')
+            if not isinstance(message, type(None)):
+                await message.add_reaction(r'❌')
+            else:
+                await ctx.message.add_reaction(r'❌')
         return True
     except Exception as e:
         print(f'Error in responding to message message: {e}')
