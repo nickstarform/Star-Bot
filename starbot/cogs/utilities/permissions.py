@@ -17,7 +17,6 @@ __all__ = ('has_permissions',
            'manager_or_permissions',
            'admin_or_permissions',
            'is_in_guilds',
-           'is_blacklisted',
            'is_cmd_blacklisted')
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
@@ -264,6 +263,8 @@ async def is_cmd_blacklisted(bot, ctx: commands.Context, cmd: str):
     bool
         if in true false
     """
+    if ctx.author.id == ctx.guild.owner.id:
+        return False
     if await bot.pg.is_disallowed_global(cmd):
         return True
 
@@ -274,35 +275,6 @@ async def is_cmd_blacklisted(bot, ctx: commands.Context, cmd: str):
             return False
     else:
         return True
-
-
-async def is_blacklisted(bot, message):
-    """Check if in guilds.
-
-    Parameters
-    ----------
-    self: botinstance
-        Description of arg1
-    message:
-        The discord message object
-
-    Returns
-    -------
-    bool
-        if in true false
-    """
-    if await bot.pg.is_blacklist_user_global(message.author.id):
-        return True
-    if not isinstance(message.guild, type(None)):
-        if await bot.pg.is_blacklist_guild_global(message.guild.id):
-            return True
-        if await bot.pg.is_blacklist_channel(message.guild.id, message.channel.id):
-            return True
-        if await bot.pg.is_blacklist_user(message.guild.id, message.author.id):
-            return True
-        return False
-    else:
-        return False
 
 if __name__ == "__main__":
     """Directly Called."""
