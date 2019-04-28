@@ -6,6 +6,7 @@ import textwrap
 import subprocess
 import os
 import sys
+import unicodedata
 
 # external modules
 import discord
@@ -32,6 +33,9 @@ def setup(bot):
     bot.add_cog(General(bot))
     print('Loaded General')
 
+def to_emoji(c):
+    base = 0x1f1e6
+    return chr(base + c)
 
 class General(commands.Cog):
 
@@ -120,6 +124,8 @@ class General(commands.Cog):
             await ctx.author.dm_channel.send(f'Sent in the report. Please be patient. Abusing this function will get you/your guild banned. {current_time()}')
         except Exception as e:
             self.bot.logger.warning(f'Error sending report to {ctx.author.id}: {e}')
+        if failed:
+            self.bot.logger.warning(f'Error sending report to {ctx.author.id}')
         await ctx.message.delete()
         pass
 
@@ -127,6 +133,7 @@ class General(commands.Cog):
     ADD SUGGEST FUNCTION
     """
     @commands.command(aliases=['suggestion', 'wishlist', 'features'])
+    @commands.cooldown(1, 30, commands.BucketType.channel)
     async def suggest(self, ctx: commands.Context, *, suggestions: str):
         """Send a suggestion to the bot owner.
 
@@ -141,12 +148,141 @@ class General(commands.Cog):
         """
         if await permissions.is_cmd_blacklisted(self.bot, ctx, 'suggest'):
             return
+        if len(suggestions) > 300:
+            await respond(ctx, False)
+            await ctx.send(f'Suggestion too long', delete_after=15)
+            return
+        if isinstance(ctx.guild, type(None)):
+            target = 'DMs'
+        else:
+            target = f'Guild: {ctx.guild.name}, {ctx.guild.id}'
+        suggestions = f'Suggestion:\nUser: {ctx.author.mention}...From: {target}\n{suggestions}'
+        try:
+            owner = self.bot.get_user(int(self.bot.config.owner_id.value))
+            if not owner.dm_channel:
+                await owner.create_dm()
+            await owner.dm_channel.send(suggestions)
+            await ctx.send(f'Suggestion sent to {owner.mention}, do **NOT** abuse this function as it will get you/your guild banned permanently.', delete_after=20)
+            await respond(ctx, True)
+            return
+        except Exception as e:
+            self.bot.logger.warning(f'Error sending suggestion to {self.bot.config.owner_id.value}: {e}')
         # check if DM
         pass
 
     """
     MISC
     """
+    @commands.command()
+    async def charinfo(self, ctx, *, characters: str):
+        """Shows you information about a number of characters.
+        Only up to 25 characters at a time.
+        """
+
+        def to_string(c):
+            digit = f'{ord(c):x}'
+            name = unicodedata.name(c, 'Name not found.')
+            return f'`\\U{digit:>08}`: {name} - {c} \N{EM DASH} <http://www.fileformat.info/info/unicode/char/{digit}>'
+        msg = '\n'.join(map(to_string, characters))
+        if len(msg) > 2000:
+            return await ctx.send('Output too long to display.')
+        await ctx.send(msg)
+
+    @commands.command()
+    @commands.guild_only()
+    async def poll(self, ctx, *, question):
+        """Interactively creates a poll with the following question.
+
+        Parameters
+        ----------
+        question: str
+            Question to ask
+
+        Returns
+        -------
+        """
+
+        # a list of messages to delete when we're all done
+        messages = [ctx.message]
+        answers = []
+
+        def check(m):
+            return m.author == ctx.author and m.channel == ctx.channel and len(m.content) <= 100
+
+        for i in range(20):
+            messages.append(await ctx.send(f'Say poll option or cancel/quit to publish poll.'))
+
+            try:
+                entry = await self.bot.wait_for('message', check=check, timeout=60.0)
+            except asyncio.TimeoutError:
+                break
+
+            messages.append(entry)
+
+            if entry.clean_content.startswith(f'cancel') or entry.clean_content.startswith(f'quit'):
+                break
+
+            answers.append((to_emoji(i), entry.clean_content))
+
+        try:
+            await ctx.channel.delete_messages(messages)
+        except:
+            pass # oh well
+
+        answer = '\n'.join(f'{keycap}: {content}' for keycap, content in answers)
+        actual_poll = await ctx.send(f'{ctx.author} asks: {question}\n\n{answer}')
+        for emoji, _ in answers:
+            await actual_poll.add_reaction(emoji)
+
+    @poll.error
+    async def poll_error(self, ctx, error):
+        if isinstance(error, commands.MissingRequiredArgument):
+            await respond(ctx, False)
+            return await ctx.send('Missing the question.', delete_after=15)
+
+    @commands.command()
+    @commands.guild_only()
+    async def quickpoll(self, ctx, *questions_and_choices: str):
+        """Makes a poll quickly.
+
+        The first argument is the question and the rest are the choices..
+
+        Parameters
+        ----------
+        first_param: str
+            Question, with spaces as underscore
+        *args: str
+            these are the possible choices, space separated
+
+        Returns
+        -------
+        """
+
+        if len(questions_and_choices) < 3:
+            await respond(ctx, False)
+            return await ctx.send('Need at least 1 question with 2 choices.', delete_after=15)
+        elif len(questions_and_choices) > 21:
+            await respond(ctx, False)
+            return await ctx.send('You can only have up to 20 choices.', delete_after=15)
+
+        perms = ctx.channel.permissions_for(ctx.me)
+        if not (perms.read_message_history or perms.add_reactions):
+            await respond(ctx, False)
+            return await ctx.send('Need Read Message History and Add Reactions permissions.', delete_after=15)
+
+        question = questions_and_choices[0]
+        choices = [(to_emoji(e), v) for e, v in enumerate(questions_and_choices[1:])]
+
+        try:
+            await ctx.message.delete()
+        except Exception as e:
+            pass
+
+        body = "\n".join(f"{key}: {c}" for key, c in choices)
+        poll = await ctx.send(f'{ctx.mention} asks: {question}\n\n{body}')
+        for emoji, _ in choices:
+            await poll.add_reaction(emoji)
+
     @commands.command()
     @commands.guild_only()
     async def remindme(self, ctx: commands.Context, *, argument: str):

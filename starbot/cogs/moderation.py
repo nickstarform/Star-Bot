@@ -172,7 +172,7 @@ class Moderation(commands.Cog):
         -------
         """
         if roles.lower() == 'all':
-            if not await confirm(ctx, f'This will remove all the  from the role and is irreversable.', 10):
+            if not await confirm(ctx, f'```\nThis will remove all the users from the role and is irreversable.\n```', 10):
                 await respond(ctx, False)
                 return
             allroles = await self.bot.pg.get_all_joinable_roles(ctx.guild.id)
@@ -300,7 +300,7 @@ class Moderation(commands.Cog):
         """
         if await permissions.is_cmd_blacklisted(self.bot, ctx, 'cleanrole'):
             return
-        if not await confirm(ctx, f'This will remove everyone from the role and is irreversable.', 10):
+        if not await confirm(ctx, f'```\nThis will remove everyone from the role and is irreversable.\n```', 10):
             await respond(ctx, False)
             return
         t = role
@@ -483,7 +483,7 @@ class Moderation(commands.Cog):
     @commands.command()
     @permissions.has_permissions(manage_guild=True)
     @commands.guild_only()
-    async def clearchat(self, ctx, opt: str=None):
+    async def clearchat(self, ctx: commands.Context, opt: str=None):
         """Purge a channel.
 
         Use all to signify deleting every message in the channel greedy
@@ -499,7 +499,7 @@ class Moderation(commands.Cog):
         """
         if await permissions.is_cmd_blacklisted(self.bot, ctx, 'clearchat'):
             return
-        if not await confirm(ctx, f'Do you want clear out this channel? (Irreversable)', 10): # noqa
+        if not await confirm(ctx, f'```\nDo you want clear out this channel? (Irreversable)\n```', 10): # noqa
             return
         opt = opt.lower()
         hist = await ctx.channel.history(limit=100).flatten()
@@ -516,7 +516,7 @@ class Moderation(commands.Cog):
             if opt != 'all':
                 hist = []
 
-    async def _gendelete(self, ctx, messages):
+    async def _gendelete(self, ctx: commands.Context, messages):
         try:
             try:
                 await ctx.channel.delete_messages(messages)
@@ -579,7 +579,7 @@ class Moderation(commands.Cog):
                         5)
                     await respond(ctx, False)
                     return
-            if await confirm(ctx, f'**Kick** {member.mention} for {reason}', 10):
+            if await confirm(ctx, f'```\n**Kick** {member.mention} for {reason}\n```', 10):
                 embed = generic_embed(
                     title='❗KICKED❗',
                     desc=f'You have been kicked from {ctx.guild.name}',
@@ -686,7 +686,7 @@ class Moderation(commands.Cog):
         if self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
             try:
                 if not await confirm(ctx,
-                    f'**LOGBAN** {member.mention} for {reason}', 10):  # noqa
+                    f'```\n**LOGBAN** {member.mention} for {reason}\n```', 10):  # noqa
                     return
                 try:
                     await self.bot.pg.add_single_moderation(
@@ -775,7 +775,7 @@ class Moderation(commands.Cog):
                         5)
                     await respond(ctx, False)
                     return
-            if await confirm(ctx, f'**BAN** {member.mention} for {reason}', 10):
+            if await confirm(ctx, f'```\n**BAN** {member.mention} for {reason}\n```', 10):
                 embed = generic_embed(
                     title='❗BANNED❗',
                     desc=f'You have been banned from {ctx.guild.name}',
@@ -908,7 +908,7 @@ class Moderation(commands.Cog):
                         5)
                     await respond(ctx, False)
                     return
-            if await confirm(ctx, f'**UNBAN** {member.mention} for {reason}', 10):
+            if await confirm(ctx, f'```\n**UNBANNING** {member.mention} for {reason}\n```', 10):
                 try:
                     await ctx.guild.unban(member, reason=f'by: {ctx.author} for: {reason}')
                     await respond(ctx, True)
@@ -1020,7 +1020,7 @@ class Moderation(commands.Cog):
     ADD WARNINGS AND MODERATIONS
     """
 
-    async def resolve_member(self, ctx, member):  
+    async def resolve_member(self, ctx: commands.Context, member):  
         """Generic member resolver.
 
         This is specifically forthe warning and moderation
@@ -1127,13 +1127,13 @@ class Moderation(commands.Cog):
                 for embed in embeds:
                     await ctx.send(embed=embed)
             except Exception as e:
-                await ctx.send(embed=eembed.internalerrorembed(f'Error trying to get user warnings: {e}'), delete_after=15)
-                self.bot.logger.warning(f'Error trying to get user warnings: {e}')
+                await ctx.send(embed=eembed.internalerrorembed(f'Error trying to get user warnings: {e} \n```py\n{traceback.format_exc()}\n```'), delete_after=15)
+                self.bot.logger.warning(f'Error trying to get user warnings: {e} \n```py\n{traceback.format_exc()}\n```')
                 await respond(ctx, False)
                 return
 
     @_warn.command(name='major', aliases=['critical', 'high'])
-    async def _warnmajor(self, ctx, member: str, *, reason: str):
+    async def _warnmajor(self, ctx: commands.Context, member: str, *, reason: str):
         """Major warning.
 
         Parameters
@@ -1158,7 +1158,7 @@ class Moderation(commands.Cog):
         return
 
     @_warn.command(name='minor', aliases=['low', 'lesser'])
-    async def _warnminor(self, ctx, member: str, *, reason: str=None):
+    async def _warnminor(self, ctx: commands.Context, member: str, *, reason: str=None):
         """Minor warning.
 
         Parameters
@@ -1183,13 +1183,13 @@ class Moderation(commands.Cog):
         await self._warnadd(ctx, member, False, reason)
         return
 
-    async def _warnadd(self, ctx, member, dtype: bool, reason: str):
+    async def _warnadd(self, ctx: commands.Context, member, dtype: bool, reason: str):
         if len(reason) > 500:
             await ctx.send(embed=eembed.internalerrorembed(f'Reason should be less than 500 chars'), delete_after=15)
             self.bot.logger.warning(f'Warning too long: {e}')
             await respond(ctx, False)
             return
-        if not await confirm(ctx, f'You are warning **<@{member.id}>**', 10):
+        if not await confirm(ctx, f'You are warning ```\nUser: <@{member.id}> for Reason: {reason}\n```', 10):
             return
         try:
             count = await self.bot.pg.add_single_warning(
@@ -1208,7 +1208,7 @@ class Moderation(commands.Cog):
             return
 
     @_warn.command(name='edit', aliases=['e'])
-    async def _warnedit(self, ctx, member: str, index: int=None, dtype: str=None, forgiven: bool=None, *, reason: str=None):
+    async def _warnedit(self, ctx: commands.Context, member: str, index: int=None, dtype: str=None, forgiven: bool=None, *, reason: str=None):
         """Edit warning.
 
         Parameters
@@ -1266,7 +1266,7 @@ class Moderation(commands.Cog):
             self.bot.logger.warning(f'Error trying edit warnings for user: {e}')
 
     @_warn.command(name='rm', aliases=['rem', 'remove', 'delete'])
-    async def _warnrm(self, ctx, member: str, index: int):
+    async def _warnrm(self, ctx: commands.Context, member: str, index: int):
         """Remove a warning.
 
         Doesn't remove the warning in actuality but sets 
@@ -1309,12 +1309,174 @@ class Moderation(commands.Cog):
             return
 
     @_warn.error
-    async def _warnerror(self, ctx, error):
+    async def _warnerror(self, ctx: commands.Context, error):
         self.bot.logger.warning(f'Error retrieving/modifying warnings for user {error}')
         await ctx.send(f'Error retrieving/modifying warnings for user {error}', delete_after=20)
         await respond(ctx, False)
         return
 
+    @commands.group(invoke_without_command=True)
+    @permissions.has_permissions(ban_members=True)
+    @commands.guild_only()
+    async def modaction(self, ctx: commands.Context, member: str, modtype: str, *,
+                       reason: str=None):
+        """Manually change moderations.
+
+        Parameters
+        ----------
+        member: str
+            member to warn
+        modtype: str
+            Type of modaction to perform, defaults to misc
+        reason: str
+            Reason to moderate user
+
+        Returns
+        -------
+        """
+        if ctx.invoked_subcommand is None:
+            if not self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
+                await ctx.send(embed=eembed.internalerrorembed(f'No modlog channels detected'), delete_after=15)
+                target = [ctx.channel]
+            else:
+                target = await self.bot.pg.get_all_modlogs(ctx.guild.id)
+                print(target)
+                target = list(map(lambda x: self.bot.get_channel(x), target))
+            if len(reason) > 400:
+                await ctx.send(embed=eembed.internalerrorembed(f'Reason too long'), delete_after=15)
+                await respond(ctx, False)
+                return
+            if not await confirm(ctx, f'You are moderating: ```\nUser: {member}\nReason: {reason}\n```', 10):
+                await respond(ctx, False)
+                return
+            om = member
+            member = get_member(ctx, om)
+            if isinstance(member, type(None)):
+                await ctx.send(embed=eembed.internalerrorembed(f'Member not found {om}'), delete_after=15)
+                await respond(ctx, False)
+                return
+            reason = reason if modtype else ' '.join(ctx.message.content.split(' ')[1:])
+            modtype = ModAction[modtype.upper()] if modtype.upper() in ModAction.__members__ else ModAction.MISC
+            try:
+                await self.bot.pg.add_single_moderation(
+                    ctx.guild.id,
+                    ctx.author.id,
+                    member.id,
+                    reason,
+                    modtype,
+                    self.bot.logger)
+                count = await self.bot.pg.get_moderation_count(ctx.guild.id, member.id, False)
+            except Exception as e:
+                self.bot.logger.warning(f'Error storing moderation: {e}')
+                return
+            embed = membed.modaddembed(member, ctx.author, modtype, reason, count)
+            for channel in target:
+                try:
+                    await channel.send(embed=embed)
+                except Exception as e:
+                    self.bot.logger.warning(f'Issue posting to mod log: {e}')
+                    continue
+        return
+
+    @modaction.command(name='edit')
+    async def _modedit(self, ctx: commands.Context, member: str, index: int, forgive: bool, modaction: str, *, reason: str):
+        """Edit a mod action:
+
+        Parameters
+        ----------
+        guild_id: str
+            id for the guild
+        target_id: str
+            id for the user to moderate
+        mod_id: str
+            id for the mod
+        index: str
+            index to grab
+        reason: str
+            reason for the mod
+        action_type: ModAction
+            Indicate the type of action
+        forgive: bool
+            forgiven true false forgive
+
+        Returns
+        -------
+        """
+        index -= 1
+        modaction = ModAction[modaction.upper()] if modaction.upper() in ModAction.__members__ else None
+        if len(reason) > 400 or not modaction:
+            await ctx.send(embed=eembed.internalerrorembed(f'Reason too long or modaction not specified'), delete_after=15)
+            await respond(ctx, False)
+            return
+        if not await confirm(ctx, f'You are changing modaction: ```\nUser: {member}\nType: {modaction.name}\nReason: {reason}\n```', 10):
+            await respond(ctx, False)
+            return
+        om = member
+        member = get_member(ctx, om)
+        if isinstance(member, type(None)):
+            await ctx.send(embed=eembed.internalerrorembed(f'Member not found {om}'), delete_after=15)
+            await respond(ctx, False)
+            return
+        try:
+            count = await self.bot.pg.set_single_modaction(
+                ctx.guild.id,
+                member.id,
+                ctx.author.id,
+                index,
+                modaction,
+                reason,
+                forgive, 
+                self.bot.logger)
+            embed = membed.modeditembed(member, ctx.author, modaction, reason, count)
+            await ctx.send(embed=embed)
+        except Exception as e:
+            self.bot.logger.warning(f'Error editing moderation: {e}')
+            await ctx.send(embed=eembed.internalerrorembed(f'Error editing moderation: {e}'), delete_after=15)
+            await respond(ctx, False)
+            return
+
+    @modaction.command(name='remove', aliases=['rm', 'rem', 'del', 'delete'])
+    async def _modrm(self, ctx: commands.Context, member: str, index: int):
+        """Remove a mod action:
+
+        Doesn't actually remove but sets to forgiven
+
+        Parameters
+        ----------
+        target_id: str
+            id for the user to moderate
+        index: str
+            index to grab
+
+        Returns
+        -------
+        """
+        index -= 1
+        om = member
+        member = get_member(ctx, om)
+        if isinstance(member, type(None)):
+            await ctx.send(embed=eembed.internalerrorembed(f'Member not found {om}'), delete_after=15)
+            await respond(ctx, False)
+            return
+        try:
+            status = await self.bot.pg.delete_single_modaction(
+                ctx.guild.id,
+                ctx.author.id,
+                member.id,
+                index,
+                self.bot.logger
+            )
+            if not status:
+                self.bot.logger.warning(f'Error removing modaction for user: {e}')
+                await ctx.send(embed=eembed.internalerrorembed(f'Error removing modaction for user: {e}'), delete_after=15)
+                return
+            count = await self.bot.pg.get_moderation_count(ctx.guild.id, member.id, False)
+            await ctx.send(embed=membed.modrmembed(member, ctx.author, count))
+        except Exception as e:
+            await ctx.send(embed=eembed.internalerrorembed(f'Error removing modaction for user: {e}'), delete_after=15)
+            self.bot.logger.warning(f'Error removing modaction for user: {e}')
+            await respond(ctx, False)
+            return
 
 # end of code
 

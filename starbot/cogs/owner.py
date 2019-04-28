@@ -15,6 +15,7 @@ from cogs.utilities.embed_general import generic_embed
 from cogs.utilities.message_general import generic_message
 from cogs.utilities.embed_dialog import respond, confirm
 from cogs.utilities.embed_errors import internalerrorembed
+from config import Config
 
 # global attributes
 __all__ = ('Owner',)
@@ -162,6 +163,23 @@ class Owner(commands.Cog):
             )
             for embed in embeds:
                 await ctx.send(embed=embed)
+
+    @globalconfig.command(name='reload', aliases=['refresh'])
+    @permissions.is_master()
+    async def _gconfigreload(self, ctx):
+        """Display Config.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
+        self.bot.logger.info(f'Old configuration: {self.bot.config.__members__}')
+        self.bot.config = Config
+        self.bot.logger.info(f'New configuration: {self.bot.config.__members__}')
+        await respond(ctx, True)
+        return
 
     @globalconfig.command()
     async def guild(self, ctx: commands.Context, *, gid: str=None):
@@ -545,8 +563,7 @@ class Owner(commands.Cog):
             self.bot.logger.warning(f'Error adding guild to db: {e}')
             return
 
-
-    @commands.command(name='restart', aliases=['shutdown', 'logout'])
+    @commands.command(name='restart', aliases=['reboot',])
     @commands.is_owner()
     async def do_restart(self, ctx):
         embed = discord.Embed(description='📡**`- Initialising...`**📡', colour=0xab00c5)
@@ -557,8 +574,23 @@ class Owner(commands.Cog):
         embed.description = '🛑**`- Offline...`**🛑'
         embed._colour = discord.Colour(0xc12400)
         await msg.edit(embed=embed)
-
         raise KeyboardInterrupt
+
+    @commands.command(name='logout', aliases=['turnoff', 'poweroff'])
+    @commands.is_owner()
+    async def shutdown(bot, *, reason=None):
+        """Somewhat clean shutdown with basic debug info."""
+        await bot.logout()
+
+        print(f'\n\nShutting down due to {type(reason).__name__}...\n{"="*30}\n')
+        print(f'{datetime.datetime.utcnow()} || UTC\n\nPython: {sys.version}\nPlatform: {sys.platform}/{os.name}\n'
+              f'Discord: {discord.__version__}\n\n{"="*30}\n')
+
+        await asyncio.sleep(1)
+        if isinstance(reason, KeyboardInterrupt):
+            sys.exit(1)  # Systemd will think it failed and restart our service cleanly.
+        sys.exit(0)
+
 
 if __name__ == "__main__":
     """Directly Called."""

@@ -88,6 +88,24 @@ class Administration(commands.Cog):
             await respond(ctx, False)
             self.bot.logger.warning(f'Error changing bots nickname: {e}')
 
+    @commands.command(name='leaveguild')
+    @permissions.is_admin()
+    @commands.guild_only()
+    async def _leaveg(self, ctx: commands.Context):
+        """Change the bot nickname.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
+        if not await confirm(ctx, f'```\nAre you sure you want the bot to leave?\n```', 15):
+            await respond(ctx, False)
+            return
+        await ctx.guild.leave()
+
+
     """
     MODIFY CONFIGURATION
     """
@@ -180,7 +198,7 @@ class Administration(commands.Cog):
                 questions[key] = val
         # ask questions now
         try:
-            questions, final = await iterator(ctx, questions, 10, True, False)
+            questions, final = await iterator(ctx, questions, 20, True, False)
         except Exception as e:
             await ctx.send(embed=internalerrorembed(f'Problem checking set config: {e}'), delete_after=5)  # noqa
             await respond(ctx, False)
@@ -735,12 +753,19 @@ class Administration(commands.Cog):
             return
         if not await confirm(ctx, f'Are you sure you want to stop this giveaway with no winners: **{giveaway}**', 15):
             return
+        await message.clear_reactions()
+        await respond(ctx, False, message)
+        embed = message.embeds[0]
+        embed.title = f'🎉Giveaway Cancelled🎉'
+        thing = giveaway['content']
+        embed.description = f'{ctx.author.mention} cancelled the giveaway with no winners!'
+        await message.edit(embed=embed)
         await self.giveaway_removal(ctx.channel, giveaway, [])
         await ctx.send(f'Giveaway has been removed', delete_after=15)
         await ctx.message.delete()
         return
 
-    @_giveaway.command(name='end', aliases=['early',])
+    @_giveaway.command(name='end', aliases=['early', 'endearly'])
     async def _gend(self, ctx: commands.Context, message_id: int):
         """Stop a giveaway early, choose winners.
 
@@ -762,6 +787,7 @@ class Administration(commands.Cog):
             return
         if not await confirm(ctx, f'Are you sure you want to stop this giveaway and choose winners: **{message.jump_url}**', 15):
             return
+        giveaway = await self.bot.pg.get_single_giveaways(message_id, True, self.bot.logger)
         await self.bot.pg.update_giveaway(giveaway['countdown_message_id'], ['endtime'], [datetime.datetime.utcnow()], self.bot.logger)
         giveaway = await self.bot.pg.get_single_giveaways(message_id, True, self.bot.logger)
         await self.gteardown(giveaway)
@@ -852,9 +878,10 @@ class Administration(commands.Cog):
                 else:
                     coros.append(await self.gtimer(message_id, remaining))
                 i += 1
-            await asyncio.gather(*coros)
+            if len(coros) > 0:
+                await asyncio.gather(*coros)
         except Exception as e:
-            self.bot.logger.warning(f'Error with giveaway loop: {e}')
+            self.bot.logger.warning(f'Error with giveaway loop: {e}\n```py\n{traceback.format_exc()}\n```')
 
     async def gtimer(self, message_id: int, remaining: int):
         """Helper function for starting the raffle countdown.
@@ -872,7 +899,7 @@ class Administration(commands.Cog):
             Number of seconds remaining until the raffle should end
         """
         await asyncio.sleep(remaining)
-        giveaway = await self.bot.pg.get_single_giveaways(message_id, False, self.bot.logger)
+        giveaway = await self.bot.pg.get_single_giveaways(message_id, True, self.bot.logger)
         if giveaway:
             await self.gteardown(giveaway)
 
@@ -889,6 +916,8 @@ class Administration(commands.Cog):
             self.bot.logger.warning(f'Error with giveaway teardown: {e}')
         else:
             winners = await self.roll_user(message, giveaway)
+        if not isinstance(winners, list):
+            return
         if len(winners) > 0:
             winners = [w.id for w in winners]
             await self.bot.pg.update_giveaway(message_id, ['winners_id', ], [winners,], self.bot.logger)
@@ -904,9 +933,16 @@ class Administration(commands.Cog):
         try:
             reaction = next(filter(lambda x: x.emoji == self.emoji, message.reactions), None)
         except StopIteration:  # if a moderator deleted the emoji for some reason
-            raise NoWinnerFound('Couldn\'t find giveaway emoji on specified message')
-
-        users = [user for user in await reaction.users().flatten() if message.guild.get_member(user.id) and not user.bot]
+            raise NoWinnerFound(f'Couldn\'t find giveaway emoji {self.emoji} on specified message')
+            return []
+        if isinstance(reaction, type(None)):
+            return []
+        try:
+            users = [user for user in await reaction.users().flatten() if message.guild.get_member(user.id) and not user.bot]
+        except Exception as e:
+            return await message.channel.send(embed=internalerrorembed(f'Couldn\'t find users on message with ID {message.id} in the giveaway channel! {e}'))
+            self.bot.logger.warning(f'Couldn\'t find users on message with ID {message.id} in the giveaway channel! {e}')
+            return []
         if not users:
             raise NoWinnerFound('No human reacted with the giveaway emoji on this message')
             return []
