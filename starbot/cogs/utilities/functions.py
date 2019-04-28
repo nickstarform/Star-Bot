@@ -70,7 +70,9 @@ def create_fake(target_id: str, dtype: str='member'):
 def create_fake_user(user_id: str):
     member = fake_object(int(user_id))
     member.name = 'GenericUser'
+    member.displayname = member.name
     member.discriminator = '0000'
+    member.mention = f'<@{member.id}>'
     member.joined_at = datetime.datetime.utcnow()
     return member
 
@@ -82,7 +84,7 @@ class fake_object:
         self.created_at = datetime.datetime.utcnow()
 
     def __repr__(self):
-        return ''.format()
+        return ''.format(self.id)
 
     def __eq__(self, other):
         return self.id == other.id
@@ -96,7 +98,6 @@ class ModAction(Enum):
     Returns
     ----------
     """
-
     MISC = 0
     KICK = 1
     BAN = 2
