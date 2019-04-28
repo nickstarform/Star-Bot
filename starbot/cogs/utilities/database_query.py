@@ -608,7 +608,9 @@ class Controller():
             'invites_allowed',
             'colour_enabled',
             'pm_welcome',
-            'voice_role_enabled')
+            'voice_role_enabled',
+            'blacklist_channels',
+            'blacklist_users')
         sql = f"""
             SELECT {', '.join(settings)}
                 FROM {self.schema}.guilds;
@@ -642,7 +644,9 @@ class Controller():
             'invites_allowed',
             'colour_enabled',
             'pm_welcome',
-            'voice_role_enabled')
+            'voice_role_enabled',
+            'blacklist_channels',
+            'blacklist_users')
         sql = f"""
             SELECT {', '.join(settings)}
                 FROM {self.schema}.guilds WHERE guild_id = $1;
@@ -803,6 +807,38 @@ class Controller():
             return dict(results[0])
         else:
             return False
+
+    async def get_all_giveaways_guild(self, guild_id: str, only_active: bool, logger):
+        """Get all Giveaways from guild.
+
+        Parameters
+        ----------
+        args:
+            The exact parameters in keys
+
+        Returns
+        ----------
+        boolean
+            success true or false
+        """
+        default = {}
+        if only_active:
+            sql = f"""
+                SELECT countdown_message_id, endtime FROM {self.schema}.giveaway WHERE status=FALSE AND guild_id = $1;
+            """
+        else:
+            sql = f"""
+                SELECT countdown_message_id, endtime FROM {self.schema}.giveaway AND guild_id = $1;
+            """
+        ret = []
+        try:
+            results = await self.pool.fetch(sql, int(guild_id))
+            if not isinstance(results, type(None)):
+                for r in results:
+                    default[r['countdown_message_id']] = r['endtime']
+        except Exception as e:
+            logger.warning(f'Error getting giveaway: {e}')
+        return default
 
     async def get_all_giveaways(self, only_active: bool, logger):
         """Get all Giveaways from guild.
@@ -1277,7 +1313,6 @@ class Controller():
             success true or false
         """
         channel_list = await self.get_all_modlogs(int(guild_id))
-        channel_list = parse(channel_list)[0][1]
         channel_list.remove(int(channel_id))
         sql = f"""
             UPDATE {self.schema}.guilds
@@ -1537,7 +1572,6 @@ class Controller():
             success true or false
         """
         channel_list = await self.get_all_welcome_channels(int(guild_id), logger)
-        channel_list = parse(channel_list)[0][1]
         channel_list.remove(int(channel_id))
         sql = f"""
             UPDATE {self.schema}.guilds
@@ -1828,7 +1862,6 @@ class Controller():
             success true or false
         """
         channel_list = await self.get_all_logger_channels(int(guild_id))
-        channel_list = parse(channel_list)[0][1]
         channel_list.remove(int(channel_id))
         sql = f"""
             UPDATE {self.schema}.guilds
@@ -1981,7 +2014,6 @@ class Controller():
             true or false
         """
         channel_list = await self.get_all_voice_channels(int(guild_id))
-        channel_list = parse(channel_list)[0][1]
         channel_list.remove(int(channel_id))
         sql = f"""
             UPDATE {self.schema}.guilds
@@ -2095,7 +2127,6 @@ class Controller():
             true or false
         """
         role_list = await self.get_all_voice_roles(int(guild_id))
-        role_list = parse(role_list)[0][1]
         role_list.remove(int(channel_id))
         sql = f"""
             UPDATE {self.schema}.guilds
@@ -2311,7 +2342,6 @@ class Controller():
             return status true or false
         """
         user_list = await self.get_all_blacklist_users(int(guild_id))
-        user_list = parse(user_list)[0][1]
         user_list.remove(int(user_id))
         sql = f"""
             UPDATE {self.schema}.guilds
@@ -2491,7 +2521,7 @@ class Controller():
                 SELECT * FROM {self.schema}.moderation
                     WHERE guild_id = $1 AND user_id = $2 AND
                     (logtime >= DATE_TRUNC('month',
-                    now()) - INTERVAL '6 month');
+                    now()) - INTERVAL '6 month') AND forgiven = FALSE;
             """
         else:
             sql = f"""
@@ -2570,10 +2600,10 @@ class Controller():
             await self.pool.execute(sql, reason, int(mod_id),
                                     action_type.value,
                                     status, int(guild_id),
-                                     int(user_id), int(index))
+                                     int(target_id), int(index))
         except Exception as e:
             logger.warning(f'Error retrieving moderation action {e}')
-        return await self.get_moderation_count(int(guild_id),  int(user_id), False)
+        return await self.get_moderation_count(int(guild_id),  int(target_id), False)
 
     async def delete_single_modaction(self, guild_id: str, forg_mod_id: str,
                                       user_id: str, index: str, logger):
@@ -2602,8 +2632,12 @@ class Controller():
             'on {datetime.datetime.now()}'
         original = await self.get_single_modaction(int(guild_id),  int(user_id),
                                                    int(index), logger)
-        return await self.set_single_modaction(original[0:4],
-                                               original[4] + forgiven_message,
+        o = {}
+        for (key, val) in original[0].items():
+            o[key] = val
+        original = o
+
+        return await self.set_single_modaction(original['guild_id'], original['user_id'], original['mod_id'], int(index), ModAction(original['type']), original['reason'] + forgiven_message,
                                                True, logger)
 
     """
@@ -3833,13 +3867,14 @@ class Controller():
         bool:
             True or false for success
         """
-        current = await self.get_single_record(guild_id, key, logger)
-        dtype = type(current)
+        inv = {key: value}
+        self.fix_key(inv, [], [])
+        val = inv[key]
         sql = f"""
             UPDATE {self.schema}.guilds SET {key} = $1 WHERE guild_id = $2;
         """
         try:
-            current = await self.pool.fetchval(sql, dtype(value), int(guild_id))
+            current = await self.pool.fetchval(sql, val, int(guild_id))
             return True
         except Exception as e:
             logger.warning(f'Error setting current guild val: {e}')
@@ -3867,33 +3902,7 @@ class Controller():
         """
         passed = []
         failed = []
-        for key in inv:
-            val = inv[key]
-            try:
-                if ('channels' in key) or ('users' in key) or ('roles' in key):
-                    if len(val) > 0:
-                        val = list(map(int, val.split(',')))
-                elif ('commands' in key) or ('subreddit' in key) or ('twitch' in key) or\
-                     ('twitter' in key)  or ('github' in key):
-                    if len(val) > 0:
-                        val = list(map(str, val.split(',')))
-                elif ('voice_enabled' in key) or ('invites_allowed' in key) or\
-                     ('voice_logging' in key) or ('modlog_enabled' in key) or\
-                     ('logging_enabled' in key) or ('pm_welcome' in key) or\
-                     ('colour_enabled' in key) or ('pm_welcome' in key):
-                     if val.lower() in ['false', 'no', 'stop']:
-                        val = False
-                     else:
-                        val = True
-                elif ('colour_template' in key):
-                    val = int(val)
-                elif 'prefix' in key:
-                    val = str(val)[:2]
-                passed.append(key)
-                inv[key] = val
-            except:
-                failed.append(key)
-                continue
+        self.fix_key(inv, passed, failed)
         p = []
         if len(passed) > 0:
             for x in passed:
@@ -3908,6 +3917,39 @@ class Controller():
                     failed.append(x)
                     continue
         return p, failed
+
+    def fix_key(self, inv, passed, failed):
+        print(inv)
+        for key in inv:
+            val = inv[key]
+            try:
+                if ('channels' in key) or ('users' in key) or ('roles' in key):
+                    if val == '-1':
+                        val = []
+                    if len(val) > 0:
+                        val = list(map(int, val.split(',')))
+                elif ('commands' in key) or ('subreddit' in key) or ('twitch' in key) or\
+                     ('twitter' in key)  or ('github' in key):
+                    if len(val) > 0:
+                        val = list(map(str, val.split(',')))
+                elif ('voice_enabled' in key) or ('invites_allowed' in key) or\
+                     ('voice_logging' in key) or ('modlog_enabled' in key) or\
+                     ('logging_enabled' in key) or ('pm_welcome' in key) or\
+                     ('colour_enabled' in key) or ('pm_welcome' in key):
+                     if val.lower() in ['false', 'no', 'stop', '-1']:
+                        val = False
+                     else:
+                        val = True
+                elif ('colour_template' in key):
+                    val = int(val)
+                elif 'prefix' in key:
+                    val = str(val)[:2]
+                passed.append(key)
+                inv[key] = val
+            except:
+                failed.append(key)
+                continue
+        pass
 
 # end of code
 
