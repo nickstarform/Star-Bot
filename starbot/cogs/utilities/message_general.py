@@ -15,7 +15,7 @@ __path__ = __file__.strip('.py').strip(__filename__)
 
 MAX_LEN = 2000
 
-async def generic_message(ctx, channels, message: str, delete: int, splitwith: str=''):
+async def generic_message(ctx, channels: list, message: str, delete: int, splitwith: str=''):
     """Generic message builder.
 
     Parameters
