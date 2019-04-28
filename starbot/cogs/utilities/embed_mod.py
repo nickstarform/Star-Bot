@@ -309,30 +309,28 @@ def modlistembed(modded_user, infractions: list, unshown: bool):
     cdesc = f'**{modded_user.name}#{modded_user.discriminator}** <@{modded_user.id}> modactions:'
     cdesc += f'' if infractions else f'\n\nUser has no modactions.'
     ccolour = Colours.COMMANDS
-    string_list = []
+    string_list = ['\n']
     for index, moderation in enumerate(infractions):
         index = moderation['index_id']
-        level = ModAction(moderation['action']).name
+        level = ModAction(moderation['type']).name
         date = moderation['logtime'].strftime('%b %d %Y %H:%M')
         tmp_string = f'({level})'\
                      f' {moderation["reason"]} '\
                      f'[{date}]\n'
-        string_list.append([index, tmp_string])
+        string_list.append(f'**{index + 1})** {tmp_string}')
 
-    try:
-        cdesc += f'\n**Join Date:** '\
-                      f'{modded_user.joined_at.strftime("%b %d %Y %H:%M")}'
-    except:
-        pass
+    cdesc += f'\n'.join(string_list)
+    cdesc += f'\n**Join Date:** '\
+             f'{modded_user.joined_at.strftime("%b %d %Y %H:%M")}'
+
     if unshown:
         cdesc += f'\n\nThere are more modactions > 6 months ago.'
 
-    return generic_embed(ctitle, cdesc, string_list,
+    return generic_embed(ctitle, cdesc, [],
                          current_time(), ccolour)
 
 
-def modeditembed(modded_name: str, modded_id: str, mod_name: str, mod_id: str,
-                 action_type: ModAction, reason: str, infraction_count: int):
+def modeditembed(modded_user, mod_user, action_type: ModAction, reason: str, infraction_count: int):
     """Modaction edit.
 
     Parameters
@@ -358,8 +356,8 @@ def modeditembed(modded_name: str, modded_id: str, mod_name: str, mod_id: str,
         embedded object to send message
     """
     ctitle = f'Modaction Editted'
-    cdesc = f'{modded_name}: <@{modded_id}> modaction edited '\
-            f'by {mod_name}: <@{mod_id}>'\
+    cdesc = f'{modded_user.name}: <@{modded_user.id}> modaction edited '\
+            f'by {mod_user.name}: <@{mod_user.id}>'\
             f' previous modaction has been changed to a '\
             f'**{action_type.name}** action for:\n'\
             f'\'**{reason}**\'\n\n'\
@@ -368,8 +366,7 @@ def modeditembed(modded_name: str, modded_id: str, mod_name: str, mod_id: str,
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 
-def modaddembed(modded_name: str, modded_id: str, mod_name: str, mod_id: str,
-                action_type: ModAction, reason: str, infraction_count: int):
+def modaddembed(modded_user, mod_user, action_type: ModAction, reason: str, infraction_count: int):
     """Moderation applied.
 
     Parameters
@@ -395,16 +392,15 @@ def modaddembed(modded_name: str, modded_id: str, mod_name: str, mod_id: str,
         embedded object to send message
     """
     ctitle = f'User Moderated'
-    cdesc = f'{modded_name}: <@{modded_id}> was moderated ({action_type.name})'\
-            f'by {mod_name}: <@{mod_id}> \n'\
+    cdesc = f'{modded_user.name}: <@{modded_user.id}> was moderated ({action_type.name})'\
+            f'by {mod_user.name}: <@{mod_user.id}> \n'\
             f'Reason: {reason}\n\n'\
             f'This is infraction number {infraction_count}'
     ccolour = Colours.CHANGE_G
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 
-def modrmembed(modded_name: str, modded_id: str, mod_name: str, mod_id: str,
-               infraction_count: int):
+def modrmembed(modded_user, mod_user, infraction_count: int):
     """Moderation removal.
 
     Parameters
@@ -426,8 +422,8 @@ def modrmembed(modded_name: str, modded_id: str, mod_name: str, mod_id: str,
         embedded object to send message
     """
     ctitle = f'User Modaction Removed'
-    cdesc = f'{modded_name}: <@{modded_id}> had a modaction '\
-            f'forgiven by {mod_name}: <@{mod_id}>\n\n'\
+    cdesc = f'{modded_user.name}: <@{modded_user.id}> had a modaction '\
+            f'forgiven by {mod_user.name}: <@{mod_user.id}>\n\n'\
             f'They have {infraction_count} infractions.'
     ccolour = Colours.CHANGE_G
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
