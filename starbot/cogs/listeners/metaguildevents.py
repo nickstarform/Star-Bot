@@ -7,18 +7,20 @@ from discord.ext import commands
 
 # relative modules
 from cogs.utilities.embed_errors import internalerrorembed
+from cogs.utilities.functions import flatten
 
 # global attributes
-__all__ = ('Events',)
+__all__ = ('MetaGuildEvents',)
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
-class Events(commands.Cog):
+class MetaGuildEvents(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         super().__init__()
+        for func in [self.on_guild_join, self.on_guild_remove]:
+            bot.add_listener(func)
 
-    @commands.Cog.listener()
     async def on_guild_join(self, guild):
         """Auto add guild to db.
 
@@ -56,7 +58,6 @@ class Events(commands.Cog):
             self.bot.logger.warning(f'Error adding guild to db: {e}')
             return
 
-    @commands.Cog.listener()
     async def on_guild_remove(self, guild):
         """Auto add guild to db.
 
