@@ -252,7 +252,8 @@ BLACKLIST
 """
 
 
-async def is_cmd_blacklisted(bot, ctx: commands.Context, cmd: str):
+async def is_cmd_blacklisted(bot, ctx: commands.Context, cmd: str,
+                             only_global: bool=False):
     """Check if in guilds.
 
     Parameters
@@ -267,6 +268,9 @@ async def is_cmd_blacklisted(bot, ctx: commands.Context, cmd: str):
         return False
     if await bot.pg.is_disallowed_global(cmd):
         return True
+
+    if only_global:
+        return False
 
     if not isinstance(ctx.guild, type(None)):
         if await bot.pg.is_disallowed(ctx.guild.id, cmd):
