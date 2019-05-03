@@ -156,6 +156,7 @@ class Controller():
             SELECT guild_id FROM {self.schema}.globalguildbl;
         """
         guild_list = await self.pool.fetch(sql)
+        guild_list = [x['guild_id'] for x in guild_list]
         return guild_list
 
     async def is_blacklist_guild_global(self, guild_id: str):
@@ -240,6 +241,7 @@ class Controller():
             SELECT user_id FROM {self.schema}.globaluserbl;
         """
         user_list = await self.pool.fetch(sql)
+        user_list = [x['user_id'] for x in user_list]
         return user_list
 
     async def is_blacklist_user_global(self, user_id: str):
@@ -558,7 +560,7 @@ class Controller():
         """
         cols = {
                 'guild_id': ['', int(guild_id)],
-                'prefix': ['', '!'],
+                'prefix': ['', 's!'],
                 'voice_roles': ['', []],
                 'voice_channels': ['', []],
                 'cleared_channels': ['', []],
@@ -610,7 +612,8 @@ class Controller():
             'pm_welcome',
             'voice_role_enabled',
             'blacklist_channels',
-            'blacklist_users')
+            'blacklist_users',
+            'cleared_channels')
         sql = f"""
             SELECT {', '.join(settings)}
                 FROM {self.schema}.guilds;
@@ -646,7 +649,8 @@ class Controller():
             'pm_welcome',
             'voice_role_enabled',
             'blacklist_channels',
-            'blacklist_users')
+            'blacklist_users',
+            'cleared_channels')
         sql = f"""
             SELECT {', '.join(settings)}
                 FROM {self.schema}.guilds WHERE guild_id = $1;
@@ -817,7 +821,7 @@ class Controller():
             The exact parameters in keys
 
         Returns
-        ----------
+        -------
         boolean
             success true or false
         """
@@ -978,7 +982,7 @@ class Controller():
         sql = f"""
             SELECT disallowed_commands FROM {self.schema}.guilds WHERE guild_id = $1;
         """
-        cmd_list = await self.pool.fetchval(sql, int(guild_id))
+        cmd_list = await self.pool.fetch(sql, int(guild_id))
         return cmd_list
 
     async def is_disallowed(self, guild_id, cmd: str):
@@ -1018,6 +1022,7 @@ class Controller():
             WHERE guild_id = $1;
         """
         role_list = await self.pool.fetch(sql, int(guild_id))
+        role_list = role_list[0]['autoroles']
         return role_list
 
     async def is_role_autorole(self, guild_id: str, role_id: str):
@@ -1122,7 +1127,7 @@ class Controller():
             SELECT joinable_roles FROM {self.schema}.guilds
             WHERE guild_id = $1;
         """
-        role_list = await self.pool.fetchval(sql, int(guild_id))
+        role_list = await self.pool.fetch(sql, int(guild_id))
         return role_list
 
     async def is_role_joinable(self, guild_id: str, role_id: str):
@@ -1230,7 +1235,8 @@ class Controller():
             SELECT modlog_channels FROM {self.schema}.guilds
                 WHERE guild_id = $1;
         """
-        channel_list = await self.pool.fetchval(sql, int(guild_id))
+        channel_list = await self.pool.fetch(sql, int(guild_id))
+        channel_list = channel_list[0]['modlog_channels']
         return channel_list
 
     async def is_modlog(self, guild_id: str, channel_id: str):
@@ -1497,7 +1503,7 @@ class Controller():
             SELECT welcome_channels FROM {self.schema}.guilds
                 WHERE guild_id = $1;
         """
-        channel_list = await self.pool.fetchval(sql, int(guild_id))
+        channel_list = await self.pool.fetch(sql, int(guild_id))
         return channel_list
 
     async def is_welcome_channel(self, guild_id: str, channel_id: str):
@@ -1762,7 +1768,8 @@ class Controller():
             SELECT logging_channels FROM {self.schema}.guilds
                 WHERE guild_id = $1;
         """
-        channel_list = await self.pool.fetchval(sql, int(guild_id))
+        channel_list = await self.pool.fetch(sql, int(guild_id))
+        channel_list = channel_list[0]['logging_channels']
         return channel_list
 
     async def is_logger_channel(self, guild_id: str, channel_id: str):
@@ -1806,7 +1813,7 @@ class Controller():
                 SET logging_enabled = $2
                 WHERE guild_id = $1;
         """
-        return await self.pool.fetchval(sql, int(guild_id), status)
+        return await self.pool.execute(sql, int(guild_id), status)
 
     async def add_logger_channel(self, guild_id: str, channel_id: str, logger):
         """Add logging channel.
@@ -1919,7 +1926,7 @@ class Controller():
                 SET voice_role_enabled = $2
                 WHERE guild_id = $1;
         """
-        return await self.pool.fetchval(sql, int(guild_id), status)
+        return await self.pool.execute(sql, int(guild_id), status)
 
     async def get_all_voice_channels(self, guild_id: str):
         """Get voice all channels.
@@ -1938,7 +1945,7 @@ class Controller():
             SELECT voice_channels FROM {self.schema}.guilds
                 WHERE guild_id = $1;
         """
-        channel_list = await self.pool.fetchval(sql, int(guild_id))
+        channel_list = await self.pool.fetch(sql, int(guild_id))
         return channel_list
 
     async def is_voice_channel(self, guild_id: str, channel_id: str):
@@ -2272,7 +2279,7 @@ class Controller():
             SELECT blacklist_channels FROM {self.schema}.guilds
                 WHERE guild_id = $1;
         """
-        channel_list = await self.pool.fetchval(sql, int(guild_id))
+        channel_list = await self.pool.fetch(sql, int(guild_id))
         return channel_list
 
     async def is_blacklist_channel(self, guild_id: str, channel_id: str):
@@ -2423,7 +2430,6 @@ class Controller():
         """
         try:
             val = await self.pool.fetchval(sql, int(guild_id),  int(user_id))
-            val = parse(val[0])[0][1]
             return val + 1
         except Exception as e:
             logger.warning(f'Error indexing modactions: {e}')
@@ -3615,6 +3621,33 @@ class Controller():
     """
     REACTS
     """
+
+    async def get_react_index(self, guild_id: str, logger):
+        """Get a single react db.
+
+        Parameters
+        ----------
+        guild_id: str
+            guild id
+        message_id: str
+            message id that holds the react info
+        react_id: str
+            the reaction id
+
+        Returns
+        ----------
+        list
+            list of columns from single react
+        """
+        sql = f"""
+            SELECT id FROM {self.schema}.reacts WHERE
+                guild_id = $1 ORDER BY group_id DESC LIMIT 1;
+        """
+        try:
+            return await self.pool.fetch(sql, int(guild_id))
+        except Exception as e:
+            logger.warning(f'')
+
     async def get_single_react(self, message_id: str,
                                react_id: str, logger):
         """Get a single react db.
@@ -3634,7 +3667,7 @@ class Controller():
             list of columns from single react
         """
         sql = f"""
-            SELECT * FROM {self.schema}.macros
+            SELECT * FROM {self.schema}.reacts
                 WHERE base_message_id = $1 AND react_id = $2;
         """
         try:
@@ -3793,7 +3826,7 @@ class Controller():
         return True
 
     async def get_allguild_reacts(self, guild_id: str, logger):
-        """Get all quotes in a guild.
+        """Get all reacts in a guild.
 
         Parameters
         ----------
@@ -3806,13 +3839,19 @@ class Controller():
             list of all reacts in guild
         """
         sql = f"""
-            SELECT * FROM {self.schema}.reacts WHERE guild_id = $1;
+            SELECT base_message_id, react_id FROM {self.schema}.reacts
+                WHERE guild_id = $1;
         """
         try:
-            return await self.pool.fetch(sql, int(guild_id))
+            tmp = await self.pool.fetch(sql, int(guild_id))
+            ret = {}
+            for t in tmp:
+                for (k, v) in t.items():
+                    ret[k] = v
+            return ret
         except Exception as e:
             logger.warning(f'Error getting reacts: {e}')
-            return False
+            return {}
 
     async def get_single_record(self, guild_id, key, logger):
         """Get a single records in the guild.
@@ -3874,7 +3913,7 @@ class Controller():
             UPDATE {self.schema}.guilds SET {key} = $1 WHERE guild_id = $2;
         """
         try:
-            current = await self.pool.fetchval(sql, val, int(guild_id))
+            current = await self.pool.execute(sql, val, int(guild_id))
             return True
         except Exception as e:
             logger.warning(f'Error setting current guild val: {e}')
