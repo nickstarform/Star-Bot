@@ -335,7 +335,7 @@ class Moderation(commands.Cog):
             return 
         if ctx.invoked_subcommand is None:
             await respond(ctx, False)
-            ctx.send(embed=eembed.internalerrorembed(f'Invoke a subcommand, you most likely meant `add`'), delete_after=5)
+            await ctx.send(embed=eembed.internalerrorembed(f'Invoke a subcommand, you most likely meant `add`'), delete_after=5)
             return
 
     @setrole.command(name='add', aliases=['give'])
@@ -579,62 +579,66 @@ class Moderation(commands.Cog):
                         5)
                     await respond(ctx, False)
                     return
-            if await confirm(ctx, f'```\n**Kick** {member.mention} for {reason}\n```', 10):
-                embed = generic_embed(
-                    title='❗KICKED❗',
-                    desc=f'You have been kicked from {ctx.guild.name}',
-                    fields=[['Reason', reason], ['Time', current_time()]],
-                    footer=footer,
-                    colours=Colours.ERROR)[0]
+            if not await confirm(ctx, f'**```\nKick: {member.name}: {member.mention} for {reason}\n```**', 10):
+                await respond(ctx, False)
+                return
+            embed = generic_embed(
+                title='❗KICKED❗',
+                desc=f'You have been kicked from {ctx.guild.name}',
+                fields=[['Reason', reason], ['Time', current_time()]],
+                footer=footer,
+                colours=Colours.ERROR)[0]
+            try:
                 try:
-                    try:
-                        await member.create_dm()
-                        await member.dm_channel.send(embed=embed)
-                    except Exception as e:
-                        await generic_message(ctx, [ctx.channel],
-                            f"Error messaging user!: {e}",
-                            5)
-                        self.bot.logger.warning(f'Error messaging user!: {e}')
-                    await member.kick(reason=f'by: {ctx.author} for: {reason}')
-                    await respond(ctx, True)
-                    try:
-                        await self.bot.pg.add_single_moderation(
-                            ctx.guild.id,
-                            ctx.author.id,
-                            member.id,
-                            reason,
-                            ModAction.KICK,
-                            self.bot.logger
-                        )
-                    except Exception as e:
-                        await respond(ctx, False)
-                        await generic_message(ctx, [ctx.channel],
-                            f"Error storing modaction!: {e}",
-                            5)
-                        self.bot.logger.warning(f'Error storing modaction: {e}')
+                    await member.create_dm()
+                    await member.dm_channel.send(embed=embed)
+                except Exception as e:
+                    await generic_message(ctx, [ctx.channel],
+                        f"Error messaging user!: {e}",
+                        5)
+                    self.bot.logger.warning(f'Error messaging user!: {e}')
+                await member.kick(reason=f'by: {ctx.author} for: {reason}')
+                await respond(ctx, True)
+                try:
+                    await self.bot.pg.add_single_moderation(
+                        ctx.guild.id,
+                        ctx.author.id,
+                        member.id,
+                        reason,
+                        ModAction.KICK,
+                        self.bot.logger
+                    )
                 except Exception as e:
                     await respond(ctx, False)
                     await generic_message(ctx, [ctx.channel],
-                        f"Error kicking user!: {e}",
+                        f"Error storing modaction!: {e}",
                         5)
-                    self.bot.logger.warning(f'Error kicking user!: {e}')
-                    return
-                if self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
-                    try:
-                        embed = embed_log.kickembed(member, ctx.author, reason)
-                        mod_logs = await self.bot.pg.get_all_modlogs(ctx.guild.id)
-                        for channel_id in mod_logs:
-                            await (self.bot.get_channel(channel_id)).send(
-                                embed=embed)
-                    except Exception as e:
-                        await respond(ctx, False)
-                        await generic_message(ctx, [ctx.channel],
-                            f"Issue posting to mod log!: {e}",
-                            5)
-                        self.bot.logger.warning(f'Issue posting to mod log: {e}')
-            else:
+                    self.bot.logger.warning(f'Error storing modaction: {e}')
+            except Exception as e:
                 await respond(ctx, False)
-                await ctx.send("Cancelled kick", delete_after=3)
+                await generic_message(ctx, [ctx.channel],
+                    f"Error kicking user!: {e}",
+                    5)
+                self.bot.logger.warning(f'Error kicking user!: {e}')
+                return
+            if not self.bot.guild_settings[ctx.guild.id]['logging_enabled']:
+                return
+            channels = await self.bot.pg.get_all_logger_channels(ctx.guild.id)
+            for channel in channels:
+                try:
+                    ch = self.bot.get_channel(channel)
+                    await ch.send(embed=lembed.kickembed(user, ctx.author, reason))
+                except:
+                    continue
+            if not self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
+                return
+            channels = await self.bot.pg.get_all_modlogs(ctx.guild.id)
+            for channel in channels:
+                try:
+                    ch = self.bot.get_channel(channel)
+                    await ch.send(embed=lembed.kickembed(user, ctx.author, reason))
+                except:
+                    continue
 
 
     @kick.command(aliases=['test', 'demo', 'show'])
@@ -659,7 +663,7 @@ class Moderation(commands.Cog):
             footer=footer,
             colours=Colours.ERROR)[0]
         embeds.append(embed)
-        embed = embed_log.kickembed(self.bot.user, ctx.author, 'REASON WILL GO HERE')
+        embed = embed_log.kickembed(self.bot.user, 'REASON WILL GO HERE')
         embeds.append(embed)
         for embed in embeds:
             await ctx.send(embed=embed)
@@ -683,11 +687,123 @@ class Moderation(commands.Cog):
         if not member:
             await respond(ctx, False)
             return
-        if self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
+        try:
+            if not await confirm(ctx,
+                f'**```\nLOGBAN {member.name}: {member.mention} for {reason}\n```**', 10):  # noqa
+                await respond(ctx, False)
+                return
             try:
-                if not await confirm(ctx,
-                    f'```\n**LOGBAN** {member.mention} for {reason}\n```', 10):  # noqa
-                    return
+                await self.bot.pg.add_single_moderation(
+                    ctx.guild.id,
+                    ctx.author.id,
+                    member.id,
+                    reason,
+                    ModAction.BAN,
+                    self.bot.logger
+                )
+            except Exception as e:
+                await respond(ctx, False)
+                await generic_message(ctx, [ctx.channel],
+                    f"Error storing modaction!: {e}",
+                    5)
+                self.bot.logger.warning(f'Error storing modaction: {e}')
+        except Exception as e:
+            await respond(ctx, False)
+            await generic_message(ctx, [ctx.channel],
+                                f"Error logbanning user!: {e}",
+                                5)
+            self.bot.logger.warning(f'Error logbanning user!: {e}')
+            return
+        if not self.bot.guild_settings[guild.id]['logging_enabled']:
+            return
+        channels = await self.bot.pg.get_all_logger_channels(ctx.guild.id)
+        for channel in channels:
+            try:
+                ch = self.bot.get_channel(channel)
+                await ch.send(embed=lembed.logbanembed(user, ctx.author, reason))
+            except:
+                continue
+        if not self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
+            return
+        channels = await self.bot.pg.get_all_modlogs(ctx.guild.id)
+        for channel in channels:
+            try:
+                ch = self.bot.get_channel(channel)
+                await ch.send(embed=lembed.logbanembed(user, ctx.author, reason))
+            except:
+                continue
+
+    @logban.error
+    async def logban_error(self, ctx: commands.Context, error):
+        self.bot.logger.warning(f'Banned_user argument not found in ban list.')
+        await ctx.send(
+            embed=embeds.LogbanErrorEmbed(),
+            delete_after=3
+        )
+
+    @commands.group()
+    @permissions.has_permissions(manage_roles=True)
+    @commands.guild_only()
+    async def ban(self, ctx):
+        """Ban a user.
+
+        Parameters
+        ----------
+        user: str
+            userid or mentionable
+        reason: str
+            reason why to ban
+
+        Returns
+        -------
+        """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'ban'):
+            return
+        if not ctx.invoked_subcommand:
+            content = ' '.join(ctx.message.content.split(' ')[1:])
+            member = content.split(' ')[0]
+            reason = ' '.join(content.split(' ')[1:])
+            ids = member
+            member = get_member(ctx, ids)
+            if member is None:
+                await generic_message(ctx, [ctx.channel],
+                    f"Couldn't resolve member <@{ids}>.",
+                    5)
+                await respond(ctx, False)
+                return
+            if reason is None or len(str(reason)) == 0:
+                await generic_message(ctx, [ctx.channel],
+                    "You need to supply a reason, try again.",
+                    5)
+                await respond(ctx, False)
+                return
+            footer = await self.bot.pg.get_ban_footer(ctx.guild.id, self.bot.logger)
+            if (len(reason) + len(footer) + 25) > 500:
+                await generic_message(ctx, [ctx.channel],
+                    "Mesage too long...",
+                    5)
+                await respond(ctx, False)
+                return
+            if not await confirm(ctx, f'**```\nBAN: {member.name}: {member.mention} for {reason}\n```**', 10):
+                await respond(ctx, False)
+                return
+            embed = generic_embed(
+                title='❗BANNED❗',
+                desc=f'You have been banned from {ctx.guild.name}',
+                fields=[['Reason', reason], ['Time', current_time()]],
+                footer=footer,
+                colours=Colours.ERROR)[0]
+            try:
+                try:
+                    await member.create_dm()
+                    await member.dm_channel.send(embed=embed)
+                except Exception as e:
+                    await generic_message(ctx, [ctx.channel],
+                        f"Error messaging user!: {e}",
+                        5)
+                    self.bot.logger.warning(f'Error messaging user!: {e}')
+                await member.ban(reason=f'by: {ctx.author} for: {reason}')
+                await respond(ctx, True)
                 try:
                     await self.bot.pg.add_single_moderation(
                         ctx.guild.id,
@@ -706,132 +822,28 @@ class Moderation(commands.Cog):
             except Exception as e:
                 await respond(ctx, False)
                 await generic_message(ctx, [ctx.channel],
-                    f"Error logbanning user!: {e}",
+                    f"Error banning user!: {e}",
                     5)
-                self.bot.logger.warning(f'Error logbanning user!: {e}')
+                self.bot.logger.warning(f'Error banning user!: {e}')
                 return
-            if self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
+            if not self.bot.guild_settings[ctx.guild.id]['logging_enabled']:
+                return
+            channels = await self.bot.pg.get_all_logger_channels(ctx.guild.id)
+            for channel in channels:
                 try:
-                    embed = embed_log.banembed(member, ctx.author, reason)
-                    mod_logs = await self.bot.pg.get_all_modlogs(ctx.guild.id)
-                    for channel_id in mod_logs:
-                        await (self.bot.get_channel(channel_id)).send(
-                            embed=embed)
-                except Exception as e:
-                    await respond(ctx, False)
-                    await generic_message(ctx, [ctx.channel],
-                        f"Issue posting to mod log!: {e}",
-                        5)
-                    self.bot.logger.warning(f'Issue posting to mod log: {e}')
-
-    @logban.error
-    async def logban_error(self, ctx: commands.Context, error):
-        self.bot.logger.warning(f'Banned_user argument not found in ban list.')
-        await ctx.send(
-            embed=embeds.LogbanErrorEmbed(),
-            delete_after=3
-        )
- 
-    @commands.group()
-    @permissions.has_permissions(manage_roles=True)
-    @commands.guild_only()
-    async def ban(self, ctx):
-        """Ban a user.
-
-        Parameters
-        ----------
-        amount: int
-            Integer for delete, defaults to 10
-        user: str
-            Id of the user to purge
-
-        Returns
-        -------
-        """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'ban'):
-            return
-        if not ctx.invoked_subcommand:
-            content = ' '.join(ctx.message.content.split(' ')[1:])
-            member = content.split(' ')[0]
-            reason = ' '.join(content.split(' ')[1:])
-            ids = member
-            member = get_member(ctx, ids)
-            if member is None:
-                    await generic_message(ctx, [ctx.channel],
-                        f"Couldn't resolve member <@{ids}>.",
-                        5)
-                    await respond(ctx, False)
-                    return
-            if reason is None or len(str(reason)) == 0:
-                    await generic_message(ctx, [ctx.channel],
-                        "You need to supply a reason, try again.",
-                        5)
-                    await respond(ctx, False)
-                    return
-            footer = await self.bot.pg.get_ban_footer(ctx.guild.id, self.bot.logger)
-            if (len(reason) + len(footer) + 25) > 500:
-                    await generic_message(ctx, [ctx.channel],
-                        "Mesage too long...",
-                        5)
-                    await respond(ctx, False)
-                    return
-            if await confirm(ctx, f'```\n**BAN** {member.mention} for {reason}\n```', 10):
-                embed = generic_embed(
-                    title='❗BANNED❗',
-                    desc=f'You have been banned from {ctx.guild.name}',
-                    fields=[['Reason', reason], ['Time', current_time()]],
-                    footer=footer,
-                    colours=Colours.ERROR)[0]
+                    ch = self.bot.get_channel(channel)
+                    await ch.send(embed=lembed.banembed(user, ctx.author, reason))
+                except:
+                    continue
+            if not self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
+                return
+            channels = await self.bot.pg.get_all_modlogs(ctx.guild.id)
+            for channel in channels:
                 try:
-                    try:
-                        await member.create_dm()
-                        await member.dm_channel.send(embed=embed)
-                    except Exception as e:
-                        await generic_message(ctx, [ctx.channel],
-                            f"Error messaging user!: {e}",
-                            5)
-                        self.bot.logger.warning(f'Error messaging user!: {e}')
-                    await member.ban(reason=f'by: {ctx.author} for: {reason}')
-                    await respond(ctx, True)
-                    try:
-                        await self.bot.pg.add_single_moderation(
-                            ctx.guild.id,
-                            ctx.author.id,
-                            member.id,
-                            reason,
-                            ModAction.BAN,
-                            self.bot.logger
-                        )
-                    except Exception as e:
-                        await respond(ctx, False)
-                        await generic_message(ctx, [ctx.channel],
-                            f"Error storing modaction!: {e}",
-                            5)
-                        self.bot.logger.warning(f'Error storing modaction: {e}')
-                except Exception as e:
-                    await respond(ctx, False)
-                    await generic_message(ctx, [ctx.channel],
-                        f"Error banning user!: {e}",
-                        5)
-                    self.bot.logger.warning(f'Error banning user!: {e}')
-                    return
-                if self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
-                    try:
-                        embed = embed_log.banembed(member, ctx.author, reason)
-                        mod_logs = await self.bot.pg.get_all_modlogs(ctx.guild.id)
-                        for channel_id in mod_logs:
-                            await (self.bot.get_channel(channel_id)).send(
-                                embed=embed)
-                    except Exception as e:
-                        await respond(ctx, False)
-                        await generic_message(ctx, [ctx.channel],
-                            f"Issue posting to mod log!: {e}",
-                            5)
-                        self.bot.logger.warning(f'Issue posting to mod log: {e}')
-            else:
-                await respond(ctx, False)
-                await ctx.send("Cancelled ban", delete_after=3)
-
+                    ch = self.bot.get_channel(channel)
+                    await ch.send(embed=lembed.banembed(user, ctx.author, reason))
+                except:
+                    continue
 
     @ban.command(name='test', aliases=['demo', 'show'])
     async def _bantest(self, ctx):
@@ -855,7 +867,7 @@ class Moderation(commands.Cog):
             footer=footer,
             colours=Colours.ERROR)[0]
         embeds.append(embed)
-        embed = embed_log.banembed(self.bot.user, ctx.author, 'REASON WILL GO HERE')
+        embed = embed_log.banembed(self.bot.user, 'REASON WILL GO HERE')
         embeds.append(embed)
         for embed in embeds:
             await ctx.send(embed=embed)
@@ -881,7 +893,14 @@ class Moderation(commands.Cog):
             return
         if not ctx.invoked_subcommand:
             content = ' '.join(ctx.message.content.split(' ')[1:])
-            member = await bannedmember(ctx, content.split(' ')[0]).user
+            member = await bannedmember(ctx, content.split(' ')[0])
+            if member is None:
+                    await generic_message(ctx, [ctx.channel],
+                        f"Couldn't resolve member <@{content.split(' ')[0]}>.",
+                        5)
+                    await respond(ctx, False)
+                    return
+            member = member.user
             try:
                 t = int(content.split(' ')[1])
                 index = t
@@ -889,12 +908,6 @@ class Moderation(commands.Cog):
             except:
                 index = -1
                 reason = ' '.join(content.split(' ')[1:])
-            if member is None:
-                    await generic_message(ctx, [ctx.channel],
-                        f"Couldn't resolve member <@{content.split(' ')[0]}>.",
-                        5)
-                    await respond(ctx, False)
-                    return
             if reason is None or len(str(reason)) == 0:
                     await generic_message(ctx, [ctx.channel],
                         "You need to supply a reason, try again.",
@@ -908,60 +921,65 @@ class Moderation(commands.Cog):
                         5)
                     await respond(ctx, False)
                     return
-            if await confirm(ctx, f'```\n**UNBANNING** {member.mention} for {reason}\n```', 10):
+            if not await confirm(ctx, f'**```\nUNBANNING: {member.name}: {member.mention} for {reason}\n```**', 10):
+                await respond(ctx, False)
+                return
+            try:
+                await ctx.guild.unban(member, reason=f'by: {ctx.author} for: {reason}')
+                await respond(ctx, True)
                 try:
-                    await ctx.guild.unban(member, reason=f'by: {ctx.author} for: {reason}')
-                    await respond(ctx, True)
-                    try:
-                        if index != -1:
-                            await self.bot.pg.set_single_moderation(
-                                ctx.guild.id,
-                                member.id,
-                                ctx.author.id,
-                                index,
-                                ModAction.BAN,
-                                reason,
-                                True,
-                                self.bot.logger
-                            )
-                        else:
-                            await self.bot.pg.add_single_moderation(
-                                ctx.guild.id,
-                                ctx.author.id,
-                                member.id,
-                                reason,
-                                ModAction.BAN,
-                                self.bot.logger
-                            )
-                    except Exception as e:
-                        await respond(ctx, False)
-                        await generic_message(ctx, [ctx.channel],
-                            f"Error storing modaction!: {e}",
-                            5)
-                        self.bot.logger.warning(f'Error storing modaction: {e}')
+                    if index != -1:
+                        await self.bot.pg.set_single_moderation(
+                            ctx.guild.id,
+                            member.id,
+                            ctx.author.id,
+                            index,
+                            ModAction.BAN,
+                            reason,
+                            True,
+                            self.bot.logger
+                        )
+                    else:
+                        await self.bot.pg.add_single_moderation(
+                            ctx.guild.id,
+                            ctx.author.id,
+                            member.id,
+                            reason,
+                            ModAction.BAN,
+                            self.bot.logger
+                        )
                 except Exception as e:
                     await respond(ctx, False)
                     await generic_message(ctx, [ctx.channel],
-                        f"Error unbanning user!: {e}",
+                        f"Error storing modaction!: {e}",
                         5)
-                    self.bot.logger.warning(f'Error unbanning user!: {e}')
+                    self.bot.logger.warning(f'Error storing modaction: {e}')
                     return
-                if self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
-                    try:
-                        embed = embed_log.unbanembed(member, ctx.author, reason)
-                        mod_logs = await self.bot.pg.get_all_modlogs(ctx.guild.id)
-                        for channel_id in mod_logs:
-                            await (self.bot.get_channel(channel_id)).send(
-                                embed=embed)
-                    except Exception as e:
-                        await respond(ctx, False)
-                        await generic_message(ctx, [ctx.channel],
-                            f"Issue posting to mod log!: {e}",
-                            5)
-                        self.bot.logger.warning(f'Issue posting to mod log: {e}')
-            else:
+            except Exception as e:
                 await respond(ctx, False)
-                await ctx.send("Cancelled unban", delete_after=3)
+                await generic_message(ctx, [ctx.channel],
+                    f"Error unbanning user!: {e}",
+                    5)
+                self.bot.logger.warning(f'Error unbanning user!: {e}')
+                return
+            if not self.bot.guild_settings[ctx.guild.id]['logging_enabled']:
+                return
+            channels = await self.bot.pg.get_all_logger_channels(ctx.guild.id)
+            for channel in channels:
+                try:
+                    ch = self.bot.get_channel(channel)
+                    await ch.send(embed=lembed.unbanembed(user, ctx.author, reason))
+                except:
+                    continue
+            if not self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
+                return
+            channels = await self.bot.pg.get_all_modlogs(ctx.guild.id)
+            for channel in channels:
+                try:
+                    ch = self.bot.get_channel(channel)
+                    await ch.send(embed=lembed.unbanembed(user, ctx.author, reason))
+                except:
+                    continue
 
     @unban.command(name='test', aliases=['demo', 'show'])
     async def _unbantest(self, ctx):
@@ -978,7 +996,7 @@ class Moderation(commands.Cog):
         """
         embeds = []
         footer = current_time()
-        embed = embed_log.unbanembed(self.bot.user, ctx.author, 'REASON WILL GO HERE')
+        embed = embed_log.unbanembed(self.bot.user, 'REASON WILL GO HERE')
         embeds.append(embed)
         for embed in embeds:
             await ctx.send(embed=embed)
@@ -1020,7 +1038,7 @@ class Moderation(commands.Cog):
     ADD WARNINGS AND MODERATIONS
     """
 
-    async def resolve_member(self, ctx: commands.Context, member):  
+    async def resolve_member(self, ctx: commands.Context, member):
         """Generic member resolver.
 
         This is specifically forthe warning and moderation
@@ -1189,7 +1207,7 @@ class Moderation(commands.Cog):
             self.bot.logger.warning(f'Warning too long: {e}')
             await respond(ctx, False)
             return
-        if not await confirm(ctx, f'You are warning ```\nUser: <@{member.id}> for Reason: {reason}\n```', 10):
+        if not await confirm(ctx, f'You are warning ```\nUser: {member.name}: {member.mention} for Reason: {reason}\n```', 10):
             return
         try:
             count = await self.bot.pg.add_single_warning(
@@ -1346,13 +1364,13 @@ class Moderation(commands.Cog):
                 await ctx.send(embed=eembed.internalerrorembed(f'Reason too long'), delete_after=15)
                 await respond(ctx, False)
                 return
-            if not await confirm(ctx, f'You are moderating: ```\nUser: {member}\nReason: {reason}\n```', 10):
-                await respond(ctx, False)
-                return
             om = member
             member = get_member(ctx, om)
             if isinstance(member, type(None)):
                 await ctx.send(embed=eembed.internalerrorembed(f'Member not found {om}'), delete_after=15)
+                await respond(ctx, False)
+                return
+            if not await confirm(ctx, f'You are moderating: ```\nUser: {membername}: {member.mention}\nReason: {reason}\n```', 10):
                 await respond(ctx, False)
                 return
             reason = reason if modtype else ' '.join(ctx.message.content.split(' ')[1:])
@@ -1408,13 +1426,13 @@ class Moderation(commands.Cog):
             await ctx.send(embed=eembed.internalerrorembed(f'Reason too long or modaction not specified'), delete_after=15)
             await respond(ctx, False)
             return
-        if not await confirm(ctx, f'You are changing modaction: ```\nUser: {member}\nType: {modaction.name}\nReason: {reason}\n```', 10):
-            await respond(ctx, False)
-            return
         om = member
         member = get_member(ctx, om)
         if isinstance(member, type(None)):
             await ctx.send(embed=eembed.internalerrorembed(f'Member not found {om}'), delete_after=15)
+            await respond(ctx, False)
+            return
+        if not await confirm(ctx, f'You are changing modaction: ```\nUser: {member.name}: {member.mention}\nType: {modaction.name}\nReason: {reason}\n```', 10):
             await respond(ctx, False)
             return
         try:
@@ -1437,7 +1455,7 @@ class Moderation(commands.Cog):
 
     @modaction.command(name='remove', aliases=['rm', 'rem', 'del', 'delete'])
     async def _modrm(self, ctx: commands.Context, member: str, index: int):
-        """Remove a mod action:
+        """Remove a mod action.
 
         Doesn't actually remove but sets to forgiven
 
