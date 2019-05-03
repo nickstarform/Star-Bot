@@ -96,7 +96,6 @@ def define_tables(schema: str):
         welcome_channels BIGINT ARRAY,
         pm_welcome BOOLEAN DEFAULT FALSE,
         report_channel BIGINT,
-        rules_channel BIGINT,
         colour_enabled BOOLEAN DEFAULT FALSE,
         colour_template BIGINT,
         autoroles BIGINT ARRAY,
@@ -203,16 +202,18 @@ def define_tables(schema: str):
     CREATE TABLE IF NOT EXISTS {schema}.reacts (
         guild_id BIGINT,
         base_message_id BIGINT,
+        base_channel_id BIGINT,
         target_id BIGINT,
-        react_id BIGINT,
-        react_role BOOLEAN DEFAULT FALSE,
-        react_channel BOOLEAN DEFAULT FALSE,
-        react_category BOOLEAN DEFAULT FALSE,
-        info TEXT,
+        react_id INT,
+        react_type INT,
+        group_id INT,
+        group_name TEXT,
+        user_ids BIGINT ARRAY,
+        url TEXT,
+        name TEXT,
         currtime TIMESTAMP DEFAULT current_timestamp,
         PRIMARY KEY (base_message_id, react_id)
     );"""
-
 
     return (globalmacros, globcl, globul, globgl, glob_reports,
             guilds, moderation, warnings, macros, quotes,
