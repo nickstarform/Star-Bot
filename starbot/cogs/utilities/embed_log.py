@@ -45,7 +45,7 @@ def joinembed(joining_user: discord.User):
     ctitle = f'User joined'
     cdesc = f'{joining_user.name}#{joining_user.discriminator}'\
         f'\n\n{joining_user.id}'
-    ccolors = Colours.Colours.CHANGE_G
+    ccolour = Colours.CHANGE_G
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0].set_thumbnail(url=joining_user.avatar_url)
 
 
@@ -65,9 +65,33 @@ def leaveembed(leaving_user: discord.User):
     ctitle = f'User left'
     cdesc = f'{leaving_user.name}#{leaving_user.discriminator}'\
         f'\n\n{leaving_user.id}'
-    ccolors = Colours.CHANGE_G
+    ccolour = Colours.CHANGE_G
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0].set_thumbnail(url=leaving_user.avatar_url)
 
+def nicknameupdateembed(updated_user: discord.User, old_name: str, new_name: str):
+    """Embed for user usernameupdate event.
+
+    Parameters
+    ----------
+    updated_user: discord.User
+        discord object of user
+    old_name: str
+        old username
+    new_name: str
+        new username
+
+    Returns
+    -------
+    discord.Embed
+        embedded object to send message
+    """
+    ctitle = f'Username changed'
+    cdesc = f'{updated_user.name}#{updated_user.discriminator}'\
+                 f' | {updated_user.id}'\
+                 f'**Old**:\n{old_name}\n'\
+                 f'**New**:\n{new_name}'
+    ccolour = Colours.CHANGE_U
+    return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0].set_thumbnail(url=joining_user.avatar_url)
 
 def usernameupdateembed(updated_user: discord.User, old_name: str, new_name: str):
     """Embed for user usernameupdate event.
@@ -91,11 +115,11 @@ def usernameupdateembed(updated_user: discord.User, old_name: str, new_name: str
                  f' | {updated_user.id}'\
                  f'**Old**:\n{old_name}\n'\
                  f'**New**:\n{new_name}'
-    ccolors = Colours.CHANGE_U
+    ccolour = Colours.CHANGE_U
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0].set_thumbnail(url=joining_user.avatar_url)
 
 
-def roleaddembed(updated_user: discord.User, role_name: str):
+def roleeditembed(updated_user: discord.User, roles_add: str, roles_rm: str):
     """Embed for user roleadded event.
 
     Parameters
@@ -110,36 +134,12 @@ def roleaddembed(updated_user: discord.User, role_name: str):
     discord.Embed
         embedded object to send message
     """
-    ctitle = f'Role Added To User:'
-    cdesc = f'{updated_user.name}#{updated_user.discriminator}'\
-                 f' | {updated_user.id}\n'\
-                 f'*{role_name}*'
-    ccolors = Colours.CHANGE_U
+    ctitle = f'Roles Changed For User:'
+    cdesc = f'{updated_user.name}: {updated_user.mention}\n' +\
+            f'Added.) *' + ','.join(roles_add) + '*\n' +\
+            f'Remove.) *' + ','.join(roles_rm) + '*'
+    ccolour = Colours.CHANGE_U
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
-
-
-def rolermembed(updated_user: discord.User, role_name: str):
-    """Embed for user roleremoved event.
-
-    Parameters
-    ----------
-    updated_user: discord.User
-        discord object of user
-    role_name: str
-        role name removed
-
-    Returns
-    -------
-    discord.Embed
-        embedded object to send message
-    """
-    ctitle = f'Role Removed From User:'
-    cdesc = f'{updated_user.name}#{updated_user.discriminator}'\
-                 f' | {updated_user.id}\n'\
-                 f'*{role_name}*'
-    ccolors = Colours.CHANGE_U
-    return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
-
 
 def messageeditembed(message_user: discord.User, old_message: str, new_message: str, channel_name: str):
     """Embed for message edit event.
@@ -165,7 +165,7 @@ def messageeditembed(message_user: discord.User, old_message: str, new_message: 
                  f' | {message_user.id}\n'\
                  f'**Old**:\n{old_message}\n'\
                  f'**New**:\n{new_message}'
-    ccolors = Colours.CHANGE_M
+    ccolour = Colours.CHANGE_M
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 
@@ -190,7 +190,7 @@ def messagedeleteembed(message_user: discord.User, old_message: str, channel_nam
     cdesc = f'{message_user.name}#{message_user.discriminator}'\
                  f' | {message_user.id}\n'\
                  f'\n**Message**: {old_message}'
-    ccolors = Colours.CHANGE_M
+    ccolour = Colours.CHANGE_M
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 
@@ -214,7 +214,7 @@ def voicechannelstateembed(channel_user: discord.User, action: str, channel_name
     ctitle = 'Presence Update'
     cdesc = f'**{channel_user.name}#{channel_user.discriminator}**'\
                  f' has {action} **{channel_name}**.'
-    ccolors = Colours.CHANGE_S
+    ccolour = Colours.CHANGE_S
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 
@@ -239,7 +239,7 @@ def voicechannelmoveembed(channel_user: discord.User, before_channel: str, after
     cdesc = f'**{channel_user.name}#{channel_user.discriminator}**'\
                  f'**Old**:\n{before_channel}\n'\
                  f'**New**:\n{after_channel}'
-    ccolors = Colours.CHANGE_S
+    ccolour = Colours.CHANGE_S
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 """
@@ -247,7 +247,7 @@ GUILD ACTIONS
 """
 
 
-def kickembed(kicked_user, mod_user, reason: str):
+def kickembed(kicked_user, mod, reason: str):
     """Kick user.
 
     Parameters
@@ -265,13 +265,12 @@ def kickembed(kicked_user, mod_user, reason: str):
         embedded object to send message
     """
     ctitle = f'KICKED'
-    cdesc = f'{kicked_user.display_name}: {kicked_user.mention} was kicked by {mod_user.display_name}: {mod_user.mention}'
+    cdesc = f'{kicked_user.display_name}: {kicked_user.mention} was kicked by {mod.name}: {mod.mention}.'
     ccolour = Colours.CHANGE_G
     return generic_embed(ctitle, cdesc, [['Reason', reason]], current_time(), ccolour)[0]
 
 
-def logbanembed(banned_name: str, banned_id: str, mod_name: str,
-                mod_id: str, reason: str):
+def logbanembed(banned, mod, reason: str):
     """Logban user.
 
     Parameters
@@ -293,14 +292,14 @@ def logbanembed(banned_name: str, banned_id: str, mod_name: str,
         embedded object to send message
     """
     ctitle = f'User Banned'
-    cdesc = f'{banned_name}: <@{banned_id}> was '\
-            f'banned by {mod_name}: <@{mod_id}>'\
+    cdesc = f'{banned.name}: {banned.mention} was '\
+            f'banned by {mod.name}: {mod.mention}'\
             f'Reason: {reason}'
     ccolour = Colours.CHANGE_G
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 
-def banembed(banned_user, mod_user, reason: str):
+def banembed(banned_user, mod, reason: str):
     """User banned.
 
     Just calls :func: logbanembed
@@ -314,12 +313,12 @@ def banembed(banned_user, mod_user, reason: str):
         embedded object to send message
     """
     ctitle = f'BANNED'
-    cdesc = f'{banned_user.display_name}: {banned_user.mention} was banned by {mod_user.display_name}: {mod_user.mention}'
+    cdesc = f'{banned_user.display_name}: {banned_user.mention} was banned by {mod.name}: {mod.mention}'
     ccolour = Colours.CHANGE_G
     return generic_embed(ctitle, cdesc, [['Reason', reason]], current_time(), ccolour)[0]
 
 
-def unbanembed(banned_user, mod_user, reason: str):
+def unbanembed(banned_user, mod, reason: str):
     """Ban removed.
 
     Parameters
@@ -338,7 +337,7 @@ def unbanembed(banned_user, mod_user, reason: str):
     """
     ctitle = f'User Unbanned'
     cdesc = f'{banned_user.display_name}: {banned_user.mention} was '\
-            f'unbanned by {mod_user.display_name}: {mod_user.mention}'
+            f'unbanned by {mod.name}: {mod.mention}'
     ccolour = Colours.CHANGE_G
     return generic_embed(ctitle, cdesc, [['Reason', reason]], current_time(), ccolour)[0]
 
