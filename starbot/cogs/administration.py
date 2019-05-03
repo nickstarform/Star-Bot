@@ -22,7 +22,8 @@ from cogs.utilities import (Colours, permissions)
 from cogs.utilities.functions import (current_time, extract_id,
                                       get_member, get_role,
                                       parse, get_channel, flatten,
-                                      extract_time, time_conv)
+                                      extract_time, time_conv,
+                                      is_id)
 from cogs.utilities.embed_general import generic_embed
 from cogs.utilities.message_general import generic_message
 from cogs.utilities.embed_dialog import respond, iterator, confirm
@@ -80,6 +81,8 @@ class Administration(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'change_nickname', only_global=True):
+            return
         bot_user = ctx.guild.me
         try:
             await bot_user.edit(nick=new_username)
@@ -100,11 +103,12 @@ class Administration(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'leaveguild', only_global=True):
+            return
         if not await confirm(ctx, f'```\nAre you sure you want the bot to leave?\n```', 15):
             await respond(ctx, False)
             return
         await ctx.guild.leave()
-
 
     """
     MODIFY CONFIGURATION
@@ -124,6 +128,8 @@ class Administration(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'configure', only_global=True):
+            return
         if ctx.invoked_subcommand is None:
             gid = ctx.guild.id
             try:
@@ -560,7 +566,7 @@ class Administration(commands.Cog):
         Returns
         -------
         """
-        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'chatchart'):
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'chatchart', only_global=True):
             return
         e = discord.Embed(description="Loading...", colour=0x00ccff)
         e.set_thumbnail(url="https://i.imgur.com/vSp4xRk.gif")
@@ -642,6 +648,8 @@ class Administration(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'giveaway', only_global=True):
+            return
         if isinstance(ctx.invoked_subcommand, type(None)):
             title = f'Current Giveaways'
             if len(self.bot.current_giveaways) == 0:
@@ -863,6 +871,7 @@ class Administration(commands.Cog):
             coros = []
         except Exception as e:
             self.bot.logger.warning(f'Error with giveaway loop startup: {e}')
+            return
         try:
             i = 0
             le = len(self.bot.current_giveaways)
@@ -981,6 +990,162 @@ class Administration(commands.Cog):
         message += f'. You won **{giveaway["content"]}**'
         message += f' DM <@{giveaway["gifter_id"]}>'
         return await channel.send(message)
+
+    """
+    Reaction Role Setup
+    """
+    class RDtype(commands.Converter):
+        async def convert(self, ctx, argument):
+            try:
+                argument = str(argument).lower()
+                dtype = ('role', 'channel', 'category').index(argument)
+                return dtype
+            except:
+                raise commands.BadArgument(f'Dtype must be found within: ' + ','.join(('role', 'channel', 'category')) + f'\n{argument}') from None                    
+
+    @commands.command(name='quickreact', aliases=['qr', ])
+    @permissions.has_permissions(manage_server=True)
+    async def _qr(self, ctx: commands.Context, dtype: RDtype, *, content: str):
+        """Quickly setup react system.
+
+        The reactions are on a group and destination type system. So you can group reactions together by a similar grouping. When using the quickreact, this auto setups a new group. Modify this via `reactgroup`. Notice the single quotes for the group name in the content parameter
+
+        Parameters
+        ----------
+        dtype: str
+            Type of the destinations for the reactions: role, channel, category
+        content: str
+            'group name' destination id/mention | ...
+
+        Returns
+        -------
+
+        """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'quickreact', only_global=True):
+            return
+        # gather groupname
+        first_i, second_i = None, None
+        try:
+            first_i = content.index("'")
+            second_i = content[first_i + 1:].index("'")
+        except ValueError:
+            group_name = ' \n'
+        else:
+            group_name = content[first_i + 1:second_i + 1] + '\n'
+        # get to first param
+        i = 0
+        while not is_id(content[i]):
+            i += 1
+        content = content[i:].split('|')
+        if len(content) > 20:
+            content, left = content[0:20], content[20:]
+            await ctx.send(f'Can only setup 20 at a time per message, so rerun the command with `{ctx.prefix}qr {"|".join(left)}`')
+        react_message = await ctx.send('🚧This message is under construction. Will serve as the base for reaction system. Don\'t delete!🚧')
+        guild_id = ctx.guild.id
+        success = []
+        failed = []
+        newcontent = f'**{group_name}**\n'
+        newcontent += '```\n'
+        print(content)
+        for i, dest in enumerate(content):
+            i += int('1F1E6', 16)
+            print(dest)
+            dest = extract_id(dest)
+            if dest in success:
+                continue
+            try:
+                if dtype == 0:
+                    target = ctx.guild.get_role(int(dest))
+                    target._type = 'role'
+                elif dtype >= 1:
+                    target = ctx.guild.get_channel(int(dest))
+                    target._type = 'Channel'
+                if not target:
+                    raise RuntimeError
+            except Exception as e:
+                print('Error in fetching:' + str(e))
+                failed.append(dest)
+                continue
+            try:
+                status = await self._radd(ctx,
+                                     base_message_id=react_message.id,
+                                     base_channel_id=react_message.channel.id,
+                                     guild_id=guild_id,
+                                     target_id=target.id,
+                                     group_id=-1,
+                                     group_name=group_name,
+                                     name=target.name,
+                                     dtype=dtype,
+                                     url='',
+                                     react_id=i,
+                                     info='')
+            except Exception as e:
+                print('Error in adding:' + str(e))
+                status = False
+            if status:
+                success.append(dest)
+                self.bot.current_react.append(int(''.join([str(val) for val in [react_message.id, i]])))
+                reaction = chr(i)
+                print(reaction)
+                await react_message.add_reaction(reaction)
+                newcontent += f'{reaction}: {target._type} {target.name}\n'
+            else:
+                failed.append(dest)
+        if len(success) > 0:
+            newcontent += '```'
+            await react_message.edit(content=newcontent)
+            await ctx.message.delete()
+        else:
+            await ctx.send(embed=internalerrorembed(f'Something went wrong setting up the react system: {success}, {failed}'), delete_after=20)
+            await respond(ctx, False)
+            return
+
+    @commands.group(name='reactsetup', aliases=['rs', ])
+    @permissions.has_permissions(manage_server=True)
+    async def _rsetup(self, ctx: commands.Context):
+        """Complete react setup system.
+
+        The reactions are on a group and destination type system. So you can group reactions together by a similar grouping. When using the quickreact, this auto setups a new group. Modify this via `reactgroup`. Notice the single quotes for the group name in the content parameter
+
+        Parameters
+        ----------
+        dtype: str
+            Type of the destinations for the reactions: role, channel, category
+        content: str
+            'group name' destination id : info about the role | ...
+
+        Returns
+        -------
+
+        """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'reactsetup', only_global=True):
+            return
+        # gather groupname
+        react_message = await ctx.send('🚧This message is under construction. Will serve as the base for reaction system. Don\'t delete!🚧')
+        guild_id = ctx.guild.id
+        success = []
+        failed = []
+        iterator_i = 0
+        iterator_status = True
+        while iterator_status:
+            questions = {'What is the name of the group\'s target': '',
+                         'What is the target (must match type)': 'id or mentionable',
+                         'What is the type of the target': 'role',
+                         'What is the name of the target (blank for target.name resolution)': '',
+                         'What is the url for the target': '',
+                         'What is the info for the target': ''}
+            steps = await iterator(ctx, questions, 25, False)
+
+    async def _rdisplay():
+        pass
+    async def _rlist():
+        pass
+    async def _radd(*args, **kwargs):
+        return True
+    async def _rdel():
+        pass
+
+
 
 if __name__ == "__main__":
     """Directly Called."""

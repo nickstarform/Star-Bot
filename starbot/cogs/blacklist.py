@@ -48,13 +48,12 @@ class Blacklist(commands.Cog):
         """
         if ctx.invoked_subcommand is None:
             users = await self.bot.pg.get_all_blacklist_users_global()
-            users = [str(x[0][1]) for x in parse(users)]
             if isinstance(users, type(None)):
                 users = []
             if len(users) > 0:
                 title = 'Users in global blacklist'
                 desc = '<@'
-                desc += '>, <@'.join(users)
+                desc += '>, <@'.join(map(str, users))
                 desc += '>'
             else:
                 desc = ''
@@ -95,10 +94,10 @@ class Blacklist(commands.Cog):
                 if success:
                     added_users.append(user)
             if added_users:
-                self.bot.blglobal += added_users
+                self.bot.blglobal += list(map(int, added_users))
                 title = 'Users added into global blacklist'
                 desc = '<@'
-                desc += '>, <@'.join(added_users)
+                desc += '>, <@'.join(map(str, added_users))
                 desc += '>'
                 embeds = generic_embed(
                     title=title,
@@ -140,14 +139,15 @@ class Blacklist(commands.Cog):
             users = [extract_id(x, 'member') for x in msg.split(',')]
         else:
             users = [extract_id(msg, 'member')]
-        users = [x for x in users if x != '']
+        print(users)
+
         try:
             for user in users:
                 success = False
                 try:
                     success = await self.bot.pg.rem_blacklist_user_global(user, self.bot.logger)
                     if success:
-                        self.bot.blglobal.remove(user)
+                        self.bot.blglobal.remove(int(user))
                         removed_users.append(user)
                     else:
                         user_notfound.append(user)
@@ -191,13 +191,12 @@ class Blacklist(commands.Cog):
         """
         if ctx.invoked_subcommand is None:
             guilds = await self.bot.pg.get_all_blacklist_guild_global()
-            guilds = [str(g[0][1]) for g in parse(guilds)]
             if isinstance(guilds, type(None)):
                 guilds = []
             if len(guilds) > 0:
                 title = 'Guilds in global blacklist'
                 desc = '<'
-                desc += '>, <'.join(guilds)
+                desc += '>, <'.join(map(str, guilds))
                 desc += '>'
             else:
                 desc = ''
@@ -243,10 +242,10 @@ class Blacklist(commands.Cog):
                 if success:
                     added_guilds.append(guild)
             if added_guilds:
-                self.bot.blglobal += added_guilds
+                self.bot.blglobal += list(map(int, added_guilds))
                 title = 'Guilds added into global blacklist'
                 desc = '<'
-                desc += '>, <'.join(added_guilds)
+                desc += '>, <'.join(map(str, added_guilds))
                 desc += '>'
                 embeds = generic_embed(
                     title=title,
@@ -301,7 +300,7 @@ class Blacklist(commands.Cog):
                 try:
                     success = await self.bot.pg.rem_blacklist_guild_global(guild, self.bot.logger)
                     if success:
-                        self.bot.blglobal.remove(guild)
+                        self.bot.blglobal.remove(int(guild))
                         removed_guilds.append(guild)
                     else:
                         guild_notfound.append(guild)
@@ -483,9 +482,10 @@ class Blacklist(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'blacklistuser', only_global=True):
+            return
         if ctx.invoked_subcommand is None:
             users = await self.bot.pg.get_all_blacklist_users(ctx.guild.id)
-            users = parse(users)
             users = [get_member(ctx, str(x)) for x in users]
             users = [x.mention for x in flatten(users)]
             if isinstance(users, type(None)):
@@ -622,6 +622,8 @@ class Blacklist(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'blacklistchannel', only_global=True):
+            return
         if ctx.invoked_subcommand is None:
             channels = await self.bot.pg.get_all_blacklist_channels(ctx.guild.id)
             channels = [ctx.guild.get_channel(int(g)) for g in channels]
@@ -631,7 +633,7 @@ class Blacklist(commands.Cog):
                 channels = [str(x.id) for x in flatten(channels)]
             if len(channels) > 0:
                 desc = '<#'
-                desc += '>, <#'.join(channels)
+                desc += '>, <#'.join(map(str, channels))
                 desc += '>'
                 title = 'Blacklisted Channels'
             else:
@@ -774,6 +776,8 @@ class Blacklist(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'blacklistcmd', only_global=True):
+            return
         if ctx.invoked_subcommand is None:
             cmds = await self.bot.pg.get_all_disallowed(ctx.guild.id)
             if isinstance(cmds, type(None)):

@@ -47,6 +47,8 @@ class Logger(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'welcomechannel', only_global=True):
+            return
         if ctx.invoked_subcommand:
             return
         try:
@@ -164,6 +166,8 @@ class Logger(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'logging', only_global=True):
+            return
         if ctx.invoked_subcommand:
             return
         try:
@@ -229,7 +233,7 @@ class Logger(commands.Cog):
     @_genlog.command(name='add', aliases=['a', '+'])
     @commands.guild_only()
     @permissions.is_admin()
-    async def _genlogadd(self, ctx, channel: str=None):
+    async def _genlogadd(self, ctx, channels: str=None):
         """Logging channel add.
 
         Add either the specified channel
@@ -284,6 +288,8 @@ class Logger(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'modlog', only_global=True):
+            return
         if ctx.invoked_subcommand:
             return
         try:
@@ -349,7 +355,7 @@ class Logger(commands.Cog):
     @_modlog.command(name='add', aliases=['a', '+'])
     @commands.guild_only()
     @permissions.is_admin()
-    async def _modlogadd(self, ctx, channel: str=None):
+    async def _modlogadd(self, ctx, channels: str=None):
         """Logging channel add.
 
         Add either the specified channel
@@ -399,6 +405,8 @@ class Logger(commands.Cog):
         Returns
         -------
         """
+        if await permissions.is_cmd_blacklisted(self.bot, ctx, 'voicelogging', only_global=True):
+            return
         if ctx.invoked_subcommand:
             return
         try:
@@ -464,7 +472,7 @@ class Logger(commands.Cog):
     @_vclog.command(name='add', aliases=['a', '+'])
     @commands.guild_only()
     @permissions.is_admin()
-    async def _vclogadd(self, ctx, channel: str=None):
+    async def _vclogadd(self, ctx, channels: str=None):
         """Voice Logging channel add.
 
         Add either the specified channel
