@@ -10,6 +10,8 @@ import sys
 from collections import Counter
 
 # external modules
+import asyncio
+import discord
 from discord.ext import commands
 from discord.ext.commands import Bot
 
@@ -28,7 +30,7 @@ class Starbot(Bot):
 
     def __init__(self, config, logger,
                  pg: Controller,
-                 guild_settings: dict, current_giveaways: dict, blglobal: list):
+                 guild_settings: dict, current_giveaways: dict, blglobal: list, react: list):
         """Initialization."""
         self.pg = pg
         self.guild_settings = guild_settings
@@ -36,9 +38,11 @@ class Starbot(Bot):
         self.current_giveaways = current_giveaways
         self.start_time = datetime.datetime.utcnow()
         self.logger = logger
+        self.status = ['with Python', 'prefix s!']
         self.config = config
         self.proc = psutil.Process()
         self.blglobal = blglobal
+        self.current_react = react
 
         # in case of even further spam, add a cooldown mapping
         # for people who excessively spam commands
@@ -73,30 +77,33 @@ class Starbot(Bot):
         current_giveaways = await pg.get_all_giveaways(True, logger)
 
         # initalize blacklisting
-        tmp = await pg.get_all_blacklist_guild_global()
-        logger.info(f'Blacklisted guilds: {tmp}')
-        blglobal = [x['guild_id'] for x in tmp]
+        # this is an effort to reduce db polling
+        blglobal = await pg.get_all_blacklist_guild_global()
+        logger.info(f'Blacklisted guilds: {blglobal}')
         tmp = await pg.get_all_blacklist_users_global()
         logger.info(f'Blacklisted users: {tmp}')
-        tmp = [x['user_id'] for x in tmp]
         blglobal += tmp
         blglobal = flatten(blglobal)
-        return cls(Config, logger, pg, guild_settings, current_giveaways, blglobal)
+        react = []
+        for guild in guild_settings:
+            t = await pg.get_allguild_reacts(guild, logger)
+            val = ''.join([str(val) for (key, val) in t.items()])
+            if val:
+                react.append(int(val))
+        return cls(Config, logger, pg, guild_settings, current_giveaways, blglobal, react)
 
     async def get_prfx(self, bot, message):
         try:
             if not isinstance(message.guild, type(None)):
                 return self.guild_settings[message.guild.id]['prefix']
             else:
-                return '!'
+                return 's!'
         except Exception as e:
             self.logger.info(f'{e}')
-            return '!'
+            return 's!'
 
     async def on_ready(self):
-        print(self.guild_settings)
         try:
-            # self.guild_settings = await self.pg.get_guild_settings()
             self.logger.info(f'\nServers: {len(self.guild_settings)}\n'
                              f'Servers: {self.guild_settings.keys()}')
         except Exception as e:
@@ -106,27 +113,51 @@ class Starbot(Bot):
                          f'ID: {self.user.id}\n'
                          f'Version: {self.config["version"].value}\n'
                          f'Git Hash: {self.config["githash"].value}')
+        i = 0
+        delay = 10
+        le = len(self.status)
+        while i < le:
+            le = len(self.status)
+            status = self.status[i]
+            await self.change_presence(activity=discord.Game(name=status))
+            await asyncio.sleep(delay)
+            i += 1
+            if i >= len(self.status):
+                await self.change_presence(activity=discord.Game(name=f'in {len(self.guild_settings)} guilds'))
+                i = i % le
+                await asyncio.sleep(delay)
 
     async def on_message(self, ctx):
         # user is bot, ignore
         if ctx.author.bot:
             return
+        # check for prefix asking
+        if not isinstance(ctx.guild, type(None)):
+            if (self.user.id in [x.id for x in ctx.mentions]):
+                if not (('prefix' in ctx.content.lower()) or ('help' in ctx.content.lower())):
+                    return
+                try:
+                    await ctx.author.create_dm()
+                    await ctx.author.dm_channel.send(f'The prefix is usually `s!`. DM <@{self.config.owner_id.value}> if something is awry or join the support server {self.bot.config.support_server.value}.')
+                    return
+                except:
+                    return
         # user is dev or owner always run
         if (int(ctx.author.id) == int(self.config.devel_id.value)) or\
            (int(ctx.author.id) == int(self.config.owner_id.value)):
             await self.process_commands(ctx)
         # check if user global bl
-        elif (ctx.author.id not in self.bot.blglobal):
+        elif (ctx.author.id not in self.blglobal):
             if isinstance(ctx.guild, type(None)):
                 # handle reports
                 return
             # see if guild global bl
-            if (ctx.guild.id in self.bot.blglobal):
+            if (ctx.guild.id in self.blglobal):
                 await ctx.guild.leave()
                 return
             # check if user/channel bl on guild level
-            if  (((ctx.author.id not in self.bot.guild_settings['blacklist_users']) and
-                  (ctx.message.channel.id not in self.bot.guild_settings['blacklist_channels'])) or
+            if  (((ctx.author.id not in self.guild_settings[ctx.guild.id]['blacklist_users']) and
+                  (ctx.channel.id not in self.guild_settings[ctx.guild.id]['blacklist_channels'])) or
                  (ctx.author.id == ctx.guild.owner.id)):
                 if not self.guild_settings[ctx.guild.id]['invites_allowed'] and ('discord.gg' in ctx.content):
                     await ctx.delete()
