@@ -31,6 +31,7 @@ __all__ = ('current_time',
            'get_channel',
            'lessen_list',
            'create_fake',
+           'copy_snowflake',
            'type_force',
            'Timer')
 __filename__ = __file__.split('/')[-1].strip('.py')
@@ -62,9 +63,30 @@ def type_force(val: str, dtype):
         else:
             return val
 
+
+def copy_snowflake(target):
+    dest = fake_object(int(target.id))
+    dest.name = target.name
+    dest.displayname = dest.name
+    dest.discriminator = '0000'
+    dest.mention = target.mention
+    dest.created_at = target.created_at
+    return dest
+
+
 def create_fake(target_id: str, dtype: str='member'):
     if dtype == 'member':
         return create_fake_user(target_id)
+    elif dtype == 'role':
+        return create_fake_role(target_id)
+
+
+def create_fake_role(role_id: str):
+    role = fake_object(int(role_id))
+    role.name = 'GenericRole'
+    role.displayname = role.name
+    role.mention = f'<@&{role.id}>'
+    return role
 
 
 def create_fake_user(user_id: str):
@@ -88,6 +110,7 @@ class fake_object:
 
     def __eq__(self, other):
         return self.id == other.id
+
 
 class ModAction(Enum):
     """Moderation Types.
