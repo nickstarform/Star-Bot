@@ -106,9 +106,7 @@ class Owner(commands.Cog):
         blguild = await self.bot.pg.get_all_blacklist_guild_global()
         bluser = await self.bot.pg.get_all_blacklist_users_global()
         blcmd = await self.bot.pg.get_all_disallowed_global()
-        blguild = [parse(g)[0][1] for g in blguild]
-        bluser = [parse(g)[0][1] for g in bluser]
-        blcmd = [parse(g)[0][1] for g in blcmd]
+        print(blguild, bluser, blcmd)
         reports = await self.bot.pg.get_all_reports()
         reports = len(reports) if not isinstance(reports, type(None)) else 0
         fields.append(['Blacklisted Guilds', blguild])
@@ -120,10 +118,11 @@ class Owner(commands.Cog):
         current_process = psutil.Process()
         cpu = current_process.cpu_percent()
         mem = dict(psutil.virtual_memory()._asdict())
-        mem = self.bot.proc.memory_full_info().uss / 1024 ** 2
+        print(mem)
+        tmem = self.bot.proc.memory_full_info().uss / 1024 ** 2
         cpu = self.bot.proc.cpu_percent() / psutil.cpu_count()
         fields.append(['CPU Usage', cpu])
-        fields.append(['Memory', f'{mem["used"] / (1000 ** 3)}GB ({mem["percent"]}%)'])
+        fields.append(['Memory', f'PS {mem["used"] / (1000 ** 3)}GB ({mem["percent"]}%) vs Proc {tmem}%'])
         fields.append(['Version', self.bot.config.version.value])
         fields.append(['Git Hash', self.bot.config.githash.value])
         embeds = generic_embed(
