@@ -174,6 +174,7 @@ class General(commands.Cog):
     MISC
     """
     @commands.command()
+    @commands.guild_only()
     async def charinfo(self, ctx, *, characters: str):
         """Shows you information about a number of characters.
         Only up to 25 characters at a time.
@@ -544,8 +545,10 @@ class General(commands.Cog):
             await ctx.send(embed=eembeds.internalerrorembed(f'Colour role not enabled here.'), delete_after=15)
             await respond(ctx, False)
             return
+        roles = []
+        await self._clean_color_roles(ctx, roles)
+
         if (ctx.invoked_subcommand is None):
-            roles = [r for r in ctx.guild.roles if self._is_colourrole(r)]
             if len(roles) > 0:
                 embeds = generic_embed(
                     title='Colour joinable Roles',
@@ -574,6 +577,7 @@ class General(commands.Cog):
         """
         await self._colour_genrm(ctx)
         await self._colour_createadd(ctx, role)
+        await self._clean_color_roles(ctx, [])
         return
 
     @_colour.command(name='remove', aliases=['rm', 'del', 'leave'])
@@ -589,31 +593,8 @@ class General(commands.Cog):
         ----------
         """
         await self._colour_genrm(ctx)
+        await self._clean_color_roles(ctx, [])
         return
-
-    async def _colour_genrm(self, ctx: commands.Context):
-        rolecheck = [x for x in ctx.author.roles
-                     if self._is_hex(x.name)]
-        if len(rolecheck) > 0:
-            # remove from role
-            role = rolecheck[0]
-            base = list(set(ctx.author.roles) - set(rolecheck))
-            if len(base) != len(ctx.author.roles):
-                try:
-                    success = await ctx.author.edit(roles=base)
-                    await respond(ctx, True)
-                    return
-                except Exception as e:
-                    await ctx.channel.send(embed=eembeds.internalerrorembed(f'Couldn\'t set your roles, removal: {e}'), delete_after=15)
-                    await respond(ctx, False)
-                    return
-            else:
-                await respond(ctx, True)
-                return
-        else:
-            await respond(ctx, True)
-            return
-
 
     @_colour.command(name='show', aliases=['list', 'ls'])
     async def _colourshow(self, ctx: commands.Context):
@@ -625,7 +606,8 @@ class General(commands.Cog):
         Returns
         ----------
         """
-        roles = [r for r in ctx.guild.roles if self._is_colourrole(r)]
+        roles = []
+        await self._clean_color_roles(ctx, roles)
         if len(roles) > 0:
             embeds = generic_embed(
                 title='Colour joinable Roles',
@@ -655,8 +637,79 @@ class General(commands.Cog):
         role = self._random_hex()
         await self._colour_genrm(ctx)
         await self._colour_createadd(ctx, role)
+        await self._clean_color_roles(ctx, [])
         return
 
+    @_colour.command(name='prune', aliases=['purge', 'clean'])
+    @permissions.is_admin()
+    async def _colourprune(self, ctx: commands.Context, ignore: bool=False):
+        """This will prune out inactive colour roles or active ones.
+
+        Parameters
+        ----------
+        ignore: bool
+            if True will remove all colour roles
+
+        Returns
+        ----------
+        """
+        if not await confirm(ctx, f'This will manually prune inactive colour roles and is irreversable. You set ignore={ignore}. If `True` it will remove roles with members in them too.', 10):
+                await respond(ctx, False)
+                return
+        to_del = []
+        for r in ctx.guild.roles:
+            if self._is_colourrole(r):
+                if (len(r.members) == 0) or ignore:
+                    to_del.append(r.name)
+                    try:
+                        await r.delete()
+                    except Exception as e:
+                        await ctx.channel.send(embed=eembeds.internalerrorembed(f'Something went wrong in colour pruning: {e}'), delete_after=15)
+                        await respond(ctx, False)
+                        return
+        embeds = generic_embed(
+            title='Colour Roles Pruned',
+            desc=f', '.join(to_del),
+            fields=[],
+            footer=current_time())
+        for embed in embeds:
+            await ctx.send(embed=embed)
+        await respond(ctx, True)
+        return
+
+    async def _clean_color_roles(self, ctx, roles):
+        for r in ctx.guild.roles:
+            if self._is_colourrole(r) and len(r.members) == 0:
+                try:
+                    await r.delete()
+                except Exception as e:
+                    print(f'Error removing role: {e}')
+                    pass
+            elif self._is_colourrole(r):
+                roles.append(r)
+
+    async def _colour_genrm(self, ctx: commands.Context):
+        rolecheck = [x for x in ctx.author.roles
+                     if self._is_hex(x.name)]
+        if len(rolecheck) > 0:
+            # remove from role
+            role = rolecheck[0]
+            base = list(set(ctx.author.roles) - set(rolecheck))
+            if len(base) != len(ctx.author.roles):
+                try:
+                    success = await ctx.author.edit(roles=base)
+                    await respond(ctx, True)
+                    return
+                except Exception as e:
+                    await ctx.channel.send(embed=eembeds.internalerrorembed(f'Couldn\'t set your roles, removal: {e}'), delete_after=15)
+                    await respond(ctx, False)
+                    return
+            else:
+                await respond(ctx, True)
+                return
+        else:
+            await respond(ctx, True)
+            return
 
     async def _colour_createadd(self, ctx: commands.Context, role: str):
         """Ping roles.
@@ -707,43 +760,6 @@ class General(commands.Cog):
                 return
         await ctx.channel.send(embed=eembeds.internalerrorembed(f'Something went wrong in colourcreateadd'), delete_after=15)
         await respond(ctx, False)
-        return
-
-    @_colour.command(name='prune', aliases=['purge', 'clean'])
-    @permissions.is_admin()
-    async def _colourprune(self, ctx: commands.Context, ignore: bool=False):
-        """This will prune out inactive colour roles or active ones.
-
-        Parameters
-        ----------
-        ignore: bool
-            if True will remove all colour roles
-
-        Returns
-        ----------
-        """
-        if not await confirm(ctx, f'This will manually prune inactive colour roles and is irreversable. You set ignore={ignore}. If `True` it will remove roles with members in them too.', 10):
-                await respond(ctx, False)
-                return
-        to_del = []
-        for r in ctx.guild.roles:
-            if self._is_colourrole(r):
-                if (len(r.members) == 0) or ignore:
-                    to_del.append(r.name)
-                    try:
-                        await r.delete()
-                    except Exception as e:
-                        await ctx.channel.send(embed=eembeds.internalerrorembed(f'Something went wrong in colour pruning: {e}'), delete_after=15)
-                        await respond(ctx, False)
-                        return
-        embeds = generic_embed(
-            title='Colour Roles Pruned',
-            desc=f', '.join(to_del),
-            fields=[],
-            footer=current_time())
-        for embed in embeds:
-            await ctx.send(embed=embed)
-        await respond(ctx, True)
         return
 
     """
