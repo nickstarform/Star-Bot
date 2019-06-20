@@ -87,9 +87,10 @@ class Starbot(Bot):
         react = []
         for guild in guild_settings:
             t = await pg.get_allguild_reacts(guild, logger)
-            val = ''.join([str(val) for (key, val) in t.items()])
+            val = [str(val) for (key, val) in t.items()]
             if val:
-                react.append(int(val))
+                react.append(val + [guild])
+        print('Reacts:', react)
         return cls(Config, logger, pg, guild_settings, current_giveaways, blglobal, react)
 
     async def get_prfx(self, bot, message):

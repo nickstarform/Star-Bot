@@ -198,6 +198,8 @@ def define_tables(schema: str):
         PRIMARY KEY (target_id)
     );"""
 
+    # React PSQL Table
+    # react_type 0=role, 1=channel,2=category
     reacts = f"""
     CREATE TABLE IF NOT EXISTS {schema}.reacts (
         guild_id BIGINT,
@@ -206,8 +208,6 @@ def define_tables(schema: str):
         target_id BIGINT,
         react_id INT,
         react_type INT,
-        group_id INT,
-        group_name TEXT,
         user_ids BIGINT ARRAY,
         url TEXT,
         name TEXT,
