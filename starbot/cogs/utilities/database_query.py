@@ -29,9 +29,9 @@ class Controller():
 
         Parameters
         ----------
-        pool : Pool
+        pool: Pool
             The connection pool
-        logger : str
+        logger: str
             The schema to use
 
         Returns
@@ -53,12 +53,12 @@ class Controller():
 
         Parameters
         ----------
-        cls : class
+        cls: class
             class method inputs the class
-        connect_kwargs : kwargs for :func:`asyncpg.connection.connect` function
-        pool : Pool
+        connect_kwargs: kwargs for :func:`asyncpg.connection.connect` function
+        pool: Pool
             The connection pool
-        logger : str
+        logger: str
             The schema to use
 
         Returns
@@ -552,7 +552,7 @@ class Controller():
 
         Parameters
         ----------
-        guild_id : str
+        guild_id: str
             long str of the guild id
 
         Returns
@@ -3676,10 +3676,16 @@ class Controller():
             logger.warning(f'Error retrieving react {e}')
             return False
 
-    async def set_single_react(self, base_message_id: str, react_id: str,
-                               target_id: str,  guild_id: str, react_role: bool,
-                               react_channel: bool, react_category: bool,
-                               info: str, logger):
+    async def set_single_react(self, guild_id: int,
+                               base_message_id: int,
+                               base_channel_id: int,
+                               target_id: int,
+                               react_id: int,
+                               react_type: int,
+                               group_name: str,
+                               user_ids: list,
+                               url: str,
+                               name: str, logger):
         """Set a single react db.
 
         Parameters
@@ -3763,9 +3769,14 @@ class Controller():
             return True
         return False
 
-    async def add_single_react(self, guild_id: str, base_message_id: str,
-                               target_id: str, react_id: str, 
-                               react_role: bool, react_channel: bool, react_category: bool, 
+    async def add_single_react(self, guild_id: int,
+                               base_message_id: int,
+                               base_channel_id: int,
+                               target_id: int,
+                               react_id: int,
+                               react_type: int,
+                               url: str,
+                               name: str,
                                info: str, logger):
         """Add a single react db.
 
@@ -3793,37 +3804,52 @@ class Controller():
         bool
             success true false
         """
+        fin = ['guild_id', 'base_message_id', 'base_channel_id', 'target_id', 'react_id',
+               'react_type', 'user_ids', 'url', 'name', 'info']
         sql = f"""
-            INSERT INTO {self.schema}.reacts (
-            guild_id,
-            base_message_id,
-            target_id,
-            react_id,
-            react_role,
-            react_channel,
-            react_category,
-            info,
-            currtime) VALUES
-                ($1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6,
-                $7,
-                $8,DEFAULT)
+            INSERT INTO {self.schema}.reacts ( $DEST, currtime ) VALUES
+                ( $VALS , DEFAULT)
                 ON CONFLICT (base_message_id, react_id) DO nothing;
         """
+        sql = sql.replace('$DEST', ','.join(fin)).replace('$VALS', '$' + ',$'.join([str(x + 1) for x in range(len(fin))]))
         try:
-            await self.pool.execute(sql, int(guild_id), int(creator_id), name, content)
+            await self.pool.execute(sql, int(guild_id), int(base_message_id), int(base_channel_id), int(target_id),
+                                    int(react_id), int(react_type), [], url, name, info)
         except Exception as e:
             logger.warning(f'Error adding react: {e}')
             return False
-        if react_role:
-            await self.add_joinable_role(int(target_id))
-            await self.add_single_joininfo(int(target_id), info)
+        if react_type == 0:
+            await self.add_joinable_role(guild_id, target_id, logger)
+            await self.add_single_joininfo(guild_id, target_id, info, logger)
             return True
         return True
+
+    async def get_all_reacts(self, logger):
+        """Get all reacts.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        list
+            list of all reacts
+        """
+        sql = f"""
+            SELECT guild_id, base_message_id, react_id FROM {self.schema}.reacts;
+        """
+        try:
+            tmp = await self.pool.fetch(sql)
+            ret = {}
+            for t in tmp:
+                print(t)
+                for (k, v) in t.items():
+                    ret[k] = v
+            print(ret)
+            return ret
+        except Exception as e:
+            logger.warning(f'Error getting reacts: {e}')
+            return {}
 
     async def get_allguild_reacts(self, guild_id: str, logger):
         """Get all reacts in a guild.
