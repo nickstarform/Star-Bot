@@ -126,6 +126,23 @@ define_tables = {
         FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE
     );""",
 
+    # React PSQL Table
+    # react_type 0=role, 1=channel,2=category
+    'joinableinfo': f"""
+    CREATE TABLE IF NOT EXISTS schema.joinableinfo (
+        guild_id BIGINT,
+        target_id BIGINT,
+        info TEXT,
+        join_type INT,
+        url TEXT,
+        name TEXT,
+        currtime TIMESTAMP DEFAULT current_timestamp,
+        PRIMARY KEY (target_id),
+        CHECK (join_type in (0, 1, 2)),
+        UNIQUE (target_id, join_type),
+        FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE
+    );""",
+
     'autorole': f"""
     CREATE TABLE IF NOT EXISTS schema.autoroles (
         autorole_id BIGINT,
@@ -137,8 +154,6 @@ define_tables = {
         FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE
     );""",
 
-    # React PSQL Table
-    # react_type 0=role, 1=channel,2=category
     'joinrole': f"""
     CREATE TABLE IF NOT EXISTS schema.joinable_roles (
         joinrole_id BIGINT,
@@ -158,21 +173,6 @@ define_tables = {
         react_type INT DEFAULT 0,
         PRIMARY KEY (user_id, target_id),
         FOREIGN KEY (joinrole_id, react_type) REFERENCES schema.joinableinfo (target_id, join_type)  ON DELETE CASCADE,
-        FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE
-    );""",
-
-    'joinableinfo': f"""
-    CREATE TABLE IF NOT EXISTS schema.joinableinfo (
-        guild_id BIGINT,
-        target_id BIGINT,
-        info TEXT,
-        join_type INT,
-        url TEXT,
-        name TEXT,
-        currtime TIMESTAMP DEFAULT current_timestamp,
-        PRIMARY KEY (target_id),
-        CHECK (join_type in (0, 1, 2)),
-        UNIQUE (target_id, join_type),
         FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE
     );""",
 

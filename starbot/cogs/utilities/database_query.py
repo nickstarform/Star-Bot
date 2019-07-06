@@ -80,13 +80,13 @@ class Controller():
         if not pool:
             try:
                 pool = await create_pool(**connect_kwargs)
-                self.bot.logger.info('Made Connection pool')
+                logger.info('Made Connection pool')
             except InterfaceError as e:
-                self.bot.logger.error(f'{e}')
+                logger.error(f'{e}')
                 raise e
-        self.bot.logger.info('Hold tight, tables being created')
+        logger.info('Hold tight, tables being created')
         await make_tables(pool, schema)
-        self.bot.logger.info(f'Tables created under schema: {schema}.')
+        logger.info(f'Tables created under schema: {schema}.')
         return cls(pool, logger, schema)
 
     """
