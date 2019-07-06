@@ -11,7 +11,7 @@ from asyncpg.pool import Pool
 # relative modules
 from config import Config
 from .database_create import make_tables
-from .functions import ModAction, parse
+from .functions import ModAction
 
 # global attributes
 __all__ = ('Controller',)
@@ -3723,7 +3723,6 @@ class Controller():
                                target_id: int,
                                react_id: int,
                                react_type: int,
-                               user_ids: list,
                                url: str,
                                name: str, *, info: str):
         """Set a single react db.
