@@ -327,7 +327,7 @@ class Controller():
             SELECT disallowed_command FROM {self.schema}.globalcmdbl;
         """
         cmd_list = await self.pool.fetch(sql)
-        return cmd_list
+        return [x['disallowed_command'] for x in cmd_list]
 
     async def is_disallowed_global(self, cmd: str):
         """Is Disallowed Global Commands.
@@ -1014,7 +1014,7 @@ class Controller():
             SELECT blcmd FROM {self.schema}.disallowed_commands WHERE guild_id = $1;
         """
         cmd_list = await self.pool.fetch(sql, int(guild_id))
-        return cmd_list['blcmd']
+        return [x['blcmd'] for x in cmd_list]
 
     async def is_disallowed(self, guild_id, cmd: str):
         """Is Disallowed guilds Commands.
@@ -1053,7 +1053,7 @@ class Controller():
                 WHERE guild_id = $1;
         """
         role_list = await self.pool.fetch(sql, int(guild_id))
-        return role_list['autoroles']
+        return [x['autorole_id'] for x in role_list]
 
     async def is_role_autorole(self, guild_id: int, role_id: int):
         """Check if role is autorole.
@@ -1151,7 +1151,7 @@ class Controller():
             WHERE guild_id = $1;
         """
         role_list = await self.pool.fetch(sql, int(guild_id))
-        return role_list['joinrole_id']
+        return [x['joinrole_id'] for x in role_list]
 
     async def is_role_joinable(self, guild_id: int, role_id: int):
         """Check if role is joinable.
@@ -1338,7 +1338,7 @@ class Controller():
                 WHERE guild_id = $1;
         """
         channel_list = await self.pool.fetch(sql, int(guild_id))
-        return channel_list['modlog_id']
+        return [x['modlog_id'] for x in channel_list]
 
     async def is_modlog(self, guild_id: int, channel_id: int):
         """Check if channel is modlog.
@@ -1600,7 +1600,7 @@ class Controller():
                 WHERE guild_id = $1;
         """
         channel_list = await self.pool.fetch(sql, int(guild_id))
-        return channel_list['welcome_id']
+        return [x['welcome_id'] for x in channel_list]
 
     async def is_welcome_channel(self, guild_id: int, channel_id: int):
         """Check if channel is welcome channel.
@@ -1859,7 +1859,7 @@ class Controller():
                 WHERE guild_id = $1;
         """
         channel_list = await self.pool.fetch(sql, int(guild_id))
-        return channel_list['logging_channels']
+        return [x['log_id'] for x in channel_list]
 
     async def is_logger_channel(self, guild_id: int, channel_id: int):
         """Check if channel is a logging channel.
@@ -2031,7 +2031,7 @@ class Controller():
                 WHERE guild_id = $1;
         """
         channel_list = await self.pool.fetch(sql, int(guild_id))
-        return channel_list['vchan_id']
+        return [x['vchan_id'] for x in channel_list]
 
     async def is_voice_channel(self, guild_id: int, channel_id: int):
         """Check if channel is a logging channel.
@@ -2140,7 +2140,7 @@ class Controller():
                 WHERE guild_id = $1;
         """
         role_list = await self.pool.fetch(sql, int(guild_id))
-        return role_list['vrole_id']
+        return [x['vrole_id'] for x in role_list]
 
     async def is_voice_role(self, guild_id: int, role_id: int):
         """Check if role is a voice role.
@@ -2351,7 +2351,7 @@ class Controller():
                 WHERE guild_id = $1;
         """
         channel_list = await self.pool.fetch(sql, int(guild_id))
-        return channel_list['blchannel_id']
+        return [x['blchannel_id'] for x in channel_list]
 
     async def is_blacklist_channel(self, guild_id: int, channel_id: int):
         """Check if channel is a blacklisted.
@@ -2447,7 +2447,7 @@ class Controller():
                 WHERE guild_id = $1;
         """
         user_list = await self.pool.fetch(sql, int(guild_id))
-        return user_list['bluser_id']
+        return [x['bluser_id'] for x in user_list]
 
     async def is_blacklist_user(self, guild_id: int, user_id: int):
         """Check if user is a blacklisted.
@@ -3099,7 +3099,8 @@ class Controller():
                 WHERE guild_id = $1;
         """
         try:
-            return await set(self.pool.fetch(sql, int(guild_id)))
+            qlist = await set(self.pool.fetch(sql, int(guild_id)))
+            return [x['quoted_id'] for x in qlist]
         except Exception as e:
             self.bot.logger.warning(f'Error getting quoted users: {e}')
             return False
@@ -3356,8 +3357,9 @@ class Controller():
             SELECT id FROM {self.schema}.quotes WHERE guild_id = $1;
         """
         try:
-            return await self.pool.fetch(sql, int(guild_id), int(origin_id),
+            qlist = await self.pool.fetch(sql, int(guild_id), int(origin_id),
                                             int(quoted_id), int(creator_id), content)
+            return [x['id'] for x in qlist]
         except Exception as e:
             self.bot.logger.warning(f'Error removing quote: {e}')
             return False
@@ -3383,8 +3385,9 @@ class Controller():
                 guild_id = $1 AND quoted_id = $2;
         """
         try:
-            return await self.pool.fetch(sql, int(guild_id), int(origin_id),
+            qlist = await self.pool.fetch(sql, int(guild_id), int(origin_id),
                                             int(quoted_id), int(creator_id), content)
+            return [x['id'] for x in qlist]
         except Exception as e:
             self.bot.logger.warning(f'Error removing quote: {e}')
             return False
@@ -3610,7 +3613,8 @@ class Controller():
                 WHERE guild_id = $1;
         """
         try:
-            return await set(self.pool.fetch(sql, int(guild_id), int(creator_id)))
+            mlist = await set(self.pool.fetch(sql, int(guild_id), int(creator_id)))
+            return [x['creator_id'] for x in mlist]
         except Exception as e:
             self.bot.logger.warning(f'Error getting macro: {e}')
             return False
@@ -3657,7 +3661,8 @@ class Controller():
             SELECT name FROM {self.schema}.macros WHERE guild_id = $1;
         """
         try:
-            return await self.pool.fetch(sql, int(guild_id))
+            mlist = await self.pool.fetch(sql, int(guild_id))
+            return [x['name'] for x in mlist]
         except Exception as e:
             self.bot.logger.warning(f'Error getting macros: {e}')
             return False
