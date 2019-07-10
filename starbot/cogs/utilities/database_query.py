@@ -36,8 +36,6 @@ class Controller():
 
         Returns
         ----------
-        str
-            Either the yaml token if required or false.
         """
         self.pool = pool
         self.schema = schema
@@ -114,7 +112,7 @@ class Controller():
             await self.pool.execute(sql, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding guild to blacklist {guild_id}: {e}')
+            self.logger.warning(f'Error adding guild to blacklist {guild_id}: {e}')
             return False
 
     async def rem_blacklist_guild_global(self, guild_id: int): # noqa
@@ -137,7 +135,7 @@ class Controller():
             await self.pool.execute(sql, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error removing blacklist guild: {e}')
+            self.logger.warning(f'Error removing blacklist guild: {e}')
             return False
         return False
 
@@ -200,7 +198,7 @@ class Controller():
             await self.pool.execute(sql,  int(user_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding user to blacklist {user_id}: {e}')
+            self.logger.warning(f'Error adding user to blacklist {user_id}: {e}')
             return False
 
     async def rem_blacklist_user_global(self, user_id: int): # noqa
@@ -222,7 +220,7 @@ class Controller():
         try:
             return await self.pool.execute(sql, int(user_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing blacklist user: {e}')
+            self.logger.warning(f'Error removing blacklist user: {e}')
             return False
         return False
 
@@ -286,7 +284,7 @@ class Controller():
             await self.pool.execute(sql, cmd)
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding cmd to disallowed  {cmd}: {e}')
+            self.logger.warning(f'Error adding cmd to disallowed  {cmd}: {e}')
             return False
 
     async def rem_disallowed_global(self, cmd: str): # noqa
@@ -308,7 +306,7 @@ class Controller():
         try:
             await self.pool.execute(sql, cmd)
         except Exception as e:
-            self.bot.logger.warning(f'Error removing disallowed cmds: {e}')
+            self.logger.warning(f'Error removing disallowed cmds: {e}')
             return False
         return True
 
@@ -342,7 +340,7 @@ class Controller():
         boolean
             return status true or false
         """
-        # SELECT * FROM {self.schema}.global WHERE $1 = ANY (disallowed_commands::int[]) 
+        # SELECT * FROM {self.schema}.global WHERE $1 = ANY (disallowed_commands::int[])
         sql = f"""
             SELECT * FROM {self.schema}.globalcmdbl WHERE disallowed_command = $1;
         """
@@ -372,7 +370,7 @@ class Controller():
             await self.pool.execute(sql,  int(user_id), message)
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding report {user_id} {message}: {e}')
+            self.logger.warning(f'Error adding report {user_id} {message}: {e}')
             return False
 
     async def remove_report(self, user_id: int, place: str): # noqa
@@ -396,7 +394,7 @@ class Controller():
         try:
             await self.pool.execute(sql,  int(user_id),  int(place))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing report: {e}')
+            self.logger.warning(f'Error removing report: {e}')
             return False
         return True
 
@@ -437,7 +435,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql)
         except Exception as e:
-            self.bot.logger.warning(f'Error retrieving quote {e}')
+            self.logger.warning(f'Error retrieving quote {e}')
             return False
 
 
@@ -461,7 +459,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, name)
         except Exception as e:
-            self.bot.logger.warning(f'Error retrieving quote {e}')
+            self.logger.warning(f'Error retrieving quote {e}')
             return False
 
     async def set_single_global_macro(self, name: str, content: str):
@@ -486,7 +484,7 @@ class Controller():
         try:
             await self.pool.execute(sql, name, content)
         except Exception as e:
-            self.bot.logger.warning(f'Error setting macro {e}')
+            self.logger.warning(f'Error setting macro {e}')
             return False
         return True
 
@@ -510,7 +508,7 @@ class Controller():
         try:
             await self.pool.execute(sql, name)
         except Exception as e:
-            self.bot.logger.warning(f'Error removing macro: {e}')
+            self.logger.warning(f'Error removing macro: {e}')
             return False
         return True
 
@@ -536,7 +534,7 @@ class Controller():
         try:
             await self.pool.execute(sql, name, content)
         except Exception as e:
-            self.bot.logger.warning(f'Error adding macro: {e}')
+            self.logger.warning(f'Error adding macro: {e}')
             return False
         return True
 
@@ -559,24 +557,20 @@ class Controller():
         ----------
         """
         cols = {
-                'guild_id': ['', int(guild_id)],
-                'prefix': ['', 's!'],
-                'welcome_message': ['', ''],
-                'report_channel': ['', 0],
-                'ban_footer': ['', 'This is an automated message'],
-                'kick_footer': ['', 'This is an automated message'],
-                'colour_template': ['', 0],
+                'guild_id': int(guild_id),
+                'prefix': 's!',
+                'welcome_message': '',
+                'report_channel': 0,
+                'ban_footer': 'This is an automated message',
+                'kick_footer': 'This is an automated message',
+                'colour_template': 0,
         }
-        for i, k in enumerate(cols.keys()):
-            cols[k][0] = f'${i + 1}'
-        print(cols)
         sql = f"""
-            INSERT INTO {self.schema}.guilds ({','.join(cols.keys())}) VALUES 
-                ({','.join([cols[key][0] for key in cols.keys()])});
+            INSERT INTO {self.schema}.guilds ({','.join(cols.keys())}) VALUES
+                ({','.join(['$' + str(i + 1) for i in range(len(cols.keys()))])});
             """
-        print(sql)
 
-        return await self.pool.execute(sql, *[cols[key][1] for key in cols.keys()])
+        return await self.pool.execute(sql, *[v for k, v in cols.items()])
 
     async def get_guild_settings(self):
         """Main settings for guild.
@@ -623,31 +617,6 @@ class Controller():
                 main[int(guild_id)][setting] = val
         return main
 
-    async def get_guild(self, guild_id: int):
-        """All settings for guild.
-
-        Parameters
-        ----------
-        guild_id: int
-            id for the guild
-        logger: Logger
-            logger instance for the bot
-
-        Returns
-        ----------
-        tuple
-            tuple of results or false
-        """
-        sql = f"""
-            SELECT * FROM {self.schema}.guilds
-                WHERE guild_id = $1;
-            """
-        try:
-            return await self.pool.fetchrow(sql, int(guild_id))
-        except Exception as e:
-            self.bot.logger.warning(f'Error getting guild settings {e}')
-            return False
-
     async def drop_guild(self, guild_id: int):
         """All settings for guild.
 
@@ -670,7 +639,7 @@ class Controller():
         try:
             return await self.pool.execute(sql, int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing guild settings {e}')
+            self.logger.warning(f'Error removing guild settings {e}')
             return False
 
     """
@@ -697,7 +666,7 @@ class Controller():
             await self.pool.execute(sql, countdown_message_id)
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding giveaway winner {winner_id}: {e}')
+            self.logger.warning(f'Error adding giveaway winner {winner_id}: {e}')
             return False
 
     async def get_giveaway_winners(self, countdown_message_id):
@@ -721,7 +690,7 @@ class Controller():
             await self.pool.execute(sql, countdown_message_id)
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding giveaway winner {winner_id}: {e}')
+            self.logger.warning(f'Error adding giveaway winner {winner_id}: {e}')
             return False
 
     async def add_giveaway_winners(self, winner_ids, countdown_message_id):
@@ -745,7 +714,7 @@ class Controller():
             try:
                 await self.pool.execute(sql, int(winner_id), countdown_message_id)
             except Exception as e:
-                self.bot.logger.warning(f'Error adding giveaway winner {winner_id}: {e}')
+                self.logger.warning(f'Error adding giveaway winner {winner_id}: {e}')
                 return False
         return True
 
@@ -781,7 +750,7 @@ class Controller():
             await self.pool.execute(sql, *args)
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding giveaway {args}: {e}')
+            self.logger.warning(f'Error adding giveaway {args}: {e}')
             return False
 
     async def update_giveaway(self, message_id, keys, vals):
@@ -810,7 +779,7 @@ class Controller():
             await self.pool.execute(sql, *vals, int(message_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error fixing giveaway {keys}, {vals}: {e}')
+            self.logger.warning(f'Error fixing giveaway {keys}, {vals}: {e}')
             return False
 
     async def get_single_giveaways(self, message_id: int, only_active: bool):
@@ -837,7 +806,7 @@ class Controller():
         try:
             results = await self.pool.fetch(sql, int(message_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error getting giveaway: {e}')
+            self.logger.warning(f'Error getting giveaway: {e}')
             return False
         if len(results) > 0:
             return dict(results[0])
@@ -873,7 +842,7 @@ class Controller():
                 for r in results:
                     default[r['countdown_message_id']] = r['endtime']
         except Exception as e:
-            self.bot.logger.warning(f'Error getting giveaway: {e}')
+            self.logger.warning(f'Error getting giveaway: {e}')
         return default
 
     async def get_all_giveaways(self, only_active: bool):
@@ -905,7 +874,7 @@ class Controller():
                 for r in results:
                     default[r['countdown_message_id']] = r['endtime']
         except Exception as e:
-            self.bot.logger.warning(f'Error getting giveaway: {e}')
+            self.logger.warning(f'Error getting giveaway: {e}')
         return default
 
     """
@@ -931,7 +900,7 @@ class Controller():
             await self.pool.execute(sql, cmd, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding cmd to disallowed  {cmd}: {e}')
+            self.logger.warning(f'Error adding cmd to disallowed  {cmd}: {e}')
             return False
 
     async def get_colourtemplate(self, guild_id: int): # noqa
@@ -952,7 +921,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error getting template for colourrole: {e}')
+            self.logger.warning(f'Error getting template for colourrole: {e}')
             return []
 
     async def set_colourtemplate(self, guild_id: int, role_id: int): # noqa
@@ -973,7 +942,7 @@ class Controller():
         try:
             return await self.pool.execute(sql, int(role_id), int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error setting template for colourrole: {e}')
+            self.logger.warning(f'Error setting template for colourrole: {e}')
             return False
 
     async def rem_disallowed(self, guild_id: int, cmd: str): # noqa
@@ -995,7 +964,7 @@ class Controller():
         try:
             await self.pool.execute(sql, cmd, int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing disallowed cmds: {e}')
+            self.logger.warning(f'Error removing disallowed cmds: {e}')
             return False
         return True
 
@@ -1102,7 +1071,7 @@ class Controller():
             await self.pool.execute(sql, int(role_id), int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding role <#{role_id}> to guild {guild_id}: {e}') # noqa
+            self.logger.warning(f'Error adding role <#{role_id}> to guild {guild_id}: {e}') # noqa
             return False
 
     async def remove_autorole(self, guild_id: int, role_id: int):
@@ -1129,7 +1098,7 @@ class Controller():
         try:
             await self.pool.execute(sql, int(role_id), int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing roles: {e}')
+            self.logger.warning(f'Error removing roles: {e}')
             return False
         return True
 
@@ -1200,7 +1169,7 @@ class Controller():
             await self.pool.execute(sql, int(role_id), int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding role <@&{role_id}> to guild {guild_id}: {e}') # noqa
+            self.logger.warning(f'Error adding role <@&{role_id}> to guild {guild_id}: {e}') # noqa
             return False
 
     async def remove_joinable_role(self, role_id: int, guild_id: int):
@@ -1228,7 +1197,7 @@ class Controller():
             await self.pool.execute(sql, role_id, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error removing roles: {e}')
+            self.logger.warning(f'Error removing roles: {e}')
             return False
         return True
 
@@ -1257,7 +1226,7 @@ class Controller():
         try:
             await self.pool.execute(sql, user_id, guild_id, target_id, jointype)
         except Exception as e:
-            self.bot.logger.warning(f'Error adding joinable user: {e}')
+            self.logger.warning(f'Error adding joinable user: {e}')
             return False
         return True
 
@@ -1284,7 +1253,7 @@ class Controller():
         try:
             await self.pool.execute(sql, user_id, base_message_id, react_id)
         except Exception as e:
-            self.bot.logger.warning(f'Error removing react: {e}')
+            self.logger.warning(f'Error removing react: {e}')
             return False
         return True
 
@@ -1311,7 +1280,7 @@ class Controller():
         try:
             await self.pool.execute(sql, user_id, guild_id)
         except Exception as e:
-            self.bot.logger.warning(f'Error getting user joinableroles: {e}')
+            self.logger.warning(f'Error getting user joinableroles: {e}')
             return False
         return True
 
@@ -1395,7 +1364,7 @@ class Controller():
             await self.pool.execute(boolsql, True, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding channel <#{channel_id}> to guild {guild_id}: {e}') # noqa
+            self.logger.warning(f'Error adding channel <#{channel_id}> to guild {guild_id}: {e}') # noqa
             return False
 
     async def rem_modlog(self, guild_id: int, channel_id: int):
@@ -1431,7 +1400,7 @@ class Controller():
             if not channel_list:
                 await self.pool.execute(boolsql, False, int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing modlog channel <#{channel_id}>: {e}') # noqa
+            self.logger.warning(f'Error removing modlog channel <#{channel_id}>: {e}') # noqa
             return False
         return True
 
@@ -1461,7 +1430,7 @@ class Controller():
             await self.pool.execute(sql, prefix, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error setting prefix <{prefix}> for {guild_id}: {e}') # noqa
+            self.logger.warning(f'Error setting prefix <{prefix}> for {guild_id}: {e}') # noqa
             return False
 
     async def set_welcome(self, guild_id: int, dm: bool):
@@ -1491,7 +1460,7 @@ class Controller():
             await self.pool.execute(sql, dm, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Issue setting welcome message to channel: {e}')
+            self.logger.warning(f'Issue setting welcome message to channel: {e}')
             return False
 
     async def set_welcome_pm(self, guild_id: int, dm: bool):
@@ -1521,7 +1490,7 @@ class Controller():
             await self.pool.execute(sql, dm, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Issue setting welcome_message: {e}')
+            self.logger.warning(f'Issue setting welcome_message: {e}')
             return False
 
     async def set_welcome_message(self, guild_id: int, message: str):
@@ -1551,7 +1520,7 @@ class Controller():
             await self.pool.execute(sql, message, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Issue setting welcome_message: {e}')
+            self.logger.warning(f'Issue setting welcome_message: {e}')
             return False
 
     async def get_welcome_message(self, guild_id: int):
@@ -1577,7 +1546,7 @@ class Controller():
             message = await self.pool.fetchrow(sql, int(guild_id))
             return message['welcome_message']
         except Exception as e:
-            self.bot.logger.warning(f'Error while getting welcome message: {e}')
+            self.logger.warning(f'Error while getting welcome message: {e}')
             return None
 
     async def get_all_welcome_channels(self, guild_id: int):
@@ -1649,7 +1618,7 @@ class Controller():
             await self.pool.execute(sql, int(channel_id), int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding channel to server {guild_id}: {e}')
+            self.logger.warning(f'Error adding channel to server {guild_id}: {e}')
             return False
 
     async def rem_welcome_channel(self, guild_id: int, channel_id: int): # noqa
@@ -1677,7 +1646,7 @@ class Controller():
         try:
             await self.pool.execute(sql, channel_id, int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing modlog channel: {e}')
+            self.logger.warning(f'Error removing modlog channel: {e}')
             return False
         return True
 
@@ -1707,7 +1676,7 @@ class Controller():
             await self.pool.execute(sql, int(channel_id), int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Issue setting report channel: {e}')
+            self.logger.warning(f'Issue setting report channel: {e}')
             return False
 
     async def get_report_channel(self, guild_id: int):
@@ -1731,7 +1700,7 @@ class Controller():
             message = await self.pool.fetchrow(sql, int(guild_id))
             return message['report_channel']
         except Exception as e:
-            self.bot.logger.warning(f'Error while getting report channel: {e}')
+            self.logger.warning(f'Error while getting report channel: {e}')
             return None
 
 
@@ -1760,7 +1729,7 @@ class Controller():
             await self.pool.execute(sql, message, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Issue setting ban footer: {e}')
+            self.logger.warning(f'Issue setting ban footer: {e}')
             return False
 
     async def get_ban_footer(self, guild_id: int):
@@ -1784,7 +1753,7 @@ class Controller():
             message = await self.pool.fetchrow(sql, int(guild_id))
             return message['ban_footer']
         except Exception as e:
-            self.bot.logger.warning(f'Error while getting ban footer: {e}')
+            self.logger.warning(f'Error while getting ban footer: {e}')
             return None
 
     async def set_kick_footer(self, guild_id: int, message: str):
@@ -1812,7 +1781,7 @@ class Controller():
             await self.pool.execute(sql, message, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Issue setting kick footer: {e}')
+            self.logger.warning(f'Issue setting kick footer: {e}')
             return False
 
     async def get_kick_footer(self, guild_id: int):
@@ -1836,7 +1805,7 @@ class Controller():
             message = await self.pool.fetchrow(sql, int(guild_id))
             return message['kick_footer']
         except Exception as e:
-            self.bot.logger.warning(f'Error while getting kick footer: {e}')
+            self.logger.warning(f'Error while getting kick footer: {e}')
             return None
 
     async def get_all_logger_channels(self, guild_id: int):
@@ -1934,7 +1903,7 @@ class Controller():
             await self.pool.execute(boolsql, True, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding channel to server {guild_id}: {e}')
+            self.logger.warning(f'Error adding channel to server {guild_id}: {e}')
             return False
 
     async def rem_logger_channel(self, guild_id: int, channel_id: int):
@@ -1970,7 +1939,7 @@ class Controller():
             if not channel_list:
                 await self.pool.execute(boolsql, False, int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing logging channel: {e}')
+            self.logger.warning(f'Error removing logging channel: {e}')
             return False
         return True
 
@@ -2084,7 +2053,7 @@ class Controller():
             await self.pool.execute(boolsql, True, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding channel to server {guild_id}: {e}')
+            self.logger.warning(f'Error adding channel to server {guild_id}: {e}')
             return False
 
     async def rem_voice_channel(self, guild_id: int, channel_id: int):
@@ -2118,7 +2087,7 @@ class Controller():
             if not channel_list:
                 await self.pool.execute(boolsql, False, int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing logging channel: {e}')
+            self.logger.warning(f'Error removing logging channel: {e}')
             return False
         return True
 
@@ -2193,7 +2162,7 @@ class Controller():
             await self.pool.execute(boolsql, True, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding role to server {guild_id}: {e}')
+            self.logger.warning(f'Error adding role to server {guild_id}: {e}')
             return False
 
     async def rem_voice_role(self, guild_id: int, role_id: int):
@@ -2227,7 +2196,7 @@ class Controller():
             if not channel_list:
                 await self.pool.execute(boolsql, False, int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing logging channel: {e}')
+            self.logger.warning(f'Error removing logging channel: {e}')
             return False
         return True
 
@@ -2303,7 +2272,7 @@ class Controller():
         try:
             return await self.pool.execute(sql, int(channel_id), int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error adding channel to server {guild_id}: {e}')
+            self.logger.warning(f'Error adding channel to server {guild_id}: {e}')
             return False
 
     async def rem_blacklist_channel(self, guild_id: int, channel_id: int): # noqa
@@ -2329,7 +2298,7 @@ class Controller():
         try:
             return await self.pool.execute(sql, channel_id, int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing blacklist channel: {e}')
+            self.logger.warning(f'Error removing blacklist channel: {e}')
             return False
         return False
 
@@ -2398,7 +2367,7 @@ class Controller():
             await self.pool.execute(sql, int(user_id), int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error adding user to blacklist {guild_id}: {e}')
+            self.logger.warning(f'Error adding user to blacklist {guild_id}: {e}')
             return False
 
     async def rem_blacklist_user(self, guild_id: int, user_id: int): # noqa
@@ -2425,7 +2394,7 @@ class Controller():
             await self.pool.execute(sql, user_id, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error removing blacklist channel: {e}')
+            self.logger.warning(f'Error removing blacklist channel: {e}')
             return False
         return False
 
@@ -2497,7 +2466,7 @@ class Controller():
             val = await self.pool.fetchval(sql, int(guild_id),  int(user_id))
             return val + 1
         except Exception as e:
-            self.bot.logger.warning(f'Error indexing modactions: {e}')
+            self.logger.warning(f'Error indexing modactions: {e}')
             return -1
 
     async def get_moderation_count(self, guild_id: int, user_id: int,
@@ -2602,7 +2571,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(guild_id),  int(user_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error retrieving moderations {e}')
+            self.logger.warning(f'Error retrieving moderations {e}')
             return False
 
     async def get_single_modaction(self, guild_id: int, user_id: int,
@@ -2630,7 +2599,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(guild_id),  int(user_id), int(index))
         except Exception as e:
-            self.bot.logger.warning(f'Error retrieving moderation action {e}')
+            self.logger.warning(f'Error retrieving moderation action {e}')
             return False
 
     async def set_single_modaction(self, guild_id: int, target_id: int,
@@ -2673,7 +2642,7 @@ class Controller():
                                     status, int(guild_id),
                                      int(target_id), int(index))
         except Exception as e:
-            self.bot.logger.warning(f'Error retrieving moderation action {e}')
+            self.logger.warning(f'Error retrieving moderation action {e}')
         return await self.get_moderation_count(int(guild_id),  int(target_id), False)
 
     async def delete_single_modaction(self, guild_id: int, forg_mod_id: int,
@@ -2736,7 +2705,7 @@ class Controller():
         try:
             return await self.pool.fetchval(sql, int(guild_id),  int(user_id)) + 1
         except Exception as e:
-            self.bot.logger.warning(f'Error indexing warnings: {e}')
+            self.logger.warning(f'Error indexing warnings: {e}')
             return 0
 
     async def get_warning_count(self, guild_id: int, user_id: int,
@@ -2845,7 +2814,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(guild_id),  int(user_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error retrieving warnings {e}')
+            self.logger.warning(f'Error retrieving warnings {e}')
             return False
 
     async def get_single_warning(self, guild_id: int, user_id: int,
@@ -2873,7 +2842,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(guild_id),  int(user_id), int(index))
         except Exception as e:
-            self.bot.logger.warning(f'Error retrieving warning {e}')
+            self.logger.warning(f'Error retrieving warning {e}')
             return False
 
     async def set_single_warning(self, guild_id: int, target_id: int,
@@ -2915,7 +2884,7 @@ class Controller():
                                     status, int(guild_id),
                                      int(target_id), int(index))
         except Exception as e:
-            self.bot.logger.warning(f'Error setting warnings {e}')
+            self.logger.warning(f'Error setting warnings {e}')
         return await self.get_warning_count(int(guild_id),  int(target_id), False)
 
     async def delete_single_warning(self, guild_id: int, forg_mod_id: int,
@@ -3000,7 +2969,7 @@ class Controller():
         try:
             await self.pool.execute(sql, int(target_id), join_type, info, int(guild_id), url, name)
         except Exception as e:
-            self.bot.logger.warning(f'Error retrieving join info {e}')
+            self.logger.warning(f'Error retrieving join info {e}')
             return False
         return True
 
@@ -3024,7 +2993,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(target_id), int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error retrieving join info {e}')
+            self.logger.warning(f'Error retrieving join info {e}')
             return False
         return True
 
@@ -3050,7 +3019,7 @@ class Controller():
         try:
             await self.pool.execute(sql, info, int(old_target_id), int(guild_id), target_id, info, join_type, url, name)
         except Exception as e:
-            self.bot.logger.warning(f'Error setting joininfo {e}')
+            self.logger.warning(f'Error setting joininfo {e}')
             return False
         return True
 
@@ -3074,7 +3043,7 @@ class Controller():
         try:
             await self.pool.execute(sql, int(target_id), guild_id)
         except Exception as e:
-            self.bot.logger.warning(f'Error removing joininfo: {e}')
+            self.logger.warning(f'Error removing joininfo: {e}')
             return False
         return True
 
@@ -3102,7 +3071,7 @@ class Controller():
             qlist = await set(self.pool.fetch(sql, int(guild_id)))
             return [x['quoted_id'] for x in qlist]
         except Exception as e:
-            self.bot.logger.warning(f'Error getting quoted users: {e}')
+            self.logger.warning(f'Error getting quoted users: {e}')
             return False
 
     async def get_quote_index(self, guild_id: int):
@@ -3127,7 +3096,7 @@ class Controller():
         try:
             return await self.pool.fetchval(sql, int(guild_id)) + 1
         except Exception as e:
-            self.bot.logger.warning(f'Error removing quote: {e}')
+            self.logger.warning(f'Error removing quote: {e}')
             return 0
 
     async def hit_single_quote(self, guild_id: int, qid: int):
@@ -3152,7 +3121,7 @@ class Controller():
         try:
             return await self.pool.execute(sql, int(guild_id), int(qid))
         except Exception as e:
-            self.bot.logger.warning(f'Error hitting quote {e}')
+            self.logger.warning(f'Error hitting quote {e}')
             return False
         return True
 
@@ -3183,7 +3152,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(guild_id), int(qid))
         except Exception as e:
-            self.bot.logger.warning(f'Error retrieving quote {e}')
+            self.logger.warning(f'Error retrieving quote {e}')
             return False
         return True
 
@@ -3221,7 +3190,7 @@ class Controller():
             await self.pool.execute(sql, content, int(origin_id),
                                     int(quoted_id), int(guild_id), int(qid))
         except Exception as e:
-            self.bot.logger.warning(f'Error setting quote {e}')
+            self.logger.warning(f'Error setting quote {e}')
             return False
         return True
 
@@ -3247,7 +3216,7 @@ class Controller():
         try:
             await self.pool.execute(sql, int(guild_id), int(qid))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing quote: {e}')
+            self.logger.warning(f'Error removing quote: {e}')
             return False
         return True
 
@@ -3286,7 +3255,7 @@ class Controller():
                                     int(quoted_id), int(creator_id), content,
                                     int(index))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing quote: {e}')
+            self.logger.warning(f'Error removing quote: {e}')
             return False
         return True
 
@@ -3312,7 +3281,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(guild_id), top)
         except Exception as e:
-            self.bot.logger.warning(f'Error removing quote: {e}')
+            self.logger.warning(f'Error removing quote: {e}')
             return False
 
     async def get_user_quotes(self, guild_id: int, quoted_id: int):
@@ -3337,7 +3306,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(guild_id), int(quoted_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error getting quoted user: {e}')
+            self.logger.warning(f'Error getting quoted user: {e}')
             return False
 
     async def get_allguild_quote_id(self, guild_id: int):
@@ -3361,7 +3330,7 @@ class Controller():
                                             int(quoted_id), int(creator_id), content)
             return [x['id'] for x in qlist]
         except Exception as e:
-            self.bot.logger.warning(f'Error removing quote: {e}')
+            self.logger.warning(f'Error removing quote: {e}')
             return False
 
     async def get_alluser_quote_id(self, guild_id: int,
@@ -3389,7 +3358,7 @@ class Controller():
                                             int(quoted_id), int(creator_id), content)
             return [x['id'] for x in qlist]
         except Exception as e:
-            self.bot.logger.warning(f'Error removing quote: {e}')
+            self.logger.warning(f'Error removing quote: {e}')
             return False
 
     async def get_random_quote(self, guild_id: int, quoted_id: int):
@@ -3448,7 +3417,7 @@ class Controller():
         try:
             return await self.pool.execute(sql, int(guild_id), name)
         except Exception as e:
-            self.bot.logger.warning(f'Error hitting macro {e}')
+            self.logger.warning(f'Error hitting macro {e}')
             return False
         return True
 
@@ -3479,7 +3448,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(guild_id), name)
         except Exception as e:
-            self.bot.logger.warning(f'Error retrieving quote {e}')
+            self.logger.warning(f'Error retrieving quote {e}')
             return False
 
     async def set_single_macro(self, guild_id: int, name: str,
@@ -3508,7 +3477,7 @@ class Controller():
             await self.pool.execute(sql, content, int(origin_id),
                                     int(quoted_id), int(guild_id), int(qid))
         except Exception as e:
-            self.bot.logger.warning(f'Error setting macro {e}')
+            self.logger.warning(f'Error setting macro {e}')
             return False
         return True
 
@@ -3534,7 +3503,7 @@ class Controller():
         try:
             await self.pool.execute(sql, int(guild_id), name)
         except Exception as e:
-            self.bot.logger.warning(f'Error removing macro: {e}')
+            self.logger.warning(f'Error removing macro: {e}')
             return False
         return True
 
@@ -3566,7 +3535,7 @@ class Controller():
         try:
             await self.pool.execute(sql, int(guild_id), int(creator_id), name, content)
         except Exception as e:
-            self.bot.logger.warning(f'Error adding macro: {e}')
+            self.logger.warning(f'Error adding macro: {e}')
             return False
         return True
 
@@ -3592,7 +3561,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(guild_id), top)
         except Exception as e:
-            self.bot.logger.warning(f'Error removing macro: {e}')
+            self.logger.warning(f'Error removing macro: {e}')
             return False
 
     async def get_allmacrocreator(self, guild_id: int):
@@ -3616,7 +3585,7 @@ class Controller():
             mlist = await set(self.pool.fetch(sql, int(guild_id), int(creator_id)))
             return [x['creator_id'] for x in mlist]
         except Exception as e:
-            self.bot.logger.warning(f'Error getting macro: {e}')
+            self.logger.warning(f'Error getting macro: {e}')
             return False
 
     async def get_creator_macros(self, guild_id: int, creator_id: int):
@@ -3641,7 +3610,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(guild_id), int(creator_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error getting macro: {e}')
+            self.logger.warning(f'Error getting macro: {e}')
             return False
 
     async def get_allguild_macro_names(self, guild_id: int):
@@ -3664,7 +3633,7 @@ class Controller():
             mlist = await self.pool.fetch(sql, int(guild_id))
             return [x['name'] for x in mlist]
         except Exception as e:
-            self.bot.logger.warning(f'Error getting macros: {e}')
+            self.logger.warning(f'Error getting macros: {e}')
             return False
 
     async def get_alluser_macro_name(self, guild_id: int, creator_id: int):
@@ -3688,7 +3657,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(guild_id), int(creator_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error getting macro: {e}')
+            self.logger.warning(f'Error getting macro: {e}')
             return False
 
     """
@@ -3719,7 +3688,7 @@ class Controller():
         try:
             return await self.pool.fetch(sql, int(message_id), int(react_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error retrieving react {e}')
+            self.logger.warning(f'Error retrieving react {e}')
             return False
 
     async def set_single_react(self, guild_id: int,
@@ -3737,7 +3706,7 @@ class Controller():
         base_message_id: int
             message id of the base message holding the info
         react_id: int
-            react id 
+            react id
         guild_id: int
             the id of the guild
         target_id: int
@@ -3763,13 +3732,13 @@ class Controller():
                                              int(base_message_id),
                                              int(react_id), int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error setting react {e}')
+            self.logger.warning(f'Error setting react {e}')
             status = False
         if status:
             try:
                 status = await self.set_single_joininfo(sql, guild_id, name, target_id, old['target_id'], react_type, url, info)
             except Exception as e:
-                self.bot.logger.warning(f'Error setting react {e}')
+                self.logger.warning(f'Error setting react {e}')
                 status = False
         if status:
             return True
@@ -3799,7 +3768,7 @@ class Controller():
         try:
             status = await self.pool.execute(sql, int(guild_id), int(base_message_id), int(react_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error removing react: {e}')
+            self.logger.warning(f'Error removing react: {e}')
             status = False
         if status:
             return True
@@ -3830,7 +3799,7 @@ class Controller():
         try:
             await self.pool.execute(sql, user_id, base_message_id, react_id)
         except Exception as e:
-            self.bot.logger.warning(f'Error adding react: {e}')
+            self.logger.warning(f'Error adding react: {e}')
             return False
         return True
 
@@ -3857,7 +3826,7 @@ class Controller():
         try:
             await self.pool.execute(sql, user_id, base_message_id, react_id)
         except Exception as e:
-            self.bot.logger.warning(f'Error removing react: {e}')
+            self.logger.warning(f'Error removing react: {e}')
             return False
         return True
 
@@ -3908,7 +3877,7 @@ class Controller():
             await self.pool.execute(sql, int(guild_id), int(base_message_id), int(base_channel_id), int(target_id),
                                     int(react_id), int(react_type))
         except Exception as e:
-            self.bot.logger.warning(f'Error adding react: {e}')
+            self.logger.warning(f'Error adding react: {e}')
             return False
         if react_type == 0:
             await self.add_joinable_role(guild_id, target_id)
@@ -3939,7 +3908,7 @@ class Controller():
             print(ret)
             return ret
         except Exception as e:
-            self.bot.logger.warning(f'Error getting reacts: {e}')
+            self.logger.warning(f'Error getting reacts: {e}')
             return {}
 
     async def get_allguild_reacts(self, guild_id: int):
@@ -3967,7 +3936,7 @@ class Controller():
                     ret[k] = v
             return ret
         except Exception as e:
-            self.bot.logger.warning(f'Error getting reacts: {e}')
+            self.logger.warning(f'Error getting reacts: {e}')
             return {}
 
     async def get_single_record(self, guild_id, key):
@@ -3995,10 +3964,10 @@ class Controller():
         try:
             current = await self.pool.fetchval(sql, int(guild_id))
         except Exception as e:
-            self.bot.logger.warning(f'Error getting current guild val: {e}')
+            self.logger.warning(f'Error getting current guild val: {e}')
             return False
         if isinstance(current, type(None)):
-            self.bot.logger.warning(f'Error getting current guild val: {e}')
+            self.logger.warning(f'Error getting current guild val: {e}')
             return False
         return current
 
@@ -4016,7 +3985,7 @@ class Controller():
         key: str:
             the exact col name
         value: str
-            the value to input to 
+            the value to input to
 
         Returns
         -------
@@ -4033,7 +4002,7 @@ class Controller():
             current = await self.pool.execute(sql, val, int(guild_id))
             return True
         except Exception as e:
-            self.bot.logger.warning(f'Error setting current guild val: {e}')
+            self.logger.warning(f'Error setting current guild val: {e}')
             return False
         return False
 
@@ -4069,7 +4038,7 @@ class Controller():
                     else:
                         failed.append(x)
                 except Exception as e:
-                    self.bot.logger.warning(f'Failed on {e}')
+                    self.logger.warning(f'Failed on {e}')
                     failed.append(x)
                     continue
         return p, failed

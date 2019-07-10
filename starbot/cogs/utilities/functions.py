@@ -22,7 +22,6 @@ __all__ = ('current_time',
            'extract_time',
            'extract_float',
            'clean_command',
-           'parse',
            'chunks',
            'bannedmember',
            'flatten',
@@ -140,32 +139,6 @@ def chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i + n]
-
-
-def parse(records):
-    """Parsing Record values.
-
-    Parameters
-    ----------
-    record : Record
-        The connection pool
-
-    Returns
-    ----------
-    list
-        Results from the record in list format
-    """
-    try:
-        ret = []
-        if isinstance(records, list):
-            for record in records:
-                ret.append([[key, val] for (key, val) in record.items()])
-            return ret
-        else:
-            return [[key, val] for (key, val) in records.items()]
-    except AttributeError:
-        return []
-
 
 def time_conv(dt: datetime):
     """
@@ -509,9 +482,9 @@ def lessen_list(ilist: list, amount: int):
     """Try to split list intelligently.
 
     This is a highly specific command, but it takes
-    the input list, counts up the length of its 
+    the input list, counts up the length of its
     constituents, and tries to output a new
-    list of the same elements but for a 
+    list of the same elements but for a
     length specified by amount.
 
     Example:

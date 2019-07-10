@@ -137,8 +137,8 @@ define_tables = {
         url TEXT,
         name TEXT,
         currtime TIMESTAMP DEFAULT current_timestamp,
-        PRIMARY KEY (target_id),
         CHECK (join_type in (0, 1, 2)),
+        PRIMARY KEY (target_id),
         UNIQUE (target_id, join_type),
         FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE
     );""",
@@ -148,9 +148,10 @@ define_tables = {
         autorole_id BIGINT,
         guild_id BIGINT,
         react_type INT DEFAULT 0,
-        PRIMARY KEY (autorole_id, guild_id),
         CHECK (react_type = 0),
-        FOREIGN KEY (joinrole_id, react_type) REFERENCES schema.joinableinfo (target_id, join_type)  ON DELETE CASCADE,
+        UNIQUE (autorole_id, guild_id),
+        PRIMARY KEY (autorole_id, guild_id),
+        FOREIGN KEY (autorole_id, react_type) REFERENCES schema.joinableinfo (target_id, join_type) ON DELETE CASCADE,
         FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE
     );""",
 
@@ -159,20 +160,22 @@ define_tables = {
         joinrole_id BIGINT,
         guild_id BIGINT,
         react_type INT DEFAULT 0,
-        PRIMARY KEY (joinrole_id, guild_id),
         CHECK (react_type = 0),
-        FOREIGN KEY (joinrole_id, react_type) REFERENCES schema.joinableinfo (target_id, join_type)  ON DELETE CASCADE,
+        PRIMARY KEY (joinrole_id, guild_id),
+        FOREIGN KEY (joinrole_id, react_type) REFERENCES schema.joinableinfo (target_id, join_type) ON DELETE CASCADE,
         FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE
     );""",
 
+    # something broken with react_type in joinable users
     'joinable_users': f"""
     CREATE TABLE IF NOT EXISTS schema.joinable_users (
         user_id BIGINT,
         guild_id BIGINT,
-        target_id BIGINT
+        target_id BIGINT,
         react_type INT DEFAULT 0,
+        CHECK (react_type in (0, 1, 2)),
         PRIMARY KEY (user_id, target_id),
-        FOREIGN KEY (joinrole_id, react_type) REFERENCES schema.joinableinfo (target_id, join_type)  ON DELETE CASCADE,
+        FOREIGN KEY (target_id, react_type) REFERENCES schema.joinableinfo (target_id, join_type) ON DELETE CASCADE,
         FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE
     );""",
 
@@ -183,11 +186,11 @@ define_tables = {
         base_channel_id BIGINT,
         target_id BIGINT,
         react_id INT,
-        react_type INT,
+        react_type INT DEFAULT 1,
         currtime TIMESTAMP DEFAULT current_timestamp,
-        PRIMARY KEY (base_message_id, react_id),
         CHECK (react_type in (0, 1, 2)),
-        FOREIGN KEY (joinrole_id, react_type) REFERENCES schema.joinableinfo (target_id, react_type) ON DELETE CASCADE,
+        PRIMARY KEY (base_message_id, react_id),
+        FOREIGN KEY (target_id, react_type) REFERENCES schema.joinableinfo (target_id, join_type) ON DELETE CASCADE,
         FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE
     );""",
 
@@ -231,7 +234,7 @@ define_tables = {
         guild_id BIGINT,
         type INT DEFAULT 0,
         CHECK (type = 0),
-        FOREIGN KEY (pingrole_id, type) REFERENCES schema.joinableinfo (target_id, react_type) ON DELETE CASCADE,
+        FOREIGN KEY (pingrole_id, type) REFERENCES schema.joinableinfo (target_id, join_type) ON DELETE CASCADE,
         PRIMARY KEY (subreddit, guild_id),
         UNIQUE (subreddit, type),
         FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE
@@ -244,7 +247,7 @@ define_tables = {
         pingrole_id BIGINT,
         type INT DEFAULT 0,
         CHECK (type = 0),
-        FOREIGN KEY (pingrole_id, type) REFERENCES schema.joinableinfo (target_id, react_type) ON DELETE CASCADE,
+        FOREIGN KEY (pingrole_id, type) REFERENCES schema.joinableinfo (target_id, join_type) ON DELETE CASCADE,
         UNIQUE (twitch, type),
         FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE,
         PRIMARY KEY (twitch, guild_id)
@@ -257,7 +260,7 @@ define_tables = {
         pingrole_id BIGINT,
         type INT DEFAULT 0,
         CHECK (type = 0),
-        FOREIGN KEY (pingrole_id, type) REFERENCES schema.joinableinfo (target_id, react_type) ON DELETE CASCADE,
+        FOREIGN KEY (pingrole_id, type) REFERENCES schema.joinableinfo (target_id, join_type) ON DELETE CASCADE,
         PRIMARY KEY (twitter, guild_id),
         UNIQUE (twitter, type),
         FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE
@@ -270,7 +273,7 @@ define_tables = {
         pingrole_id BIGINT,
         type INT DEFAULT 0,
         CHECK (type = 0),
-        FOREIGN KEY (pingrole_id, type) REFERENCES schema.joinableinfo (target_id, react_type) ON DELETE CASCADE,
+        FOREIGN KEY (pingrole_id, type) REFERENCES schema.joinableinfo (target_id, join_type) ON DELETE CASCADE,
         PRIMARY KEY (github, guild_id),
         UNIQUE (github, type),
         FOREIGN KEY (guild_id) REFERENCES schema.guilds (guild_id) ON DELETE CASCADE
