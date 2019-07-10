@@ -19,11 +19,10 @@ import asyncio
 
 # relative modules
 from cogs.utilities import (Colours, permissions)
-from cogs.utilities.functions import (current_time, extract_id,
-                                      get_member, get_role,
-                                      parse, get_channel, flatten,
-                                      extract_time, time_conv,
-                                      is_id)
+from cogs.utilities.functions import (current_time,
+    extract_id, get_member, get_role, get_channel,
+    flatten, extract_time, time_conv, is_id,
+    copy_snowflake)
 from cogs.utilities.embed_general import generic_embed
 from cogs.utilities.message_general import generic_message
 from cogs.utilities.embed_dialog import respond, iterator, confirm
@@ -133,7 +132,8 @@ class Administration(commands.Cog):
         if ctx.invoked_subcommand is None:
             gid = ctx.guild.id
             try:
-                tmp = await self.bot.pg.get_guild(gid, self.bot.logger)
+                tmp = await self.bot.pg.get_single_guild_settings(gid)
+                tmp = tmp[gid]
                 tmp = [[key, val] for (key, val) in tmp.items()]
                 config = []
                 for i in range(len(tmp)):
@@ -180,8 +180,9 @@ class Administration(commands.Cog):
         try:
             params = None
             e = None
-            params = await self.bot.pg.get_guild(ctx.guild.id, self.bot.logger)
+            params = await self.bot.pg.get_single_guild_settings(ctx.guild.id)
             failed = False
+            params = params[ctx.guild.id]
         except Exception as ec:
             e = ec
             failed = True
@@ -263,7 +264,7 @@ class Administration(commands.Cog):
         else:
             await responded.delete()
         # now apply changes
-        passed, failed = await self.bot.pg.set_multiple_records(ctx.guild.id, final, self.bot.logger)  # noqa
+        passed, failed = await self.bot.pg.set_multiple_records(ctx.guild.id, final)  # noqa
         return
 
     @config.command(name='change', aliases=['set', 'fix'])
@@ -289,7 +290,7 @@ class Administration(commands.Cog):
         gid = guild.id
         # get values at first
         try:
-            old = await self.bot.pg.get_single_record(gid, key, self.bot.logger)
+            old = await self.bot.pg.get_single_record(gid, key)
             # verify change
             if not await confirm(ctx, f'Do you want to change {guild.name} <{gid}> [<@{guild.owner.id}>] guild config of {key} from {old} to {val}?', 10):
                 return
@@ -300,7 +301,7 @@ class Administration(commands.Cog):
             return
         # now set values
         try:
-            success = await self.bot.pg.set_single_record(gid, key, val, self.bot.logger)
+            success = await self.bot.pg.set_single_record(gid, key, val)
             if not success:
                 await ctx.send(embed=internalerrorembed(f'Couldnt set guild config.'), delete_after=5)
                 await respond(ctx, False)
@@ -340,9 +341,7 @@ class Administration(commands.Cog):
         try:
             success = await self.bot.pg.set_prefix(
                 ctx.guild.id,
-                prefix,
-                self.bot.logger
-            )
+                prefix)
             if success:
                 self.bot.guild_settings[ctx.guild.id]['prefix'] = prefix
             await generic_message(ctx, [ctx.channel], f'Prefix `{prefix.strip()}` has been set.', 5)
@@ -473,7 +472,7 @@ class Administration(commands.Cog):
         """
         base_role = get_role(ctx, role)
         if base_role:
-            success = await self.bot.pg.set_colourtemplate(ctx.guild.id, base_role.id, self.bot.logger)
+            success = await self.bot.pg.set_colourtemplate(ctx.guild.id, base_role.id)
         else:
             success = False
 
@@ -659,7 +658,7 @@ class Administration(commands.Cog):
                 desc = ''
                 fields = [[key, val] for key, val in self.bot.current_giveaways.items()]
                 for i, f in enumerate(fields):
-                    f = await self.bot.pg.get_single_giveaways(f[0], True, self.bot.logger)
+                    f = await self.bot.pg.get_single_giveaways(f[0], True)
                     if not f:
                         continue
                     message = await ctx.channel.fetch_message(int(f['countdown_message_id']))
@@ -756,7 +755,7 @@ class Administration(commands.Cog):
             await ctx.send(embed=internalerrorembed(f'Couldn\'t find message with ID {message_id} in the giveaway channel! {e}'), delete_after=15)
             await respond(ctx, False)
             return
-        giveaway = await self.bot.pg.get_single_giveaways(message_id, True, self.bot.logger)
+        giveaway = await self.bot.pg.get_single_giveaways(message_id, True)
         if not giveaway:
             return
         if not await confirm(ctx, f'Are you sure you want to stop this giveaway with no winners: **{giveaway}**', 15):
@@ -768,7 +767,7 @@ class Administration(commands.Cog):
         thing = giveaway['content']
         embed.description = f'{ctx.author.mention} cancelled the giveaway with no winners!'
         await message.edit(embed=embed)
-        await self.giveaway_removal(ctx.channel, giveaway, [])
+        await self.giveaway_removal(giveaway, [])
         await ctx.send(f'Giveaway has been removed', delete_after=15)
         await ctx.message.delete()
         return
@@ -795,9 +794,9 @@ class Administration(commands.Cog):
             return
         if not await confirm(ctx, f'Are you sure you want to stop this giveaway and choose winners: **{message.jump_url}**', 15):
             return
-        giveaway = await self.bot.pg.get_single_giveaways(message_id, True, self.bot.logger)
-        await self.bot.pg.update_giveaway(giveaway['countdown_message_id'], ['endtime'], [datetime.datetime.utcnow()], self.bot.logger)
-        giveaway = await self.bot.pg.get_single_giveaways(message_id, True, self.bot.logger)
+        giveaway = await self.bot.pg.get_single_giveaways(message_id, True)
+        await self.bot.pg.update_giveaway(giveaway['countdown_message_id'], ['endtime'], [datetime.datetime.utcnow()])
+        giveaway = await self.bot.pg.get_single_giveaways(message_id, True)
         await self.gteardown(giveaway)
         await ctx.message.delete()
         return
@@ -831,8 +830,7 @@ class Administration(commands.Cog):
 
         # gather giveaway
         try:
-            giveaway = await self.bot.pg.get_single_giveaways(message_id, False, self.bot.logger)
-            users = await self.roll_user(message, giveaway)
+            giveaway = await self.bot.pg.get_single_giveaways(message_id, False)
         except (AttributeError, IndexError) as e:
             await respond(ctx, False)
             return await ctx.send(embed=internalerrorembed(f'Couldn\'t find message with ID {message_id} in the giveaway channel! {e}'), delete_after=15)
@@ -859,7 +857,8 @@ class Administration(commands.Cog):
                 content += f'The giveaway **{giveaway["content"]}** has been rerolled and {[w.mention for w in winner]} are the new winners!'
             await ctx.send(content)
             winner = [w.id for w in winner]
-            await self.bot.pg.update_giveaway(giveaway['countdown_message_id'], ['winners_id'], [winner + giveaway['winners_id']], self.bot.logger)
+            giveaway['winners_id'] = await self.bot.pg.get_giveaway_winners(message_id) 
+            await self.bot.pg.update_giveaway(giveaway['countdown_message_id'], ['winners_id'], [winner + giveaway['winners_id']])
         await ctx.message.delete()
         return
 
@@ -882,7 +881,7 @@ class Administration(commands.Cog):
                 remaining = endtime - now
                 remaining = int(remaining.total_seconds())
                 if remaining <= 0:
-                    giveaway = await self.bot.pg.get_single_giveaways(message_id, True, self.bot.logger)
+                    giveaway = await self.bot.pg.get_single_giveaways(message_id, True)
                     await self.gteardown(giveaway)
                 else:
                     coros.append(await self.gtimer(message_id, remaining))
@@ -908,7 +907,7 @@ class Administration(commands.Cog):
             Number of seconds remaining until the raffle should end
         """
         await asyncio.sleep(remaining)
-        giveaway = await self.bot.pg.get_single_giveaways(message_id, True, self.bot.logger)
+        giveaway = await self.bot.pg.get_single_giveaways(message_id, True)
         if giveaway:
             await self.gteardown(giveaway)
 
@@ -929,12 +928,13 @@ class Administration(commands.Cog):
             return
         if len(winners) > 0:
             winners = [w.id for w in winners]
-            await self.bot.pg.update_giveaway(message_id, ['winners_id', ], [winners,], self.bot.logger)
+            await self.bot.pg.add_giveaway_winners([winners,], message_id)
             win_msg = await self.giveaway_message(channel, winners, giveaway)
-            await self.bot.pg.update_giveaway(message_id, ['status', 'winner_message_id'], [True, win_msg.id], self.bot.logger)
-            giveaway = await self.bot.pg.get_single_giveaways(message_id, False, self.bot.logger)
+            await self.bot.pg.update_giveaway(message_id, ['status', 'winner_message_id'], [True, win_msg.id])
+            giveaway = await self.bot.pg.get_single_giveaways(message_id, False)
+            giveaway['winners_id'] = winners
             await self.giveaway_complete(message, giveaway)
-        await self.giveaway_removal(channel, giveaway, winners)
+        await self.giveaway_removal(giveaway, winners)
         pass
 
     async def roll_user(self, message: discord.Message, giveaway) -> discord.Member:
@@ -959,18 +959,20 @@ class Administration(commands.Cog):
             sampling = random.sample(users, min(len(users), giveaway['num_winners']))
             return sampling
 
-    async def giveaway_removal(self, channel: discord.TextChannel, giveaway, winners: list):
+    async def giveaway_removal(self, giveaway, winners: list):
         message_id = giveaway['countdown_message_id']
         del self.bot.current_giveaways[message_id]
         if len(winners) > 0:
             pass
         else:
-            await self.bot.pg.update_giveaway(message_id, ['status', 'winners_id', 'winner_message_id'], [True, [], 0], self.bot.logger)
+            await self.bot.pg.clear_giveaway_winners(message_id, giveaway['guild_id'],  self.bot.logger)
+            await self.bot.pg.update_giveaway(message_id, ['status', 'winner_message_id'], [True, 0])
         pass
 
     async def giveaway_complete(self, message, giveaway):
         embed = message.embeds[0]
         winner = giveaway["winners_id"]
+        await self.bot.pg.add_giveaway_winners(giveaway["winners_id"], giveaway["countdown_message_id"])
         winner = [await message.guild.fetch_member(x) for x in winner]
         embed.title = f'🎉Giveaway Ended🎉'
         thing = giveaway['content']
@@ -1015,7 +1017,7 @@ class Administration(commands.Cog):
         dtype: str
             Type of the destinations for the reactions: role, channel, category
         content: str
-            'group name' destination id/mention | ...
+            destination id/mention | ...
 
         Returns
         -------
@@ -1023,15 +1025,7 @@ class Administration(commands.Cog):
         """
         if await permissions.is_cmd_blacklisted(self.bot, ctx, 'quickreact', only_global=True):
             return
-        # gather groupname
-        first_i, second_i = None, None
-        try:
-            first_i = content.index("'")
-            second_i = content[first_i + 1:].index("'")
-        except ValueError:
-            group_name = ' \n'
-        else:
-            group_name = content[first_i + 1:second_i + 1] + '\n'
+
         # get to first param
         i = 0
         while not is_id(content[i]):
@@ -1044,22 +1038,28 @@ class Administration(commands.Cog):
         guild_id = ctx.guild.id
         success = []
         failed = []
-        newcontent = f'**{group_name}**\n'
-        newcontent += '```\n'
+        newcontent = '```'
         print(content)
         for i, dest in enumerate(content):
-            i += int('1F1E6', 16)
-            print(dest)
+            i += int('1F1E6', 16)  # this sets up the react 1,2,3,4 numbers in hexadecimal
+            print('Nonextr:', dest)
             dest = extract_id(dest)
+            print('Extr:', dest)
             if dest in success:
                 continue
             try:
                 if dtype == 0:
                     target = ctx.guild.get_role(int(dest))
+                    target = copy_snowflake(target)
                     target._type = 'role'
-                elif dtype >= 1:
+                elif dtype == 1:
                     target = ctx.guild.get_channel(int(dest))
-                    target._type = 'Channel'
+                    target = copy_snowflake(target)
+                    target._type = 'channel'
+                else:
+                    target = get_channel(ctx, t[0])
+                    target = copy_snowflake(target)
+                    target._type = 'category'
                 if not target:
                     raise RuntimeError
             except Exception as e:
@@ -1067,28 +1067,25 @@ class Administration(commands.Cog):
                 failed.append(dest)
                 continue
             try:
-                status = await self._radd(ctx,
+                status = await self._radd(ctx=ctx,
                                      base_message_id=react_message.id,
                                      base_channel_id=react_message.channel.id,
                                      guild_id=guild_id,
                                      target_id=target.id,
-                                     group_id=-1,
-                                     group_name=group_name,
                                      name=target.name,
-                                     dtype=dtype,
+                                     react_type=dtype,
                                      url='',
                                      react_id=i,
                                      info='')
             except Exception as e:
-                print('Error in adding:' + str(e))
+                print('Error in adding in qr:' + str(e))
                 status = False
             if status:
                 success.append(dest)
-                self.bot.current_react.append(int(''.join([str(val) for val in [react_message.id, i]])))
                 reaction = chr(i)
                 print(reaction)
                 await react_message.add_reaction(reaction)
-                newcontent += f'{reaction}: {target._type} {target.name}\n'
+                newcontent += f'{reaction}: {target._type}: {target.name}; \n'
             else:
                 failed.append(dest)
         if len(success) > 0:
@@ -1097,6 +1094,7 @@ class Administration(commands.Cog):
             await ctx.message.delete()
         else:
             await ctx.send(embed=internalerrorembed(f'Something went wrong setting up the react system: {success}, {failed}'), delete_after=20)
+            await react_message.delete()
             await respond(ctx, False)
             return
 
@@ -1120,32 +1118,192 @@ class Administration(commands.Cog):
         """
         if await permissions.is_cmd_blacklisted(self.bot, ctx, 'reactsetup', only_global=True):
             return
+        # determine if bulk reacts under single message or one message per react
+        steps = await iterator(ctx, {'What style of react system do you want (separate or batched messages)': '(-1 defaults to batch)'}, 25, False, False, on_timeout_cancel=True)
+        if steps[0] == 'cancel':
+            print('canceling')
+            iterator_status = False
+            await react_message.delete()
+            await respond(ctx, False)
+            return
+        elif steps[0] == 'exit':
+            react_system_type = 0
+        elif steps[-1]['What style of react system do you want (separate or batched messages)'] == '':
+            react_system_type = 0
+        else:
+            react_system_type = 1
+
+        # do method 1, then do method 2
+
         # gather groupname
         react_message = await ctx.send('🚧This message is under construction. Will serve as the base for reaction system. Don\'t delete!🚧')
         guild_id = ctx.guild.id
         success = []
         failed = []
-        iterator_i = 0
         iterator_status = True
-        while iterator_status:
-            questions = {'What is the name of the group\'s target': '',
-                         'What is the target (must match type)': 'id or mentionable',
+        newcontent = '```'
+        i = 0
+        while iterator_status and i < 20:
+            questions = {'What is the target destination (must match type)': 'id or mentionable',
                          'What is the type of the target': 'role',
+                         'What is the url for the target ()': '',
                          'What is the name of the target (blank for target.name resolution)': '',
-                         'What is the url for the target': '',
-                         'What is the info for the target': ''}
-            steps = await iterator(ctx, questions, 25, False)
+                         'What is the info for the target ()': ''}
+            react = i + int('1F1E6', 16)  # this sets up the react 1,2,3,4 numbers in hexadecimal
+            i += 1
+            steps = await iterator(ctx, questions, 25, False, False, on_timeout_cancel=True)
+            if steps[0] == 'cancel':
+                print('canceling')
+                iterator_status = False
+                await react_message.delete()
+                await respond(ctx, False)
+                return
+            elif steps[0] == 'exit':
+                iterator_status = False
+            else:
+                t = steps[-1]
+                print('t:', t)
+                dtype = self.RDtype().convert(None, t['What is the type of the target'])
+                try:
+                    if dtype == 0:
+                        target = get_role(ctx, t['What is the target destination (must match type)'])
+                        target = copy_snowflake(target)
+                        target._type = 'role'
+                    elif dtype == 1:
+                        target = get_channel(ctx, t['What is the target destination (must match type)'])
+                        target = copy_snowflake(target)
+                        target._type = 'channel'
+                    else:
+                        target = get_channel(ctx, t['What is the target destination (must match type)'])
+                        target = copy_snowflake(target)
+                        target._type = 'category'
+                    if not target:
+                        raise RuntimeError
+                except Exception as e:
+                    print('Error in fetching:' + str(e))
+                    pass
+                if t['What is the name of the target (blank for target.name resolution)'] != '':
+                    target.name = t['What is the name of the target (blank for target.name resolution)']
+                if t['What is the url for the target ()'] != '':
+                    target.url = t['What is the url for the target ()']
+                if t['What is the info for the target ()'] != '':
+                    target.info = t['What is the info for the target ()']
+            if iterator_status:
+                try:
+                    status = await self._radd(ctx=ctx,
+                                         base_message_id=react_message.id,
+                                         base_channel_id=react_message.channel.id,
+                                         guild_id=guild_id,
+                                         target_id=target.id,
+                                         name=target.name,
+                                         react_type=dtype,
+                                         url=target.url,
+                                         react_id=react,
+                                         info=target.info)
+                except Exception as e:
+                    print('Error in adding:' + str(e))
+                    status = False
+                if status:
+                    success.append(target.id)
+                    reaction = chr(react)
+                    print(reaction)
+                    await react_message.add_reaction(reaction)
+                    newcontent += f'{reaction}: {target._type}: {target.name}; {target.info}\n'
+                else:
+                    failed.append(target.id)
+            else:
+                if len(success) > 0:
+                    newcontent += '```'
+                    await react_message.edit(content=newcontent)
+                    await ctx.message.delete()
+                else:
+                    await ctx.send(embed=internalerrorembed(f'Something went wrong setting up the react system: {success}, {failed}'), delete_after=20)
+                    await react_message.delete()
+                    await respond(ctx, False)
+                    return
+        print(steps)
 
-    async def _rdisplay():
+    @_rsetup.command(name='add', aliases=['a'])
+    @permissions.has_permissions(manage_server=True)
+    async def _rsetup_add(self, ctx: commands.Context):
+        """Complete react setup system.
+
+        The reactions are on a group and destination type system. So you can group reactions together by a similar grouping. When using the quickreact, this auto setups a new group. Modify this via `reactgroup`. Notice the single quotes for the group name in the content parameter
+
+        Parameters
+        ----------
+        dtype: str
+            Type of the destinations for the reactions: role, channel, category
+        content: str
+            'group name' destination id : info about the role | ...
+
+        Returns
+        -------
+
+        """
         pass
-    async def _rlist():
+
+    @_rsetup.command(name='remove', aliases=['del', 'rm'])
+    @permissions.has_permissions(manage_server=True)
+    async def _rsetup_rm(self, ctx: commands.Context, react: str, message_link: str=None, channel_id: str=None, message_id: int=None):
+        """Remove a react from the message
+
+        Need either message_link OR channel_id and message_id
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
+        """
+        if message_link:
+            channel_id, message_id = message_link.split('/')[-2:]
+        try:
+            channel = fetch_message(int(message_id))
+        except:
+            self._rdel(guild_id=ctx.guild.id,base_message_id=message_id, react_id=react_id)
+
+
         pass
-    async def _radd(*args, **kwargs):
+
+# alright everything should be working. Just have to add a display, remove, and add in the logic for all 3 in postgres side
+
+    async def _rdisplay(self, **kwargs):
+        pass
+    async def _rlist(self, **kwargs):
+        pass
+    async def _radd(self, **kwargs):
+        try:
+            print('Reactadd: ', self.bot.current_react)
+            print('Kwargs:', kwargs)
+            self.bot.current_react.append(tuple([kwargs['guild_id'], kwargs['base_message_id'], kwargs['react_id']]))
+            await self.bot.pg.add_single_react(kwargs['guild_id'],
+                                         kwargs['base_message_id'],
+                                         kwargs['base_channel_id'],
+                                         kwargs['target_id'],
+                                         kwargs['react_id'],
+                                         kwargs['react_type'],
+                                         kwargs['url'],
+                                         kwargs['name'],
+                                         kwargs['info'],
+                                         self.bot.logger)
+        except Exception as e:
+            print(f'Error add react to db in radd: {e}')
+            return False
         return True
-    async def _rdel():
-        pass
 
-
+    async def _rdel(self, **kwargs):
+        try:
+            del self.bot.current_react[self.bot.current_react.index([kwargs['guild_id'], kwargs['base_message_id'], kwargs['react_id']])]
+            await self.bot.pg.delete_single_react(kwargs['guild_id'],
+                                            kwargs['base_message_id'],
+                                            kwargs['react_id'],
+                                            self.bot.logger)
+        except Exception as e:
+            print(f'Error removing react to db: {e}')
+            return False
+        return True
 
 if __name__ == "__main__":
     """Directly Called."""

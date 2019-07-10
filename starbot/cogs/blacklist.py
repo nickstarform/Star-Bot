@@ -7,7 +7,7 @@ from discord.ext import commands
 
 # relative modules
 from cogs.utilities import (Colours, permissions)
-from cogs.utilities.functions import (current_time, extract_id, get_member, parse, get_channel, flatten)
+from cogs.utilities.functions import (current_time, extract_id, get_member, get_channel, flatten)
 from cogs.utilities.embed_general import generic_embed
 from cogs.utilities.embed_dialog import respond
 from cogs.utilities.embed_errors import internalerrorembed
@@ -30,11 +30,9 @@ class Blacklist(commands.Cog):
         self.bot = bot
         super().__init__()
 
-
     """
     BLACKLIST
     """
-
     @commands.group(aliases=['blgu'], pass_context=True)
     @permissions.is_master()
     async def blacklistglobaluser(self, ctx):
@@ -90,7 +88,7 @@ class Blacklist(commands.Cog):
 
         try:
             for user in users:
-                success = await self.bot.pg.add_blacklist_user_global(user, self.bot.logger)
+                success = await self.bot.pg.add_blacklist_user_global(user)
                 if success:
                     added_users.append(user)
             if added_users:
@@ -145,7 +143,7 @@ class Blacklist(commands.Cog):
             for user in users:
                 success = False
                 try:
-                    success = await self.bot.pg.rem_blacklist_user_global(user, self.bot.logger)
+                    success = await self.bot.pg.rem_blacklist_user_global(user)
                     if success:
                         self.bot.blglobal.remove(int(user))
                         removed_users.append(user)
@@ -213,7 +211,7 @@ class Blacklist(commands.Cog):
 
     @blacklistglobalguild.command(name='add', pass_context=True)
     async def _blgga(self, ctx: commands.Context, *, gids: str=None):
-        """Add guild to global blacklist. 
+        """Add guild to global blacklist.
 
         Give id or trigger inside of a guild.
 
@@ -238,7 +236,7 @@ class Blacklist(commands.Cog):
 
         try:
             for guild in guilds:
-                success = await self.bot.pg.add_blacklist_guild_global(guild, self.bot.logger)
+                success = await self.bot.pg.add_blacklist_guild_global(guild)
                 if success:
                     added_guilds.append(guild)
             if added_guilds:
@@ -298,7 +296,7 @@ class Blacklist(commands.Cog):
             for guild in guilds:
                 success = False
                 try:
-                    success = await self.bot.pg.rem_blacklist_guild_global(guild, self.bot.logger)
+                    success = await self.bot.pg.rem_blacklist_guild_global(guild)
                     if success:
                         self.bot.blglobal.remove(int(guild))
                         removed_guilds.append(guild)
@@ -386,7 +384,7 @@ class Blacklist(commands.Cog):
 
         try:
             for cmd in cmds:
-                success = await self.bot.pg.add_disallowed_global(cmd, self.bot.logger)
+                success = await self.bot.pg.add_disallowed_global(cmd)
                 if success:
                     added_cmds.append(cmd)
             if added_cmds:
@@ -440,7 +438,7 @@ class Blacklist(commands.Cog):
             for cmd in cmds:
                 success = False
                 try:
-                    success = await self.bot.pg.rem_disallowed_global(cmd, self.bot.logger)
+                    success = await self.bot.pg.rem_disallowed_global(cmd)
                     if success:
                         removed_cmds.append(cmd)
                     else:
@@ -527,7 +525,7 @@ class Blacklist(commands.Cog):
 
         try:
             for user in flatten(users):
-                success = await self.bot.pg.add_blacklist_user(ctx.guild.id, user.id, self.bot.logger)
+                success = await self.bot.pg.add_blacklist_user(ctx.guild.id, user.id)
                 self.bot.guild_settings[ctx.guild.id]['blacklist_users'].append(user.id)
                 if success:
                     added_users.append(user.mention)
@@ -578,7 +576,7 @@ class Blacklist(commands.Cog):
                 success = False
                 # print('kjas:',user.id)
                 try:
-                    success = await self.bot.pg.rem_blacklist_user(ctx.guild.id, user.id, self.bot.logger)
+                    success = await self.bot.pg.rem_blacklist_user(ctx.guild.id, user.id)
                     if success:
                         self.bot.guild_settings[ctx.guild.id]['blacklist_users'].remove(user.id)
                         removed_users.append(user.mention)
@@ -675,7 +673,7 @@ class Blacklist(commands.Cog):
             channels = [ctx.channel]
         try:
             for channel in channels:
-                success = await self.bot.pg.add_blacklist_channel(ctx.guild.id, channel.id, self.bot.logger)
+                success = await self.bot.pg.add_blacklist_channel(ctx.guild.id, channel.id)
                 if success:
                     self.bot.guild_settings[ctx.guild.id]['blacklist_channels'].append(channel.id)
                     added_channel.append(channel.mention)
@@ -732,7 +730,7 @@ class Blacklist(commands.Cog):
             for channel in channels:
                 success = False
                 try:
-                    success = await self.bot.pg.rem_blacklist_channel(ctx.guild.id, channel.id, self.bot.logger)
+                    success = await self.bot.pg.rem_blacklist_channel(ctx.guild.id, channel.id)
                     if success:
                         removed_channel.append(channel.mention)
                         self.bot.guild_settings[ctx.guild.id]['blacklist_channels'].remove(channel.id)
@@ -822,7 +820,7 @@ class Blacklist(commands.Cog):
 
         try:
             for cmd in cmds:
-                success = await self.bot.pg.add_disallowed(ctx.guild.id, cmd, self.bot.logger)
+                success = await self.bot.pg.add_disallowed(ctx.guild.id, cmd)
                 if success:
                     added_cmds.append(cmd)
             if added_cmds:
@@ -876,7 +874,7 @@ class Blacklist(commands.Cog):
                 success = False
                 # print(cmd)
                 try:
-                    success = await self.bot.pg.rem_disallowed(ctx.guild.id, cmd, self.bot.logger)
+                    success = await self.bot.pg.rem_disallowed(ctx.guild.id, cmd)
                     if success:
                         removed_cmds.append(cmd)
                     else:

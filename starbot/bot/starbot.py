@@ -8,6 +8,7 @@ from logging import Formatter, INFO, StreamHandler, getLogger
 import importlib
 import sys
 from collections import Counter
+import traceback
 
 # external modules
 import asyncio
@@ -72,9 +73,10 @@ class Starbot(Bot):
             except Exception as e:
                 logger.critical(f'Error initializing DB - trying again in 5 seconds')
                 logger.debug(f'Error: {e}')
+                logger.debug(f'Traceback: {traceback.print_exc()}')
                 sleep(5)
         guild_settings = await pg.get_guild_settings()
-        current_giveaways = await pg.get_all_giveaways(True, logger)
+        current_giveaways = await pg.get_all_giveaways(True)
 
         # initalize blacklisting
         # this is an effort to reduce db polling
@@ -85,11 +87,24 @@ class Starbot(Bot):
         blglobal += tmp
         blglobal = flatten(blglobal)
         react = []
+        verified_settings = {}
         for guild in guild_settings:
-            t = await pg.get_allguild_reacts(guild, logger)
+            logger.info(f'Working on guild: {guild}')
+            # verify db
+            logger.info('Verifying Channels')
+            # await self.checkchans(pg, guild)
+            logger.info('Verifying Roles')
+            # await self.checkroles(pg, guild)
+            g = await pg.get_single_guild_settings(guild)
+            verified_settings[guild] = g.get(guild)
+            logger.info(f'Gathering Reacts')
+            t = await pg.get_allguild_reacts(guild)
             val = [str(val) for (key, val) in t.items()]
             if val:
                 react.append(val + [guild])
+
+        guild_settings = verified_settings
+
         print('Reacts:', react)
         return cls(Config, logger, pg, guild_settings, current_giveaways, blglobal, react)
 

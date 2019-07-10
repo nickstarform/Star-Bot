@@ -13,7 +13,7 @@ import sys
 from cogs.utilities import (Colours, permissions)
 from cogs.utilities.functions import (current_time,
     extract_id, flatten, is_id,
-    parse, ModAction, bannedmember,
+    ModAction, bannedmember,
     get_role, get_member, create_fake)
 from cogs.utilities.embed_general import generic_embed
 from cogs.utilities.message_general import generic_message
@@ -146,7 +146,7 @@ class Moderation(commands.Cog):
                     found_role.append(success[1])
                     del not_found[i]
         for r in found_role:
-            success = await self.bot.pg.add_joinable_role(ctx.guild.id, r.id, self.bot.logger)
+            success = await self.bot.pg.add_joinable_role(ctx.guild.id, r.id)
         embeds = generic_embed(
             title='Joinable roles',
             desc='Tried to add the following roles',
@@ -180,7 +180,7 @@ class Moderation(commands.Cog):
             passed = []
             failed = []
             for r in allroles:
-                success = await self.bot.pg.remove_joinable_role(ctx.guild.id, r, self.bot.logger)
+                success = await self.bot.pg.remove_joinable_role(ctx.guild.id, r)
                 if success:
                     passed.append(r)
                 else:
@@ -207,7 +207,7 @@ class Moderation(commands.Cog):
         for r in roles.replace(' ', '').split(','):
             role = get_role(ctx, r)
             try:
-                success = await self.bot.pg.remove_joinable_role(ctx.guild.id, role.id, self.bot.logger)
+                success = await self.bot.pg.remove_joinable_role(ctx.guild.id, role.id)
             except Exception as e:
                 await ctx.send(embed=eembed.internalerrorembed(f'Error removing joinableroles: {e}'), delete_after=5)
                 await respond(ctx, False)
@@ -256,7 +256,7 @@ class Moderation(commands.Cog):
             return
 
         if await self.bot.pg.is_single_joininfo(ctx.guild.id, role.id):
-            success = await self.bot.pg.set_single_joininfo(ctx.guild.id, role.id, info, self.bot.logger)
+            success = await self.bot.pg.set_single_joininfo(ctx.guild.id, role.id, info)
             embed = generic_embed(
                 title=f'Joinable Role Info',
                 desc=f'Set <@&{role.id}> with the info:\n{info}',
@@ -264,7 +264,7 @@ class Moderation(commands.Cog):
                 footer=current_time(),
                 colours=Colours.SUCCESS)[0]
         else:
-            success = await self.bot.pg.add_single_joininfo(ctx.guild.id, role.id, info, self.bot.logger)
+            success = await self.bot.pg.add_single_joininfo(ctx.guild.id, role.id, info)
             if success:
                 embed = generic_embed(
                     title=f'Joinable Role Info',
@@ -332,7 +332,7 @@ class Moderation(commands.Cog):
     async def setrole(self, ctx):
         """Change the user's roles."""
         if await permissions.is_cmd_blacklisted(self.bot, ctx, 'setrole'):
-            return 
+            return
         if ctx.invoked_subcommand is None:
             await respond(ctx, False)
             await ctx.send(embed=eembed.internalerrorembed(f'Invoke a subcommand, you most likely meant `add`'), delete_after=5)
@@ -572,7 +572,7 @@ class Moderation(commands.Cog):
                         5)
                     await respond(ctx, False)
                     return
-            footer = await self.bot.pg.get_kick_footer(ctx.guild.id, self.bot.logger)
+            footer = await self.bot.pg.get_kick_footer(ctx.guild.id)
             if (len(reason) + len(footer) + 25) > 500:
                     await generic_message(ctx, [ctx.channel],
                         "Mesage too long...",
@@ -627,7 +627,7 @@ class Moderation(commands.Cog):
             for channel in channels:
                 try:
                     ch = self.bot.get_channel(channel)
-                    await ch.send(embed=lembed.kickembed(user, ctx.author, reason))
+                    await ch.send(embed=embed_log.kickembed(user, ctx.author, reason))
                 except:
                     continue
             if not self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
@@ -636,7 +636,7 @@ class Moderation(commands.Cog):
             for channel in channels:
                 try:
                     ch = self.bot.get_channel(channel)
-                    await ch.send(embed=lembed.kickembed(user, ctx.author, reason))
+                    await ch.send(embed=embed_log.kickembed(user, ctx.author, reason))
                 except:
                     continue
 
@@ -655,7 +655,7 @@ class Moderation(commands.Cog):
         -------
         """
         embeds = []
-        footer = await self.bot.pg.get_kick_footer(ctx.guild.id, self.bot.logger)
+        footer = await self.bot.pg.get_kick_footer(ctx.guild.id)
         embed = generic_embed(
             title='<TESTING>❗KICKED❗',
             desc=f'You have been kicked from {ctx.guild.name}',
@@ -677,7 +677,7 @@ class Moderation(commands.Cog):
     @commands.guild_only()
     async def logban(self, ctx: commands.Context, member: str, *,
                      reason: str=None):
-        """Log a manual ban.
+        """Manually log a ban.
         """
         if await permissions.is_cmd_blacklisted(self.bot, ctx, 'logban'):
             return
@@ -720,7 +720,7 @@ class Moderation(commands.Cog):
         for channel in channels:
             try:
                 ch = self.bot.get_channel(channel)
-                await ch.send(embed=lembed.logbanembed(user, ctx.author, reason))
+                await ch.send(embed=embed_log.logbanembed(user, ctx.author, reason))
             except:
                 continue
         if not self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
@@ -729,7 +729,7 @@ class Moderation(commands.Cog):
         for channel in channels:
             try:
                 ch = self.bot.get_channel(channel)
-                await ch.send(embed=lembed.logbanembed(user, ctx.author, reason))
+                await ch.send(embed=embed_log.logbanembed(user, ctx.author, reason))
             except:
                 continue
 
@@ -777,7 +777,7 @@ class Moderation(commands.Cog):
                     5)
                 await respond(ctx, False)
                 return
-            footer = await self.bot.pg.get_ban_footer(ctx.guild.id, self.bot.logger)
+            footer = await self.bot.pg.get_ban_footer(ctx.guild.id)
             if (len(reason) + len(footer) + 25) > 500:
                 await generic_message(ctx, [ctx.channel],
                     "Mesage too long...",
@@ -832,16 +832,7 @@ class Moderation(commands.Cog):
             for channel in channels:
                 try:
                     ch = self.bot.get_channel(channel)
-                    await ch.send(embed=lembed.banembed(user, ctx.author, reason))
-                except:
-                    continue
-            if not self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
-                return
-            channels = await self.bot.pg.get_all_modlogs(ctx.guild.id)
-            for channel in channels:
-                try:
-                    ch = self.bot.get_channel(channel)
-                    await ch.send(embed=lembed.banembed(user, ctx.author, reason))
+                    await ch.send(embed=embed_log.banembed(user, ctx.author, reason))
                 except:
                     continue
 
@@ -859,7 +850,7 @@ class Moderation(commands.Cog):
         -------
         """
         embeds = []
-        footer = await self.bot.pg.get_ban_footer(ctx.guild.id, self.bot.logger)
+        footer = await self.bot.pg.get_ban_footer(ctx.guild.id)
         embed = generic_embed(
             title='<TESTING>❗BANNED❗',
             desc=f'You have been banned from {ctx.guild.name}',
@@ -968,16 +959,7 @@ class Moderation(commands.Cog):
             for channel in channels:
                 try:
                     ch = self.bot.get_channel(channel)
-                    await ch.send(embed=lembed.unbanembed(user, ctx.author, reason))
-                except:
-                    continue
-            if not self.bot.guild_settings[ctx.guild.id]['modlog_enabled']:
-                return
-            channels = await self.bot.pg.get_all_modlogs(ctx.guild.id)
-            for channel in channels:
-                try:
-                    ch = self.bot.get_channel(channel)
-                    await ch.send(embed=lembed.unbanembed(user, ctx.author, reason))
+                    await ch.send(embed=embed_log.unbanembed(user, ctx.author, reason))
                 except:
                     continue
 
@@ -1051,7 +1033,7 @@ class Moderation(commands.Cog):
 
         Returns
         -------
-        """          
+        """
         user = None
         if isinstance(member, type(None)):
             await ctx.send(embed=eembed.internalerrorembed(f'Need to specify a member by id or name.'), delete_after=15)
@@ -1215,7 +1197,7 @@ class Moderation(commands.Cog):
                 ctx.author.id,
                 member.id,
                 reason,
-                dtype, self.bot.logger)
+                dtype)
             embed = membed.warningaddembed(member, ctx.author, reason, dtype, count)
             await ctx.send(embed=embed)
             return
@@ -1287,7 +1269,7 @@ class Moderation(commands.Cog):
     async def _warnrm(self, ctx: commands.Context, member: str, index: int):
         """Remove a warning.
 
-        Doesn't remove the warning in actuality but sets 
+        Doesn't remove the warning in actuality but sets
         it to forgiven
 
         Parameters
@@ -1443,7 +1425,7 @@ class Moderation(commands.Cog):
                 index,
                 modaction,
                 reason,
-                forgive, 
+                forgive,
                 self.bot.logger)
             embed = membed.modeditembed(member, ctx.author, modaction, reason, count)
             await ctx.send(embed=embed)

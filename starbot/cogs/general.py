@@ -16,7 +16,7 @@ import asyncio
 # relative modules
 from cogs.utilities import (permissions,)
 from cogs.utilities.functions import (current_time,
-    get_role, parse, flatten) # noqa
+    get_role, flatten) # noqa
 from cogs.utilities.embed_dialog import respond, confirm
 from cogs.utilities import embed_errors as eembeds
 from cogs.utilities.embed_mod import guildreport
@@ -70,7 +70,7 @@ class General(commands.Cog):
         """
         if await permissions.is_cmd_blacklisted(self.bot, ctx, 'report'):
             return
-        rchan = await self.bot.pg.get_report_channel(ctx.guild.id, self.bot.logger)
+        rchan = await self.bot.pg.get_report_channel(ctx.guild.id)
         guild_owner = ctx.guild.owner
 
         report = []
@@ -82,7 +82,7 @@ class General(commands.Cog):
                              ctx.message.content, report)
         try:
             t = "\n".join([": ".join([r.author.mention, r.content]) for r in report])
-            await self.bot.pg.add_report(ctx.author.id, f'FromUser: <@{ctx.author.id}>, Messages:\n{t}', self.bot.logger)  # noqa
+            await self.bot.pg.add_report(ctx.author.id, f'FromUser: <@{ctx.author.id}>, Messages:\n{t}')  # noqa
         except Exception as e:
             self.bot.logger.warning(f'Error adding report: {e}')
             # print(e)
@@ -739,7 +739,7 @@ class General(commands.Cog):
         else:
             # create role
             # set user to join
-            base_role = await self.bot.pg.get_colourtemplate(ctx.guild.id, self.bot.logger)
+            base_role = await self.bot.pg.get_colourtemplate(ctx.guild.id)
             base_role = base_role[0].items().__next__()[1]
             if base_role:
                 success = await createrole(self.bot, ctx, role, base_role, color=True)

@@ -8,7 +8,7 @@ from discord.ext import commands
 
 # relative modules
 from cogs.utilities import (Colours, permissions)
-from cogs.utilities.functions import (current_time, parse, time_conv, get_channel, flatten)
+from cogs.utilities.functions import (current_time, time_conv, get_channel, flatten)
 from cogs.utilities.embed_general import generic_embed
 from cogs.utilities.message_general import generic_message
 from cogs.utilities.embed_dialog import respond
@@ -52,7 +52,7 @@ class Logger(commands.Cog):
         if ctx.invoked_subcommand:
             return
         try:
-            channels = await self.bot.pg.get_all_welcome_channels(ctx.guild.id, self.bot.logger)
+            channels = await self.bot.pg.get_all_welcome_channels(ctx.guild.id)
             channels = [f'<#{channel}>' for channel in channels]
             if len(channels) > 0:
                 embeds = generic_embed(title='Welcome channels', desc=f', '.join(channels), fields=[], footer=current_time())
@@ -171,7 +171,7 @@ class Logger(commands.Cog):
         if ctx.invoked_subcommand:
             return
         try:
-            channels = await self.bot.pg.get_all_logger_channels(ctx.guild.id, self.bot.logger)
+            channels = await self.bot.pg.get_all_logger_channels(ctx.guild.id)
             channels = [f'<#{channel}>' for channel in channels]
             if len(channels) > 0:
                 embeds = generic_embed(title='General logging channels', desc=f', '.join(channels), fields=[], footer=current_time())
@@ -293,7 +293,7 @@ class Logger(commands.Cog):
         if ctx.invoked_subcommand:
             return
         try:
-            channels = await self.bot.pg.get_all_modlogs(ctx.guild.id, self.bot.logger)
+            channels = await self.bot.pg.get_all_modlogs(ctx.guild.id)
             channels = [f'<#{channel}>' for channel in channels]
             if len(channels) > 0:
                 embeds = generic_embed(title='Moderation logging channels', desc=f', '.join(channels), fields=[], footer=current_time())
@@ -407,28 +407,27 @@ class Logger(commands.Cog):
         """
         if await permissions.is_cmd_blacklisted(self.bot, ctx, 'voicelogging', only_global=True):
             return
-        if ctx.invoked_subcommand:
-            return
-        try:
-            channels = await self.bot.pg.get_all_voice_channels(ctx.guild.id, self.bot.logger)
-            channels = [f'<#{channel}>' for channel in channels]
-            if len(channels) > 0:
-                embeds = generic_embed(title='Voice logging channels', desc=f', '.join(channels), fields=[], footer=current_time())
-            else:
-                embeds = generic_embed(title='Voice Logging channels', desc='No channels set', fields=[], footer=current_time())
-            for embed in embeds:
-                try:
-                    await ctx.send(embed=embed)
-                except Exception as e:
-                    await ctx.send(embed=internalerrorembed(f'Sending message Voice channels: {e}'), delete_after=15)
-                    self.bot.logger.warning(f'Error Sending Voice channels: {e}')
-                    await respond(ctx, False)
-                    continue
-        except Exception as e:
-            await ctx.send(embed=internalerrorembed(f'Error retrieving Voice channels: {e}'), delete_after=15)
-            self.bot.logger.warning(f'Error retrieving Voice channels: {e}')
-            await respond(ctx, False)
-            return
+        if not ctx.invoked_subcommand:
+            try:
+                channels = await self.bot.pg.get_all_voice_channels(ctx.guild.id)
+                channels = [f'<#{channel}>' for channel in channels]
+                if len(channels) > 0:
+                    embeds = generic_embed(title='Voice logging channels', desc=f', '.join(channels), fields=[], footer=current_time())
+                else:
+                    embeds = generic_embed(title='Voice Logging channels', desc='No channels set', fields=[], footer=current_time())
+                for embed in embeds:
+                    try:
+                        await ctx.send(embed=embed)
+                    except Exception as e:
+                        await ctx.send(embed=internalerrorembed(f'Sending message Voice channels: {e}'), delete_after=15)
+                        self.bot.logger.warning(f'Error Sending Voice channels: {e}')
+                        await respond(ctx, False)
+                        continue
+            except Exception as e:
+                await ctx.send(embed=internalerrorembed(f'Error retrieving Voice channels: {e}'), delete_after=15)
+                self.bot.logger.warning(f'Error retrieving Voice channels: {e}')
+                await respond(ctx, False)
+                return
 
     @_vclog.command(name='remove', aliases=['rm', '-'])
     @commands.guild_only()
@@ -472,7 +471,7 @@ class Logger(commands.Cog):
     @_vclog.command(name='add', aliases=['a', '+'])
     @commands.guild_only()
     @permissions.is_admin()
-    async def _vclogadd(self, ctx, channels: str=None):
+    async def _vclogadd(self, ctx, *, channels: str=None):
         """Voice Logging channel add.
 
         Add either the specified channel
@@ -493,6 +492,10 @@ class Logger(commands.Cog):
             for channel in channels.split(','):
                 toadd.append(get_channel(ctx, channel))
         toadd = flatten(toadd)
+        try:
+            await self.bot.pg.set_voice_enabled(ctx.guild.id, True)
+        except:
+            pass
         try:
             for target in toadd:
                 success = await self.bot.pg.add_voice_channel(

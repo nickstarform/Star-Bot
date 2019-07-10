@@ -10,7 +10,7 @@ import asyncio
 
 # relative modules
 from cogs.utilities import (Colours, permissions)
-from cogs.utilities.functions import (current_time, extract_id, parse, time_conv)
+from cogs.utilities.functions import (current_time, extract_id, time_conv)
 from cogs.utilities.embed_general import generic_embed
 from cogs.utilities.message_general import generic_message
 from cogs.utilities.embed_dialog import respond, confirm
@@ -195,9 +195,8 @@ class Owner(commands.Cog):
             if not gid:
                 await respond(ctx, False)
                 return
-            config = await self.bot.pg.get_guild(gid, self.bot.logger)
+            config = await self.bot.pg.get_single_guild_settings(gid)
             print('config', config, )
-            config = parse(config)
             guild = self.bot.get_guild(int(gid))
             ctitle = f'{guild.name} Configuration'
             cdesc = ''
@@ -241,7 +240,7 @@ class Owner(commands.Cog):
                 raise Exception('Couldn\'t find guild')
             if not await confirm(ctx, f'Do you want to reset {guild.name} <{gid}> [<@{guild.owner.id}>] guild config?', 10):
                 return
-            if not await self.bot.pg.drop_guild(guild.id, self.bot.logger):
+            if not await self.bot.pg.drop_guild(guild.id):
                 raise Exception('Couldn\'t drop the guild')
             await ctx.send(f'Successfully removed guild <{guild.name}>.')
             await respond(ctx, True)
@@ -284,7 +283,7 @@ class Owner(commands.Cog):
             return
         # get values at first
         try:
-            old = await self.bot.pg.get_single_record(gid, key, self.bot.logger)
+            old = await self.bot.pg.get_single_record(gid, key)
             # verify change
             if not await confirm(ctx, f'Do you want to change {guild.name} <{gid}> [<@{guild.owner.id}>] guild config of {key} from {old} to {val}?', 10):
                 return
@@ -295,7 +294,7 @@ class Owner(commands.Cog):
             return
         # now set values
         try:
-            success = await self.bot.pg.set_single_record(gid, key, val, self.bot.logger)
+            success = await self.bot.pg.set_single_record(gid, key, val)
             if not success:
                 await ctx.send(embed=internalerrorembed(f'Couldnt set guild config.'), delete_after=5)
                 await respond(ctx, False)
@@ -360,7 +359,7 @@ class Owner(commands.Cog):
             failed = False
             if macro:
                 try:
-                    m = await self.bot.pg.get_single_global_macro(macro, self.bot.logger)
+                    m = await self.bot.pg.get_single_global_macro(macro)
                     if not m:
                         embed = internalerrorembed(f'Could\'t find macro: {macro}')
                         failed = True
@@ -371,7 +370,7 @@ class Owner(commands.Cog):
                 failed = True
                 embed = internalerrorembed(f'Need to invoke subcommands or give macro to poll')
             if not failed:
-                await ctx.send(f'{parse(m)[0][1][1]}')
+                await ctx.send(f'{m["content"]}')
                 await ctx.message.delete()
                 return
             else:
@@ -403,7 +402,7 @@ class Owner(commands.Cog):
         if not failed:
             embeds = generic_embed(
                 title='Macro List',
-                desc=f'{", ".join([x[0][1] for x in parse(m)])}',
+                desc=f'{", ".join([x["name"] for x in m])}',
                 fields=[])
             for embed in embeds:
                 await ctx.send(embed=embed)
@@ -431,7 +430,7 @@ class Owner(commands.Cog):
         -------
         """
         try:
-            m = await self.bot.pg.add_single_global_macro(macro, content, self.bot.logger)
+            m = await self.bot.pg.add_single_global_macro(macro, content)
             if not m:
                 embed = internalerrorembed(f'Could\'t find macro: {macro}')
                 await respond(ctx, False)
@@ -460,7 +459,7 @@ class Owner(commands.Cog):
         -------
         """
         try:
-            m = await self.bot.pg.delete_single_global_macro(macro, self.bot.logger)
+            m = await self.bot.pg.delete_single_global_macro(macro)
             if not m:
                 embed = internalerrorembed(f'Could\'t find macro: {macro}')
                 await respond(ctx, False)
@@ -490,7 +489,7 @@ class Owner(commands.Cog):
         -------
         """
         try:
-            m = await self.bot.pg.set_single_global_macro(macro, content, self.bot.logger)
+            m = await self.bot.pg.set_single_global_macro(macro, content)
             if not m:
                 embed = internalerrorembed(f'Could\'t find macro: {macro}')
                 await respond(ctx, False)
@@ -520,13 +519,12 @@ class Owner(commands.Cog):
         Returns
         -------
         """
-        if ctx.invoked_subcommand is None:
+        if ctx.invoked_subcommand == None:
             reports_all = await self.bot.pg.get_all_reports()
-            reports_all = parse(reports_all)
             desc = '**Global Reports**\n'
             for reports in reports_all:
-                desc += f'`Report #{reports[2][1]}` from <@{reports[0][1]}> at {time_conv(reports[-1][1])}:\n'
-                desc += f'{reports[1][1]}\n'
+                desc += f'`Report #{reports["id"]}` from <@{reports["user_id"]}> about guild: <@{reports["guild_id"]}> at {time_conv(reports["currtime"])}:\n'
+                desc += f'{reports["message"]}\n'
             if len(reports_all) == 0:
                 desc = 'No global reports'
             await generic_message(ctx, [ctx.channel], desc, -1, splitwith='')

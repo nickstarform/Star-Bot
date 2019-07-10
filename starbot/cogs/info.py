@@ -11,7 +11,7 @@ from discord.utils import snowflake_time
 # relative modules
 from cogs.utilities import (Colours, permissions)
 from cogs.utilities.functions import (current_time,
-    get_role, get_member, parse, time_conv) # noqa
+    get_role, get_member, time_conv) # noqa
 from cogs.utilities.embed_general import generic_embed
 from cogs.utilities.message_general import generic_message
 from cogs.utilities.embed_dialog import respond
@@ -245,10 +245,10 @@ class Info(commands.Cog):
             return
         try:
             if await self.bot.pg.is_single_joininfo(ctx.guild.id, role.id):
-                t = await self.bot.pg.get_single_joininfo(ctx.guild.id, role.id, self.bot.logger)
-                desc = f'Info about the role:\n{parse(t)[0][-2][1]}'
+                t = await self.bot.pg.get_single_joininfo(ctx.guild.id, role.id)
+                desc = f'Info about the role:\n{t["url"]}\n{t["info"]}'
             else:
-                desc = ''
+                desc = 'Not a joinable role'
             embeds = generic_embed(
                 title=f'Users in role: {role.name}',
                 desc=desc,
