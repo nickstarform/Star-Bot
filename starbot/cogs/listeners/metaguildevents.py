@@ -70,9 +70,9 @@ class MetaGuildEvents(commands.Cog):
         if isinstance(guild, type(None)):
             return
         # clear out any giveaways in guild
-        giveaways = await self.bot.pg.get_all_giveaways_guild(guild.id, True, self.bot.logger)
+        giveaways = await self.bot.pg.get_all_giveaways_guild(guild.id, True)
         for give in giveaways:
-            status = await self.bot.pg.update_giveaway(give, ['status'], [True], self.bot.logger)
+            status = await self.bot.pg.update_giveaway(give, ['status'], [True])
             del self.bot.current_giveaways[give]
         del self.bot.guild_settings[guild.id]
         user = await self.bot.fetch_user(int(self.bot.config.owner_id.value))

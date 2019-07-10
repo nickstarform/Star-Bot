@@ -3,17 +3,29 @@
 # internal modules
 
 # external modules
+from discord.ext import commands
 
 # relative modules
+from cogs.utilities.embed_errors import internalerrorembed
+from cogs.utilities.functions import flatten
 
 # global attributes
-__all__ = ('test', 'main', 'Default')
+__all__ = ('VoiceLog',)
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
 
+class VoiceLog(commands.Cog):
+    """."""
+    def __init__(self, bot):
+        """."""
+        self.bot = bot
+        super().__init__()
+        for func in [self.on_voice_state_update, self.on_voice_state_update]:
+            bot.add_listener(func)
+
     async def on_voice_state_update(self, member, before, after):
-        vc_logging = await self.bot.pg_utils.get_voice_logging(
+        vc_logging = await self.bot.pg.get_voice_logging(
             member.guild.id)
         if not vc_logging:
             return
