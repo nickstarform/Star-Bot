@@ -18,8 +18,8 @@ __all__ = ('joinembed',
            'roleremoveembed',
            'messageeditembed',
            'messagedeleteembed',
-           'voicechannelstateembed',
-           'voicechannelmoveembed',
+           'vcpresenceembed',
+           'vcchangeembed',
            'kickembed',
            'logbanembed',
            'banembed',
@@ -194,7 +194,7 @@ def messagedeleteembed(message_user: discord.User, old_message: str, channel_nam
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 
-def voicechannelstateembed(channel_user: discord.User, action: str, channel_name: str):
+def vcpresenceembed(channel_user: discord.User, action: str, channel_name: str):
     """Embed for user voice channel join/leave event.
 
     Parameters
@@ -211,14 +211,14 @@ def voicechannelstateembed(channel_user: discord.User, action: str, channel_name
     discord.Embed
         embedded object to send message
     """
-    ctitle = 'Presence Update'
+    ctitle = 'Voice Channel Update'
     cdesc = f'**{channel_user.name}#{channel_user.discriminator}**'\
                  f' has {action} **{channel_name}**.'
     ccolour = Colours.CHANGE_S
     return generic_embed(ctitle, cdesc, [], current_time(), ccolour)[0]
 
 
-def voicechannelmoveembed(channel_user: discord.User, before_channel: str, after_channel: str):
+def vcchangeembed(channel_user: discord.User, before_channel: str, after_channel: str):
     """Embed for user voice channel move event.
 
     Parameters

@@ -519,7 +519,7 @@ class Owner(commands.Cog):
         Returns
         -------
         """
-        if ctx.invoked_subcommand == None:
+        if ctx.invoked_subcommand is None:
             reports_all = await self.bot.pg.get_all_reports()
             desc = '**Global Reports**\n'
             for reports in reports_all:

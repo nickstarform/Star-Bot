@@ -67,7 +67,7 @@ class Blacklist(commands.Cog):
                 await ctx.send(embed=embed)
 
     @blacklistglobaluser.command(name='add', pass_context=True)
-    async def _blgua(self, ctx: commands.Context, uids: str=None):
+    async def _blgua(self, ctx: commands.Context, *, uids: str=None):
         """Add user to global blacklist.
 
         Parameters
@@ -119,7 +119,7 @@ class Blacklist(commands.Cog):
             await ctx.send(embed=embed, delete_after=5)
 
     @blacklistglobaluser.command(name='remove', aliases=['rem', 'del', 'rm'])
-    async def _blgur(self, ctx: commands.Context, uids: str=None):
+    async def _blgur(self, ctx: commands.Context, *, uids: str=None):
         """Removes a user from the blacklist.
 
         Parameters
@@ -267,7 +267,7 @@ class Blacklist(commands.Cog):
             await respond(ctx, False)
 
     @blacklistglobalguild.command(name='remove', aliases=['rem', 'del', 'rm'])
-    async def _blggr(self, ctx: commands.Context, gids: str=None):
+    async def _blggr(self, ctx: commands.Context, *, gids: str=None):
         """Removes a guild from the blacklist.
 
         Give id or trigger inside of a guild.
@@ -361,7 +361,7 @@ class Blacklist(commands.Cog):
                 await ctx.send(embed=embed)
 
     @blacklistglobalcmd.command(name='add', pass_context=True)
-    async def _blgca(self, ctx: commands.Context, cmds: str=None):
+    async def _blgca(self, ctx: commands.Context, *, cmds: str=None):
         """Add command to global blacklist.
 
         Parameters
@@ -412,7 +412,7 @@ class Blacklist(commands.Cog):
             await respond(ctx, False)
 
     @blacklistglobalcmd.command(name='remove', aliases=['rem', 'del', 'rm'])
-    async def _blgcr(self, ctx: commands.Context, cmds: str=None):
+    async def _blgcr(self, ctx: commands.Context, *, cmds: str=None):
         """Removes a command from the blacklist.
 
         Parameters

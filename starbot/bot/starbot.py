@@ -100,6 +100,8 @@ class Starbot(Bot):
             logger.info(f'Gathering Reacts')
             t = await pg.get_allguild_reacts(guild)
             val = [str(val) for (key, val) in t.items()]
+            print(f'Reacts {guild}: {val}')
+            print(f'Settings: {verified_settings[guild]}')
             if val:
                 react.append(val + [guild])
 

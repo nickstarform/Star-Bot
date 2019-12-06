@@ -1,3 +1,27 @@
+"""."""
+
+# internal modules
+
+# external modules
+import discord
+from discord.ext import commands
+
+# relative modules
+
+# global attributes
+__all__ = ('ReactEvents',)
+__filename__ = __file__.split('/')[-1].strip('.py')
+__path__ = __file__.strip('.py').strip(__filename__)
+
+
+class ReactEvents(commands.Cog):
+    """."""
+    def __init__(self, bot):
+        """."""
+        self.bot = bot
+        super().__init__()
+        for func in [self.on_raw_reaction_add, self.on_raw_reaction_remove]:
+            bot.add_listener(func)
 
     async def on_raw_reaction_add(self, payload):
         """
@@ -46,3 +70,13 @@
             await channel.set_permissions(user, read_messages=False)
         except Exception as e:
             self.bot.logger.warning(f'{e}')  
+
+if __name__ == "__main__":
+    """Directly Called."""
+
+    print('Testing module')
+    print('Test Passed')
+
+# end of code
+
+# end of file

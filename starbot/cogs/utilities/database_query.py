@@ -261,7 +261,6 @@ class Controller():
         row = await self.pool.fetchrow(sql, int(user_id))
         return True if row else False
 
-
     async def add_disallowed_global(self, cmd: str): # noqa
         """Add Disallowed Global Commands.
 

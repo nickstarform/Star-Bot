@@ -61,7 +61,7 @@ class MessageEvents(commands.Cog):
             return
 
     async def on_message_delete(self, message):
-        """If message is deleted.
+        """If message is dvoice_loggingeleted.
 
         Parameters
         ----------

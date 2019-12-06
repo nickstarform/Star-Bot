@@ -10,12 +10,12 @@ from cogs.utilities.embed_errors import internalerrorembed
 from cogs.utilities.functions import flatten
 
 # global attributes
-__all__ = ('GuildChanges',)
+__all__ = ('UserEvents',)
 __filename__ = __file__.split('/')[-1].strip('.py')
 __path__ = __file__.strip('.py').strip(__filename__)
 
 
-class GuildChanges(commands.Cog):
+class UserEvents(commands.Cog):
     """."""
     def __init__(self, bot):
         """."""
