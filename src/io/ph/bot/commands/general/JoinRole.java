@@ -64,8 +64,8 @@ public class JoinRole extends Command {
                         return;
                     }
                 }
-                msg.getGuild().getController()
-                .addRolesToMember(msg.getGuild().getMember(msg.getAuthor()), r).queue(
+                msg.getGuild()
+                .addRoleToMember(msg.getGuild().getMember(msg.getAuthor()), r).queue(
                         success -> {
                             em.setTitle("Success", null)
                             .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))

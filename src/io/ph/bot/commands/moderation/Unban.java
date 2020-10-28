@@ -72,7 +72,7 @@ public class Unban extends Command {
             SQLUtils.closeQuietly(stmt);
             SQLUtils.closeQuietly(conn);
         }
-        msg.getGuild().getController().unban(target).queue(success -> {
+        msg.getGuild().unban(target).queue(success -> {
             em.setTitle("Success", null)
             .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
             .setDescription(target.getName() + " has been unbanned")

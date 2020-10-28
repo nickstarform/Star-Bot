@@ -235,7 +235,7 @@ public class Listeners extends ListenerAdapter {
             if (r == null) {
                 g.getConfig().setAutoAssignRoleId("");
             } else {
-                e.getGuild().getController().addRolesToMember(e.getMember(), r).queue();
+                e.getGuild().addRoleToMember(e.getMember(), r).queue();
             }
         }
     }
@@ -266,16 +266,16 @@ public class Listeners extends ListenerAdapter {
         .setTimestamp(Instant.now());
 
         if (!g.getSpecialChannels().getLog().equals("")) {
-            if (e.getPrevNick() != null && e.getNewNick() != null) {
-                em.setDescription("**" + e.getPrevNick() + "** to **" + e.getNewNick() + "**");
+            if (e.getOldNickname() != null && e.getNewNickname() != null) {
+                em.setDescription("**" + e.getOldNickname() + "** to **" + e.getNewNickname() + "**");
                 em.setAuthor(e.getMember().getUser().getName() + " changed their nickname",
                         null, e.getMember().getUser().getAvatarUrl());
-            } else if (e.getPrevNick() != null && e.getNewNick() == null) {
-                em.setDescription("**" + e.getPrevNick() + "** to **" + e.getMember().getUser().getName() + "**");
+            } else if (e.getOldNickname() != null && e.getNewNickname() == null) {
+                em.setDescription("**" + e.getOldNickname() + "** to **" + e.getMember().getUser().getName() + "**");
                 em.setAuthor(e.getMember().getUser().getName() + " removed their nickname",
                         null, e.getMember().getUser().getAvatarUrl());
             } else {
-                em.setDescription("**" + e.getMember().getUser().getName() + "** to **" + e.getNewNick() + "**");
+                em.setDescription("**" + e.getMember().getUser().getName() + "** to **" + e.getNewNickname() + "**");
                 em.setAuthor(e.getMember().getUser().getName() + " added a nickname", null, 
                         e.getMember().getUser().getAvatarUrl());
             }

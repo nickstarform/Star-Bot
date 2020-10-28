@@ -13,7 +13,6 @@ import org.apache.commons.configuration.PropertiesConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.ph.bot.audio.stream.listenmoe.ListenMoeSocket;
 import io.ph.bot.events.CustomEventDispatcher;
 import io.ph.bot.exception.NoAPIKeyException;
 import io.ph.bot.feed.TwitterEventListener;
@@ -76,20 +75,19 @@ public class Bot {
                         .setToken(botConfig.getToken())
                         .setStatus(OnlineStatus.DO_NOT_DISTURB)
                         .setActivity(Activity.playing("launching..."))
-                        .addEventListener(new Listeners(), new ModerationListeners(), new VoiceChannelListeners())
+                        .addEventListeners(new Listeners(), new ModerationListeners(), new VoiceChannelListeners())
                         .useSharding(i, SHARD_COUNT)
-                        .buildBlocking());
+                        .build());
             }
         } else {
             jdaClients.add(new JDABuilder(AccountType.BOT)
                     .setToken(botConfig.getToken())
                     .setStatus(OnlineStatus.DO_NOT_DISTURB)
                     .setActivity(Activity.playing("launching..."))
-                    .addEventListener(new Listeners(), new ModerationListeners(), new VoiceChannelListeners())
-                    .buildBlocking());
+                    .addEventListeners(new Listeners(), new ModerationListeners(), new VoiceChannelListeners())
+                    .build());
         }
         shards = new Shards();
-        State.changeBotAvatar(new File("resources/avatar/" + Bot.getInstance().getConfig().getAvatar()));
         State.changeBotPresence(OnlineStatus.ONLINE);
         initialize();
         isReady = true;
@@ -114,9 +112,6 @@ public class Bot {
         JobScheduler.initializeScheduler();
         TwitterEventListener.initTwitter();
         WebsocketServer.getInstance().start();
-        if (!Bot.getInstance().getConfig().isCompanionBot()) {
-            ListenMoeSocket.getInstance().connect();
-        }
     }
 
     public boolean loadProperties() {
@@ -341,8 +336,10 @@ public class Bot {
          */
         public User getUserById(long userId) {
             for (JDA j : jdaClients) {
-                User u;
-                if ((u = j.getUserById(userId)) != null) {
+                User u = j.getUserById(userId);
+                if (u != null) {
+                    String s = String.valueOf(userId);
+                    System.out.println(s);
                     return u;
                 }
             }

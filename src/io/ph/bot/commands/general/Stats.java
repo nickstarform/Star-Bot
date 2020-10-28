@@ -42,7 +42,7 @@ public class Stats extends Command {
         .addField("Text Channels", msg.getGuild().getTextChannels().size() + "", true)
         .addField("Voice Channels", msg.getGuild().getVoiceChannels().size() + "", true)
         .addField("Owner", Util.resolveNameFromMember(msg.getGuild().getOwner(),false), true)
-        .addField("Creation Date", msg.getGuild().getCreationTime().format(
+        .addField("Creation Date", msg.getGuild().getTimeCreated().format(
                 DateTimeFormatter.ofPattern("yyyy-MM-dd"))
                 .toString(), true)
         .addField("Server ID", msg.getGuild().getId(), true);

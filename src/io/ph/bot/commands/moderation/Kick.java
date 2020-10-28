@@ -56,7 +56,7 @@ public class Kick extends Command {
             return;
 
         } else{
-            msg.getGuild().getController().kick(target.getUser().getId()).queue(success -> {
+            msg.getGuild().kick(target.getUser().getId()).queue(success -> {
                 em.setTitle("Success", null)
                 .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
                 .setDescription(target.getEffectiveName() + " has been kicked");

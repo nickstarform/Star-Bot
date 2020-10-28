@@ -96,7 +96,7 @@ public class Unmute extends Command {
             SQLUtils.closeQuietly(stmt);
             SQLUtils.closeQuietly(conn);
         }
-        msg.getGuild().getController().removeRolesFromMember(target, role).queue(success -> {
+        msg.getGuild().removeRoleFromMember(target, role).queue(success -> {
             em.setTitle("Success", null)
             .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
             .setDescription(target.getEffectiveName() + " has been unmuted")

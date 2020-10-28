@@ -15,7 +15,7 @@ import net.dv8tion.jda.api.entities.Icon;
  */
 public class State {
     public static void changeBotStatus(String status) {    
-        Bot.getInstance().getBots().forEach(j -> j.getPresence().setGame(Activity.playing(status)));
+        Bot.getInstance().getBots().forEach(j -> j.getPresence().setActivity(Activity.playing(status)));
     }
     public static void changeBotUsername(String newUser) {
         Bot.getInstance().getBots().forEach(j -> j.getSelfUser().getManager().setName(newUser).queue());

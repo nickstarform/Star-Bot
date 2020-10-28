@@ -125,7 +125,7 @@ public class Prune extends Command {
             for (Message m : msg.getTextChannel().getHistory().retrievePast(MAX_PRUNE).complete()) {
                 if (i++ == MAX_PRUNE + 1 || targetCounter == DEFAULT_PRUNE)
                     break;
-                if (m.getCreationTime().plusWeeks(2).toInstant().isBefore(Instant.now()))
+                if (m.getTimeCreated().plusWeeks(2).toInstant().isBefore(Instant.now()))
                     break;
                 if (m.getAuthor().equals(target.getUser())) {
                     targetCounter++;

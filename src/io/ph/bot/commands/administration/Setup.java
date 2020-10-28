@@ -42,7 +42,7 @@ public class Setup extends Command {
                 return;
             }
         }
-        msg.getGuild().getController().createRole().queue(role -> {
+        msg.getGuild().createRole().queue(role -> {
             role.getManager()
             .setName("Muted")
             .setMentionable(false)

@@ -122,7 +122,7 @@ public class Mute extends Command {
             return;
         }
 
-        target.getGuild().getController().addRolesToMember(target, targetRole).queue(success -> {
+        target.getGuild().addRoleToMember(target, targetRole).queue(success -> {
             Bot.getInstance().getEventDispatcher()
             .dispatch(new UserMutedEvent(msg.getGuild(), msg.getAuthor(), target.getUser()));
             msg.getChannel().sendMessage(em.build()).queue();

@@ -52,8 +52,8 @@ public class LeaveRole extends Command {
                     return;
                 }
 
-                msg.getGuild().getController()
-                .removeRolesFromMember(msg.getGuild().getMember(msg.getAuthor()), r).queue(
+                msg.getGuild()
+                .removeRoleFromMember(msg.getGuild().getMember(msg.getAuthor()), r).queue(
                         success -> {
                             em.setTitle("Success", null)
                             .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))

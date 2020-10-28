@@ -52,7 +52,7 @@ public class DJ extends Command {
                     + "server to pre-existing role " + roleName);
             msg.getChannel().sendMessage(em.build()).queue();
         } else {
-            msg.getGuild().getController().createRole().queue(role -> {
+            msg.getGuild().createRole().queue(role -> {
                 role.getManager()
                 .setName(roleName).queue(success -> {
                     g.getConfig().setDjRoleId(role.getId());

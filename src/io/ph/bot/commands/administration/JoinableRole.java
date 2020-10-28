@@ -50,7 +50,7 @@ public class JoinableRole extends Command {
                 return;
             }
         }
-        msg.getGuild().getController().createRole().queue(role -> {
+        msg.getGuild().createRole().queue(role -> {
             role.getManager().setName(roleName).queue();
             GuildObject.guildMap.get(msg.getGuild().getId()).addJoinableRole(role.getId());
             em.setTitle("Created new role", null)

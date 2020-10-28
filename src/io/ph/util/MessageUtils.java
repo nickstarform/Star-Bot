@@ -89,7 +89,10 @@ public class MessageUtils {
      * @param msg String of message
      */
     public static void sendPrivateMessage(String userId, String msg) {
-        Bot.getInstance().shards.getUserById(userId).openPrivateChannel().queue(ch -> ch.sendMessage(msg).queue());
+        Bot.getInstance().shards.getUserById(userId).openPrivateChannel().queue(ch -> ch.sendMessage(msg).queue(success -> {}, failure -> {
+                System.out.println("failed");
+                return;
+            }));
     }    
     /**
      * Send a PM to a user
@@ -97,7 +100,10 @@ public class MessageUtils {
      * @param msg String of message
      */
     public static void sendPrivateMessage(String userId, MessageEmbed msg) {
-        Bot.getInstance().shards.getUserById(userId).openPrivateChannel().queue(ch -> ch.sendMessage(msg).queue());
+        Bot.getInstance().shards.getUserById(userId).openPrivateChannel().queue(ch -> ch.sendMessage(msg).queue(success -> {}, failure -> {
+                System.out.println("failed");
+                return;
+            }));
     }
     
     /**

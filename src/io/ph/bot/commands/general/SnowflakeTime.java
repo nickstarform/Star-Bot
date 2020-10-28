@@ -15,6 +15,7 @@ import io.ph.util.Util;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.utils.MiscUtil;
+import net.dv8tion.jda.api.utils.TimeUtil;
 
 /**
  * Special Snowflake converter
@@ -42,10 +43,10 @@ public class SnowflakeTime extends Command {
         }
 
         if(Util.isInteger(contents)) {
-            Long unixMilliSeconds = Long.parseLong(contents, 10);
-            OffsetDateTime date = MiscUtil.getCreationTime​(unixMilliSeconds); 
+            Long snow = Long.parseLong(contents);
+            OffsetDateTime date = TimeUtil.getTimeCreated(snow);
             // the format of your date
-            String formattedDate = MiscUtil.getDateTimeString​(date);
+            String formattedDate = TimeUtil.getDateTimeString(date);
             em.setColor(Color.GREEN)
             .setTitle("Converted " + contents + " to " + formattedDate, null);
         } else {

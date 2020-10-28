@@ -41,7 +41,7 @@ public class SetupMusic extends Command {
             return;
         }
 
-        msg.getGuild().getController().createVoiceChannel("music").queue(voiceChannel -> {
+        msg.getGuild().createVoiceChannel("music").queue(voiceChannel -> {
             Role everyone = msg.getGuild().getPublicRole();
             voiceChannel.createPermissionOverride(everyone).queue(override -> {
                 override.getManager().deny(Permission.VOICE_SPEAK).queue(
