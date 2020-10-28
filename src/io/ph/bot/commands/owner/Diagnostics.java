@@ -25,8 +25,8 @@ import io.ph.bot.feed.TwitchFeedObserver;
 import io.ph.bot.feed.TwitterEventListener;
 import io.ph.bot.feed.TwitterFeedObserver;
 import io.ph.bot.model.Permission;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
 /**
  * Diagnostics about the bot
  * @author Nick

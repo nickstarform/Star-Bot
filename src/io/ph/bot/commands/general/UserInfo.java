@@ -11,10 +11,10 @@ import io.ph.bot.commands.CommandCategory;
 import io.ph.bot.commands.CommandData;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Role;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
 
 /**
  * Get basic information on a user
@@ -57,9 +57,9 @@ public class UserInfo extends Command {
         em.setTitle("User info for " + target.getEffectiveName(), null)
         .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.MAGENTA))
         .addField("User", target.getUser().getName() + "#" + target.getUser().getDiscriminator(), true)
-        .addField("Creation date", target.getUser().getCreationTime().format(formatter), true)
+        .addField("Creation date", target.getUser().getTimeCreated().format(formatter), true)
         .addField("Mutual servers", mutualServers + "", true)
-        .addField("Server join date", target.getJoinDate().format(formatter), true)
+        .addField("Server join date", target.getTimeJoined().format(formatter), true)
         .addField("Roles", "`" + target.getRoles().stream()
                 .map(Role::getName)
                 .collect(Collectors.joining(", ")) + "`", true)

@@ -9,9 +9,9 @@ import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Role;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
 
 /**
  * Leave role designated as joinable
@@ -52,8 +52,8 @@ public class LeaveRole extends Command {
                     return;
                 }
 
-                msg.getGuild().getController()
-                .removeRolesFromMember(msg.getGuild().getMember(msg.getAuthor()), r).queue(
+                msg.getGuild()
+                .removeRoleFromMember(msg.getGuild().getMember(msg.getAuthor()), r).queue(
                         success -> {
                             em.setTitle("Success", null)
                             .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))

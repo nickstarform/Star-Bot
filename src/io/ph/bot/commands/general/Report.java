@@ -10,14 +10,14 @@ import io.ph.bot.commands.CommandData;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
 import io.ph.util.MessageUtils;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.User;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.User;
 import java.time.ZoneId;
 import java.util.Date;
 import java.text.SimpleDateFormat;
-import net.dv8tion.jda.core.JDA;
+import net.dv8tion.jda.api.JDA;
 /**
  * Send Report to guild/dev
  * @author Nick

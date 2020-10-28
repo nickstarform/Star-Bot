@@ -11,10 +11,10 @@ import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Role;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
 
 /**
  * Allow moderators to assign roles to others
@@ -86,8 +86,8 @@ public class SetRole extends Command {
                 } 
                 if (param.equals("add")) {
                     final String responce = "You set " + name + " is now in the role **" + role + "**";
-                    msg.getGuild().getController()
-                    .addSingleRoleToMember(mem, r).queue(
+                    msg.getGuild()
+                    .addRoleToMember(mem, r).queue(
                         success -> {
                             em.setTitle("Success", null)
                             .setColor(Color.GREEN)
@@ -103,8 +103,8 @@ public class SetRole extends Command {
                     return;
                 } else {
                     final String responce = "You set " + name + " is removed from the role **" + role + "**";
-                    msg.getGuild().getController()
-                    .removeSingleRoleFromMember(mem, r).queue(
+                    msg.getGuild()
+                    .removeRoleFromMember(mem, r).queue(
                         success -> {
                             em.setTitle("Success", null)
                             .setColor(Color.GREEN)

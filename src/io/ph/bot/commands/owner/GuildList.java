@@ -9,8 +9,8 @@ import io.ph.util.Util;
 import io.ph.util.MessageUtils;
 import io.ph.bot.Bot;
 
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.EmbedBuilder;
 
 import java.awt.Color;
 import java.util.List;

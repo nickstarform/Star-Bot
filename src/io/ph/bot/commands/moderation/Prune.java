@@ -12,9 +12,9 @@ import io.ph.bot.model.GenericContainer;
 import io.ph.bot.model.Permission;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
 /**
  * Prune x messages (default 40)
  * @author Nick
@@ -125,7 +125,7 @@ public class Prune extends Command {
             for (Message m : msg.getTextChannel().getHistory().retrievePast(MAX_PRUNE).complete()) {
                 if (i++ == MAX_PRUNE + 1 || targetCounter == DEFAULT_PRUNE)
                     break;
-                if (m.getCreationTime().plusWeeks(2).toInstant().isBefore(Instant.now()))
+                if (m.getTimeCreated().plusWeeks(2).toInstant().isBefore(Instant.now()))
                     break;
                 if (m.getAuthor().equals(target.getUser())) {
                     targetCounter++;

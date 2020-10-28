@@ -11,10 +11,10 @@ import io.ph.bot.model.MacroObject;
 import io.ph.bot.model.QuoteObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.OnlineStatus;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.OnlineStatus;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
 
 /**
  * Basic, harmless stats
@@ -42,7 +42,7 @@ public class Stats extends Command {
         .addField("Text Channels", msg.getGuild().getTextChannels().size() + "", true)
         .addField("Voice Channels", msg.getGuild().getVoiceChannels().size() + "", true)
         .addField("Owner", Util.resolveNameFromMember(msg.getGuild().getOwner(),false), true)
-        .addField("Creation Date", msg.getGuild().getCreationTime().format(
+        .addField("Creation Date", msg.getGuild().getTimeCreated().format(
                 DateTimeFormatter.ofPattern("yyyy-MM-dd"))
                 .toString(), true)
         .addField("Server ID", msg.getGuild().getId(), true);

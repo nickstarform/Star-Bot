@@ -11,9 +11,9 @@ import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Role;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
 
 /**
  * Allow a user to join a role that is designated as joinable by administrators
@@ -64,8 +64,8 @@ public class JoinRole extends Command {
                         return;
                     }
                 }
-                msg.getGuild().getController()
-                .addRolesToMember(msg.getGuild().getMember(msg.getAuthor()), r).queue(
+                msg.getGuild()
+                .addRoleToMember(msg.getGuild().getMember(msg.getAuthor()), r).queue(
                         success -> {
                             em.setTitle("Success", null)
                             .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))

@@ -8,9 +8,9 @@ import io.ph.bot.commands.CommandCategory;
 import io.ph.bot.commands.CommandData;
 import io.ph.bot.model.GuildObject;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Role;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
 
 /**
  * Setup the DJ role
@@ -52,7 +52,7 @@ public class DJ extends Command {
                     + "server to pre-existing role " + roleName);
             msg.getChannel().sendMessage(em.build()).queue();
         } else {
-            msg.getGuild().getController().createRole().queue(role -> {
+            msg.getGuild().createRole().queue(role -> {
                 role.getManager()
                 .setName(roleName).queue(success -> {
                     g.getConfig().setDjRoleId(role.getId());

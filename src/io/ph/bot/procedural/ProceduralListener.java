@@ -3,7 +3,7 @@ package io.ph.bot.procedural;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.entities.Message;
 import net.jodah.expiringmap.ExpirationPolicy;
 import net.jodah.expiringmap.ExpiringMap;
 

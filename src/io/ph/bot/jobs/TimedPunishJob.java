@@ -19,8 +19,8 @@ import io.ph.bot.events.UserUnmutedEvent;
 import io.ph.bot.model.GuildObject;
 import io.ph.db.ConnectionPool;
 import io.ph.db.SQLUtils;
-import net.dv8tion.jda.core.entities.Guild;
-import net.dv8tion.jda.core.entities.Member;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 
 /**
  * Periodically check to unban timed punishes (mute/bans)
@@ -53,7 +53,7 @@ public class TimedPunishJob implements Job {
                 Guild g = Bot.getInstance().shards.getGuildById(guildId);
                 switch(type) {
                 case "ban":
-                    g.getController().unban(userId).queue();
+                    g.unban(userId).queue();
                     break;
                 case "mute":
                     try {
@@ -63,7 +63,7 @@ public class TimedPunishJob implements Job {
                         if (g.getRoleById(GuildObject
                                 .guildMap.get(g.getId()).getConfig().getMutedRoleId()) == null)
                             break;
-                        u.getGuild().getController().removeRolesFromMember(u, g.getRoleById(GuildObject
+                        u.getGuild().removeRoleFromMember(u, g.getRoleById(GuildObject
                                 .guildMap.get(g.getId()).getConfig().getMutedRoleId())).queue(success -> {
                                     Bot.getInstance().getEventDispatcher()
                                     .dispatch(new UserUnmutedEvent(g, u.getUser()));

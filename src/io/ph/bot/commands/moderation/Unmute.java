@@ -16,10 +16,10 @@ import io.ph.bot.model.Permission;
 import io.ph.db.ConnectionPool;
 import io.ph.db.SQLUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Role;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
 
 /**
  * Unmute a user
@@ -96,7 +96,7 @@ public class Unmute extends Command {
             SQLUtils.closeQuietly(stmt);
             SQLUtils.closeQuietly(conn);
         }
-        msg.getGuild().getController().removeRolesFromMember(target, role).queue(success -> {
+        msg.getGuild().removeRoleFromMember(target, role).queue(success -> {
             em.setTitle("Success", null)
             .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
             .setDescription(target.getEffectiveName() + " has been unmuted")

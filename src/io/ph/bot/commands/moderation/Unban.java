@@ -13,9 +13,9 @@ import io.ph.bot.model.Permission;
 import io.ph.db.ConnectionPool;
 import io.ph.db.SQLUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.User;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.User;
 /**
  * Unban a user
  * @author Nick
@@ -72,7 +72,7 @@ public class Unban extends Command {
             SQLUtils.closeQuietly(stmt);
             SQLUtils.closeQuietly(conn);
         }
-        msg.getGuild().getController().unban(target).queue(success -> {
+        msg.getGuild().unban(target).queue(success -> {
             em.setTitle("Success", null)
             .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.GREEN))
             .setDescription(target.getName() + " has been unbanned")

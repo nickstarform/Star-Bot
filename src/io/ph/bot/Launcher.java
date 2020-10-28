@@ -5,7 +5,7 @@ import java.io.File;
 import javax.security.auth.login.LoginException;
 
 import io.ph.bot.commands.CommandHandler;
-import net.dv8tion.jda.core.exceptions.RateLimitedException;
+import net.dv8tion.jda.api.exceptions.RateLimitedException;
 
 /**
  * Main entry point

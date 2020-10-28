@@ -4,14 +4,14 @@
   <groupId>io.ph</groupId>
   <artifactId>starbot</artifactId>
   <name>Star-Bot</name>
-  <version>1.0.2.2</version>
+  <version>1.0.3</version>
   <description>Discord bot made with JDA</description>
   <build>
     <sourceDirectory>src</sourceDirectory>
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.6.1</version>
+        <version>3.8.1</version>
         <configuration>
           <source>1.8</source>
           <target>1.8</target>
@@ -58,7 +58,7 @@
     <repository>
       <id>jcenter</id>
       <name>jcenter-bintray</name>
-      <url>http://jcenter.bintray.com</url>
+      <url>https://jcenter.bintray.com</url>
     </repository>
   </repositories>
   <properties>

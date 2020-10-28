@@ -15,10 +15,10 @@ import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Role;
-import net.dv8tion.jda.core.entities.Member;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.Member;
 
 /**
  * Leave role designated as joinable color
@@ -78,11 +78,11 @@ public class ColorRole extends Command {
         }
 
         this.param = Util.getParam(msg).toUpperCase();
-        this.options = contents.replace(param,"").trim().toUpperCase();
+        this.options = contents.toUpperCase().replace(param,"").trim().toUpperCase();
         // debug
-        //System.out.println("param: <" + param + ">");
-        //System.out.println("contents: <" + contents + ">");
-        //System.out.println("options: <" + options + ">");
+        System.out.println("param: <" + param + ">");
+        System.out.println("contents: <" + contents + ">");
+        System.out.println("options: <" + options + ">");
 
         /*
 
@@ -144,7 +144,7 @@ public class ColorRole extends Command {
 
         while (msg.getGuild().getRolesByName(colRole,true).isEmpty()) {
             Role template = msg.getGuild().getRoleById(g.getConfig().getColorTemplateRoleId());
-            msg.getGuild().getController().createCopyOfRole(template).setName(colRole.toUpperCase()).setColor(Util.hex2Rgb(colRole)).complete();
+            msg.getGuild().createCopyOfRole(template).setName(colRole.toUpperCase()).setColor(Util.hex2Rgb(colRole)).complete();
 
         }
         // debug
@@ -214,8 +214,8 @@ public class ColorRole extends Command {
             //System.out.println("Joining....");
 
             Role r = msg.getGuild().getRolesByName(colRole,true).get(0);
-            msg.getGuild().getController()
-            .addRolesToMember(msg.getMember(),r).complete();
+            msg.getGuild()
+            .addRoleToMember(msg.getMember(),r).complete();
             em.setTitle("Success", null)
             .setColor(r.getColor())
             .setDescription("You are now in the role **" + r.getName() + "**");
@@ -273,7 +273,7 @@ public class ColorRole extends Command {
             //System.out.println("roles: " + Util.roleNameFromList(roles));
             //System.out.println("delRoles: " + Util.roleNameFromList(delRoles));
 
-            msg.getGuild().getController()
+            msg.getGuild()
                 .modifyMemberRoles(msg.getMember(), roles).complete();
         }
   
@@ -350,7 +350,7 @@ public class ColorRole extends Command {
 
         Role template = msg.getGuild().getRoleById(g.getConfig().getColorTemplateRoleId());
 
-        msg.getGuild().getController().modifyRolePositions().selectPosition(role).moveTo(template.getPosition()).complete();
+        msg.getGuild().modifyRolePositions().selectPosition(role).moveTo(template.getPosition()).complete();
 
         return;
     }

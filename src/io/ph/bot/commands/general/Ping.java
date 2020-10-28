@@ -8,8 +8,8 @@ import io.ph.bot.commands.CommandData;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
 import io.ph.util.MessageUtils;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
 
 @CommandData (
         defaultSyntax = "ping",
@@ -25,7 +25,7 @@ public class Ping extends Command {
         EmbedBuilder em = new EmbedBuilder();
         em.setTitle("Ping?", null)
         .setDescription("Pong!")
-        .setFooter(msg.getJDA().getPing() + "ms", null)
+        .setFooter(msg.getJDA().getGatewayPing() + "ms", null)
         .setColor(Util.resolveColor(Util.memberFromMessage(msg), Color.MAGENTA));
         MessageUtils.sendMessage(msg.getChannel().getId(),em.build(),5);
         msg.delete().queue();

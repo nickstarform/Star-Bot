@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 import io.ph.bot.Bot;
 import io.ph.db.ConnectionPool;
 import io.ph.db.SQLUtils;
-import net.dv8tion.jda.core.EmbedBuilder;
+import net.dv8tion.jda.api.EmbedBuilder;
 
 /**
  * Periodically remind users of things they set for the future

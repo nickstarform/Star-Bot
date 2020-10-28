@@ -15,10 +15,10 @@ import io.ph.db.SQLUtils;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
 import io.ph.bot.Bot;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.exceptions.RateLimitedException;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.exceptions.RateLimitedException;
 /**
  * Ban a user
  * Can ban for a temporary amount of time
@@ -95,14 +95,14 @@ public class Ban extends Command {
             em.setDescription(target.getEffectiveName() + " has been banned");
         }
         try {
-            if (msg.getGuild().getBanList().complete(true).contains(target)) {
+            if (msg.getGuild().retrieveBanList().complete(true).contains(target)) {
                 em.setTitle("Error", null)
                 .setColor(Color.RED)
                 .setDescription(target.getEffectiveName() + " is already banned");
                 msg.getChannel().sendMessage(em.build()).queue();
                 return;
             }
-            msg.getGuild().getController().ban(target, 0).queue(success -> {
+            msg.getGuild().ban(target, 0).queue(success -> {
                 msg.getChannel().sendMessage(em.build()).queue();
             }, failure -> {
                 em.setTitle("Error", null)

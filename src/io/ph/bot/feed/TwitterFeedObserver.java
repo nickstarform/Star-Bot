@@ -5,8 +5,8 @@ import java.io.Serializable;
 import java.time.Instant;
 
 import io.ph.bot.Bot;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.TextChannel;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.TextChannel;
 import twitter4j.MediaEntity;
 import twitter4j.Status;
 

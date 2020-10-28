@@ -5,10 +5,10 @@ import java.awt.Color;
 import io.ph.bot.Bot;
 import io.ph.bot.commands.Command;
 import io.ph.bot.model.GuildObject;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.TextChannel;
-import net.dv8tion.jda.core.entities.MessageEmbed;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -89,7 +89,10 @@ public class MessageUtils {
      * @param msg String of message
      */
     public static void sendPrivateMessage(String userId, String msg) {
-        Bot.getInstance().shards.getUserById(userId).openPrivateChannel().queue(ch -> ch.sendMessage(msg).queue());
+        Bot.getInstance().shards.getUserById(userId).openPrivateChannel().queue(ch -> ch.sendMessage(msg).queue(success -> {}, failure -> {
+                System.out.println("failed");
+                return;
+            }));
     }    
     /**
      * Send a PM to a user
@@ -97,7 +100,10 @@ public class MessageUtils {
      * @param msg String of message
      */
     public static void sendPrivateMessage(String userId, MessageEmbed msg) {
-        Bot.getInstance().shards.getUserById(userId).openPrivateChannel().queue(ch -> ch.sendMessage(msg).queue());
+        Bot.getInstance().shards.getUserById(userId).openPrivateChannel().queue(ch -> ch.sendMessage(msg).queue(success -> {}, failure -> {
+                System.out.println("failed");
+                return;
+            }));
     }
     
     /**

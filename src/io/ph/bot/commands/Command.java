@@ -2,7 +2,7 @@ package io.ph.bot.commands;
 
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.entities.Message;
 
 public abstract class Command {
     private int commandCount = 0;

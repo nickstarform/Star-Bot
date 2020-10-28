@@ -37,13 +37,13 @@ import com.eclipsesource.json.JsonValue;
 import io.ph.bot.Bot;
 import io.ph.bot.exception.NoAPIKeyException;
 import io.ph.bot.model.Permission;
-import net.dv8tion.jda.core.entities.Guild;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.MessageChannel;
-import net.dv8tion.jda.core.entities.User;
-import net.dv8tion.jda.core.entities.Role;
-import net.dv8tion.jda.core.entities.Guild.Ban;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.Guild.Ban;
 
 public class Util {
      
@@ -202,7 +202,7 @@ public class Util {
      * @return User if found, null if not found
      */
     public static User resolveBannedUserFromString(String s, Guild guild) {
-        for(Ban b : guild.getBanList().complete()) {
+        for(Ban b : guild.retrieveBanList().complete()) {
             User u = b.getUser();
             if(u.getName().toLowerCase().startsWith(s.toLowerCase()))
                 return u;

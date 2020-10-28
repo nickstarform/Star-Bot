@@ -8,10 +8,10 @@ import io.ph.bot.model.Permission;
 import io.ph.util.Util;
 import io.ph.util.MessageUtils;
 import io.ph.bot.Bot;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Guild;
-import net.dv8tion.jda.core.entities.TextChannel;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.TextChannel;
 import java.lang.StringBuilder;
 
 /**
@@ -54,7 +54,7 @@ public class Welcome extends Command {
             ret = ret.replaceAll("\\$user\\$", bot.getAsMention());
             ret = ret.replaceAll("\\$server\\$", guild.getName());
 
-            if (!g.getSpecialChannels().getWelcome().equals("")) {
+            if (!g.getSpecialChannels().getRulesChannel().equals("")) {
                 TextChannel chanName = guild.getTextChannelById(g.getSpecialChannels().getRulesChannel());
                 ret = ret.replaceAll("\\$channel\\$", "<#" + chanName.getId() + ">");
             }

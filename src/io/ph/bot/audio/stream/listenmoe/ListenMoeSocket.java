@@ -19,9 +19,9 @@ import io.ph.bot.Bot;
 import io.ph.bot.audio.stream.StreamSource;
 import io.ph.bot.model.GuildObject;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.TextChannel;
-import net.dv8tion.jda.core.managers.AudioManager;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.managers.AudioManager;
 
 public class ListenMoeSocket extends WebSocketClient {
     private static final Logger LOG = LoggerFactory.getLogger(ListenMoeSocket.class);

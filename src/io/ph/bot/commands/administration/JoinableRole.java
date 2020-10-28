@@ -9,9 +9,9 @@ import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
 import io.ph.util.MessageUtils;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Role;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
 
 /**
  * Create a role that a user can then join in. If it already exists, use that instead
@@ -50,7 +50,7 @@ public class JoinableRole extends Command {
                 return;
             }
         }
-        msg.getGuild().getController().createRole().queue(role -> {
+        msg.getGuild().createRole().queue(role -> {
             role.getManager().setName(roleName).queue();
             GuildObject.guildMap.get(msg.getGuild().getId()).addJoinableRole(role.getId());
             em.setTitle("Created new role", null)
