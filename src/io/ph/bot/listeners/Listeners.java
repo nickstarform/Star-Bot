@@ -22,24 +22,24 @@ import io.ph.bot.model.Permission;
 import io.ph.bot.procedural.ProceduralListener;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Guild;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Role;
-import net.dv8tion.jda.core.entities.TextChannel;
-import net.dv8tion.jda.core.events.ReadyEvent;
-import net.dv8tion.jda.core.events.channel.text.TextChannelCreateEvent;
-import net.dv8tion.jda.core.events.channel.voice.VoiceChannelCreateEvent;
-import net.dv8tion.jda.core.events.guild.GuildAvailableEvent;
-import net.dv8tion.jda.core.events.guild.GuildJoinEvent;
-import net.dv8tion.jda.core.events.guild.GuildLeaveEvent;
-import net.dv8tion.jda.core.events.guild.member.GuildMemberJoinEvent;
-import net.dv8tion.jda.core.events.guild.member.GuildMemberLeaveEvent;
-import net.dv8tion.jda.core.events.guild.member.GuildMemberNickChangeEvent;
-import net.dv8tion.jda.core.events.message.guild.GuildMessageReceivedEvent;
-import net.dv8tion.jda.core.events.message.priv.PrivateMessageReceivedEvent;
-import net.dv8tion.jda.core.events.role.RoleDeleteEvent;
-import net.dv8tion.jda.core.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.events.ReadyEvent;
+import net.dv8tion.jda.api.events.channel.text.TextChannelCreateEvent;
+import net.dv8tion.jda.api.events.channel.voice.VoiceChannelCreateEvent;
+import net.dv8tion.jda.api.events.guild.GuildAvailableEvent;
+import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
+import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
+import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
+import net.dv8tion.jda.api.events.guild.member.GuildMemberLeaveEvent;
+import net.dv8tion.jda.api.events.guild.member.update.GuildMemberUpdateNicknameEvent;
+import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
+import net.dv8tion.jda.api.events.role.RoleDeleteEvent;
+import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
 /**
  * General purpose listeners for events
@@ -56,15 +56,17 @@ public class Listeners extends ListenerAdapter {
         String logMsg = null;
 
         List<Guild> gl = e.getJDA().getGuilds();
-        logMsg = "Bot attempting to open: " + e.getJDA().getGuilds().size() + " guilds.";
+        logMsg = "Bot attempting to open: " + gl.size() + " guilds.";
         log.info(logMsg);
 
         for (int i=0; i < gl.size(); i++ ){
             Guild g = gl.get(i);
-            checkFiles(g);
-            log.info(g.getId());
-            GuildObject.guildMap.put(g.getId(), new GuildObject(g));
-            startupChecks(g);
+            if (g.getId() != null) {
+                checkFiles(g);
+                log.info(g.getId());
+                GuildObject.guildMap.put(g.getId(), new GuildObject(g));
+                startupChecks(g);
+            }
         }
         if (e.getJDA().getShardInfo() != null) {
             logMsg = "Bot is now logged on shard " + e.getJDA().getShardInfo().getShardId() + " with " + e.getJDA().getGuilds().size() + " guilds";
@@ -134,7 +136,7 @@ public class Listeners extends ListenerAdapter {
     @Override 
     public void onGuildJoin(GuildJoinEvent e) {
         /* 
-        if (!e.getGuild().getSelfMember().hasPermission(net.dv8tion.jda.core.Permission.MESSAGE_WRITE)) {
+        if (!e.getGuild().getSelfMember().hasPermission(net.dv8tion.jda.api.Permission.MESSAGE_WRITE)) {
             e.getGuild().leave().queue();
             return;
         }*/
@@ -163,7 +165,7 @@ public class Listeners extends ListenerAdapter {
                     + Util.ordinal(guildCount.get()) + " server.\n"
                     + "If you want a list of commands, use `$help`. If you want some tutorials on my features, "
                     + "do `$howto` - I suggest doing `$howto setup` immediately.");
-            if (!e.getGuild().getSelfMember().hasPermission(net.dv8tion.jda.core.Permission.MESSAGE_EMBED_LINKS)) {
+            if (!e.getGuild().getSelfMember().hasPermission(net.dv8tion.jda.api.Permission.MESSAGE_EMBED_LINKS)) {
                 MessageUtils.sendPrivateMessage(e.getGuild().getOwner().getUser().getId(),"I require permissions to Embed Links for the vast majority of my functionality. Please enable it!");
             }
         }
@@ -217,11 +219,9 @@ public class Listeners extends ListenerAdapter {
             msg = msg.replaceAll("\\$user\\$", e.getMember().getAsMention());
             msg = msg.replaceAll("\\$server\\$", e.getGuild().getName());
 
-            if (msg.contains("\\$channel\\$")) {
-                if (!g.getSpecialChannels().getRulesChannel().equals("")) {
-                    chanName = e.getGuild().getTextChannelById(g.getSpecialChannels().getRulesChannel());
-                    msg = msg.replaceAll("\\$channel\\$", chanName.getAsMention());
-                }
+            if (!g.getSpecialChannels().getRulesChannel().equals("")) {
+                chanName = e.getGuild().getTextChannelById(g.getSpecialChannels().getRulesChannel());
+                msg = msg.replaceAll("\\$channel\\$", chanName.getAsMention());
             }
  
             if (!g.getConfig().isPmWelcomeMessage())
@@ -257,7 +257,7 @@ public class Listeners extends ListenerAdapter {
     }
 
     @Override
-    public void onGuildMemberNickChange(GuildMemberNickChangeEvent e) {
+    public void onGuildMemberUpdateNickname(GuildMemberUpdateNicknameEvent e) {
         if (!Bot.isReady)
             return;
         GuildObject g = GuildObject.guildMap.get(e.getGuild().getId());
@@ -476,8 +476,8 @@ public class Listeners extends ListenerAdapter {
         if (!g.getConfig().getMutedRoleId().isEmpty() 
                 && (r = e.getGuild().getRoleById(g.getConfig().getMutedRoleId())) != null) {
             e.getChannel().createPermissionOverride(r).queue(or -> {
-                or.getManager().deny(net.dv8tion.jda.core.Permission.MESSAGE_WRITE, 
-                        net.dv8tion.jda.core.Permission.MESSAGE_ADD_REACTION).queue();
+                or.getManager().deny(net.dv8tion.jda.api.Permission.MESSAGE_WRITE, 
+                        net.dv8tion.jda.api.Permission.MESSAGE_ADD_REACTION).queue();
             });
         }
     }
@@ -491,7 +491,7 @@ public class Listeners extends ListenerAdapter {
         if (!g.getConfig().getMutedRoleId().isEmpty() 
                 && (r = e.getGuild().getRoleById(g.getConfig().getMutedRoleId())) != null) {
             e.getChannel().createPermissionOverride(r).queue(or -> {
-                or.getManager().deny(net.dv8tion.jda.core.Permission.VOICE_SPEAK).queue();
+                or.getManager().deny(net.dv8tion.jda.api.Permission.VOICE_SPEAK).queue();
             });
         }
     }

@@ -18,10 +18,10 @@ import io.ph.db.ConnectionPool;
 import io.ph.db.SQLUtils;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Role;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
 /**
  * Mute a user
  * Can mute for a temporary amount of time

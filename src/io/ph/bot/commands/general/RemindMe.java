@@ -1,6 +1,7 @@
 package io.ph.bot.commands.general;
 
 import java.awt.Color;
+import java.lang.Exception;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -17,8 +18,8 @@ import io.ph.db.ConnectionPool;
 import io.ph.db.SQLUtils;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
 
 /**
  * Set a reminder to be PM'd a message by the bot
@@ -59,12 +60,22 @@ public class RemindMe extends Command {
         Instant target = Util.resolveInstantFromString(param);
         
         //debug
-        //System.out.println("param: "+param);
-        //System.out.println("now: "+now);
-        //System.out.println("target: "+target);
+        System.out.println("param: "+param);
+        System.out.println("now: "+now);
+        System.out.println("target: "+target);
         
-        long months = ChronoUnit.MONTHS.between(LocalDateTime.ofInstant(now, ZoneId.systemDefault()), 
+        long months = 0;
+        try {
+            months = ChronoUnit.MONTHS.between(LocalDateTime.ofInstant(now, ZoneId.systemDefault()), 
                 LocalDateTime.ofInstant(target, ZoneId.systemDefault()));
+        } catch(Exception e) {
+            months = (long) (1.0 / 30.0 / 24.0 / 3600.0);
+        } finally {
+            if (months == 0) {
+                months = (long) (1.0 / 30.0 / 24.0 / 3600.0);
+            }
+        }
+        System.out.println("Set the months timer");
         if(months > 5) {
             em.setTitle("Error", null)
             .setColor(Color.RED)
@@ -75,6 +86,7 @@ public class RemindMe extends Command {
         Connection conn = null;
         PreparedStatement stmt = null;
         try {
+            System.out.println("Made it to settin sql ");
             conn = ConnectionPool.getGlobalDatabaseConnection();
             String sql = "INSERT INTO `global_reminders` (user_id, guild_name, reminder, remind_time) VALUES (?,?,?,?)";
             stmt = conn.prepareStatement(sql);
@@ -83,6 +95,8 @@ public class RemindMe extends Command {
             stmt.setString(3, reminderContents);
             stmt.setString(4, target.toString());
             stmt.execute();
+            System.out.println("Set sql ");
+
         } catch(SQLException e) {
             e.printStackTrace();
         } finally {

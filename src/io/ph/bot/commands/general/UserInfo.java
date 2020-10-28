@@ -11,10 +11,10 @@ import io.ph.bot.commands.CommandCategory;
 import io.ph.bot.commands.CommandData;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Role;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
 
 /**
  * Get basic information on a user

@@ -6,10 +6,10 @@ import io.ph.bot.commands.Command;
 import io.ph.bot.commands.CommandCategory;
 import io.ph.bot.commands.CommandData;
 import io.ph.bot.model.GuildObject;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.Permission;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Role;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
 
 /**
  * Setup a music channel

@@ -3,7 +3,7 @@ package io.ph.bot.audio;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 
 import io.ph.bot.audio.stream.StreamSource;
-import net.dv8tion.jda.core.entities.Member;
+import net.dv8tion.jda.api.entities.Member;
 
 public class TrackDetails {
     private String url;

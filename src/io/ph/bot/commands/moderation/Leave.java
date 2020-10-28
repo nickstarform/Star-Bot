@@ -10,9 +10,9 @@ import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
 import io.ph.util.MessageUtils;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.managers.AudioManager;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.managers.AudioManager;
 /**
  * Force Bot to leave your server's voice channel if she's in it
  * @author Nick

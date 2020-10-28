@@ -4,9 +4,9 @@ import java.io.File;
 
 import org.slf4j.LoggerFactory;
 
-import net.dv8tion.jda.core.OnlineStatus;
-import net.dv8tion.jda.core.entities.Game;
-import net.dv8tion.jda.core.entities.Icon;
+import net.dv8tion.jda.api.OnlineStatus;
+import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.Icon;
 
 /**
  * Various helper methods to change the state of the bot
@@ -15,7 +15,7 @@ import net.dv8tion.jda.core.entities.Icon;
  */
 public class State {
     public static void changeBotStatus(String status) {    
-        Bot.getInstance().getBots().forEach(j -> j.getPresence().setGame(Game.playing(status)));
+        Bot.getInstance().getBots().forEach(j -> j.getPresence().setGame(Activity.playing(status)));
     }
     public static void changeBotUsername(String newUser) {
         Bot.getInstance().getBots().forEach(j -> j.getSelfUser().getManager().setName(newUser).queue());

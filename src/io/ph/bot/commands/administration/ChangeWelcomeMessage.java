@@ -9,7 +9,7 @@ import io.ph.bot.procedural.ProceduralCommand;
 import io.ph.bot.procedural.ProceduralListener;
 import io.ph.bot.procedural.StepType;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.entities.Message;
 
 /**
  * Change welcome message the server sends when a new person is joined

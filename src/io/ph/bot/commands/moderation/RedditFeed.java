@@ -14,8 +14,8 @@ import io.ph.bot.procedural.StepType;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
 import net.dean.jraw.http.NetworkException;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
 /**
  * Set reddit feed from given channel
  * @author Nick

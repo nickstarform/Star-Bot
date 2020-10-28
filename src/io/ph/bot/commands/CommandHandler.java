@@ -22,7 +22,7 @@ import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.bot.procedural.ProceduralCommand;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.entities.Message;
 
 /**
  * A centralized class that manages all commands available across servers

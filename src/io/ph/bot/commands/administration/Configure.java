@@ -10,8 +10,8 @@ import io.ph.bot.procedural.ProceduralAnnotation;
 import io.ph.bot.procedural.ProceduralCommand;
 import io.ph.bot.procedural.ProceduralListener;
 import io.ph.bot.procedural.StepType;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
 
 /**
  * Various one-time configuration settings

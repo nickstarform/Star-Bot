@@ -1,6 +1,6 @@
 package io.ph.bot.events;
 
-import net.dv8tion.jda.core.entities.Guild;
+import net.dv8tion.jda.api.entities.Guild;
 
 public abstract class BotEvent {
     Guild guild;

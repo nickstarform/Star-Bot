@@ -14,7 +14,7 @@ import io.ph.bot.exception.NoAPIKeyException;
 import io.ph.util.Util;
 
 public class WoWCharacter {
-    String baseUrl = "https://%s.api.battle.net/wow/character/";
+    String baseUrl = "https://%s.api.entities.battle.net/wow/character/";
 
     private int lfrRaid = 0;
     private int normalRaid = 0;
@@ -179,7 +179,7 @@ public class WoWCharacter {
     static {
         JsonObject jo2;
         try {
-            jo2 = Util.jsonFromUrl("https://us.api.battle.net/wow/data/character/races?locale=en_US&apikey=" 
+            jo2 = Util.jsonFromUrl("https://us.api.entities.battle.net/wow/data/character/races?locale=en_US&apikey=" 
                     + Bot.getInstance().getApiKeys().get("battlenet")).asObject();
 
             HashMap<Integer, String> races = new HashMap<Integer, String>();
@@ -188,7 +188,7 @@ public class WoWCharacter {
             }
             cache.put("wowraces", races);
 
-            jo2 = Util.jsonFromUrl("https://us.api.battle.net/wow/data/character/classes?locale=en_US&apikey="  
+            jo2 = Util.jsonFromUrl("https://us.api.entities.battle.net/wow/data/character/classes?locale=en_US&apikey="  
                     + Bot.getInstance().getApiKeys().get("battlenet")).asObject();
             HashMap<Integer, String> classes = new HashMap<Integer, String>();
             for(JsonValue j : jo2.get("classes").asArray()) {

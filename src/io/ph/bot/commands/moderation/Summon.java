@@ -10,9 +10,9 @@ import io.ph.bot.commands.CommandData;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
 import io.ph.util.MessageUtils;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.VoiceChannel;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.VoiceChannel;
 /**
  * Summon the bot into a channel of your choosing
  * @author Nick
@@ -33,7 +33,7 @@ public class Summon extends Command {
         EmbedBuilder em = new EmbedBuilder().setTimestamp(Instant.now());
         String command = Util.getCommandContents(msg).toLowerCase();
         Optional<VoiceChannel> opt;
-        net.dv8tion.jda.core.managers.AudioManager audio = msg.getGuild().getAudioManager();
+        net.dv8tion.jda.api.managers.AudioManager audio = msg.getGuild().getAudioManager();
 
         // argument not specified
         if ((opt = msg.getGuild().getVoiceChannels().stream()

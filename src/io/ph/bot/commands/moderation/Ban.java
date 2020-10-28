@@ -15,10 +15,10 @@ import io.ph.db.SQLUtils;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
 import io.ph.bot.Bot;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.exceptions.RateLimitedException;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.exceptions.RateLimitedException;
 /**
  * Ban a user
  * Can ban for a temporary amount of time

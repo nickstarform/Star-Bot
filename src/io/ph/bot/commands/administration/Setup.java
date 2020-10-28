@@ -6,11 +6,11 @@ import io.ph.bot.commands.Command;
 import io.ph.bot.commands.CommandCategory;
 import io.ph.bot.commands.CommandData;
 import io.ph.bot.model.GuildObject;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.Permission;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.Permission;
 import io.ph.util.MessageUtils;
-import net.dv8tion.jda.core.entities.Channel;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.Message;
 
 /**
  * Setup the muted role
@@ -50,7 +50,7 @@ public class Setup extends Command {
             .revokePermissions(Permission.MESSAGE_WRITE, 
                     Permission.VOICE_SPEAK, Permission.MESSAGE_ADD_REACTION).queue(success -> {
                 g.getConfig().setMutedRoleId(role.getId());
-                for (Channel channel : msg.getGuild().getTextChannels()) {
+                for (TextChannel channel : msg.getGuild().getTextChannels()) {
                     channel.createPermissionOverride(role).queue(or -> {
                         or.getManager().deny(Permission.MESSAGE_WRITE, 
                                 Permission.VOICE_SPEAK, Permission.MESSAGE_ADD_REACTION).queue();

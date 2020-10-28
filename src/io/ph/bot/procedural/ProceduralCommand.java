@@ -6,8 +6,8 @@ import java.util.List;
 
 import io.ph.bot.commands.Command;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
 
 /**
  * Superclass for procedural commands

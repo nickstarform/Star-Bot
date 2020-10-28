@@ -12,8 +12,8 @@ import io.ph.bot.feed.TwitchEventListener;
 import io.ph.bot.model.Permission;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
 
 /**
  * Remove a registration for this server from a reddit feed

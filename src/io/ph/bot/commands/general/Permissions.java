@@ -14,9 +14,9 @@ import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
 import io.ph.util.MessageUtils;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Member;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Member;
 
 /**
  * Get help with commands
@@ -24,13 +24,13 @@ import net.dv8tion.jda.core.entities.Member;
  */
 
 /*
- *   NONE("No permissions", net.dv8tion.jda.core.Permission.MESSAGE_READ),
- *   KICK("Kick", net.dv8tion.jda.core.Permission.KICK_MEMBERS),
- *   BAN("Ban", net.dv8tion.jda.core.Permission.BAN_MEMBERS),
- *   MANAGE_ROLES("Manage roles", net.dv8tion.jda.core.Permission.MANAGE_ROLES),
- *   MANAGE_CHANNELS("Manage channels", net.dv8tion.jda.core.Permission.MANAGE_CHANNEL),
- *   MANAGE_SERVER("Manage server", net.dv8tion.jda.core.Permission.MANAGE_SERVER),
- *   ADMINISTRATOR("Administrator", net.dv8tion.jda.core.Permission.ADMINISTRATOR),
+ *   NONE("No permissions", net.dv8tion.jda.api.Permission.MESSAGE_READ),
+ *   KICK("Kick", net.dv8tion.jda.api.Permission.KICK_MEMBERS),
+ *   BAN("Ban", net.dv8tion.jda.api.Permission.BAN_MEMBERS),
+ *   MANAGE_ROLES("Manage roles", net.dv8tion.jda.api.Permission.MANAGE_ROLES),
+ *   MANAGE_CHANNELS("Manage channels", net.dv8tion.jda.api.Permission.MANAGE_CHANNEL),
+ *   MANAGE_SERVER("Manage server", net.dv8tion.jda.api.Permission.MANAGE_SERVER),
+ *   ADMINISTRATOR("Administrator", net.dv8tion.jda.api.Permission.ADMINISTRATOR),
  *   BOT_OWNER("Bot owner", null);
  *   BOT_DEVELOPER("Bot developer", null);
 */

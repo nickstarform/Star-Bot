@@ -19,8 +19,8 @@ import io.ph.bot.events.UserUnmutedEvent;
 import io.ph.bot.model.GuildObject;
 import io.ph.db.ConnectionPool;
 import io.ph.db.SQLUtils;
-import net.dv8tion.jda.core.entities.Guild;
-import net.dv8tion.jda.core.entities.Member;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 
 /**
  * Periodically check to unban timed punishes (mute/bans)

@@ -27,7 +27,7 @@ import com.mashape.unirest.http.exceptions.UnirestException;
 import io.ph.bot.Bot;
 import io.ph.bot.exception.NoAPIKeyException;
 import net.dean.jraw.http.NetworkException;
-import net.dv8tion.jda.core.entities.Guild;
+import net.dv8tion.jda.api.entities.Guild;
 
 /**
  * Twitch event listener

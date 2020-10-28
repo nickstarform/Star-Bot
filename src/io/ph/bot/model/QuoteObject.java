@@ -18,7 +18,7 @@ import io.ph.bot.Bot;
 import io.ph.db.ConnectionPool;
 import io.ph.db.SQLUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.entities.Member;
+import net.dv8tion.jda.api.entities.Member;
 
 public class QuoteObject {
     private int uniq;

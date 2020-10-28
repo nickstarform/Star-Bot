@@ -12,8 +12,8 @@ import com.mashape.unirest.http.exceptions.UnirestException;
 
 import io.ph.bot.Bot;
 import io.ph.bot.exception.NoAPIKeyException;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.TextChannel;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.TextChannel;
 
 /**
  * Observer class for twitch feed

@@ -15,10 +15,10 @@ import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.Role;
-import net.dv8tion.jda.core.entities.Member;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.Member;
 
 /**
  * Leave role designated as joinable color
@@ -78,11 +78,11 @@ public class ColorRole extends Command {
         }
 
         this.param = Util.getParam(msg).toUpperCase();
-        this.options = contents.replace(param,"").trim().toUpperCase();
+        this.options = contents.toUpperCase().replace(param,"").trim().toUpperCase();
         // debug
-        //System.out.println("param: <" + param + ">");
-        //System.out.println("contents: <" + contents + ">");
-        //System.out.println("options: <" + options + ">");
+        System.out.println("param: <" + param + ">");
+        System.out.println("contents: <" + contents + ">");
+        System.out.println("options: <" + options + ">");
 
         /*
 

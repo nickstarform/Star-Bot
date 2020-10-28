@@ -13,8 +13,8 @@ import io.ph.bot.procedural.ProceduralListener;
 import io.ph.bot.procedural.StepType;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
 import twitter4j.TwitterException;
 import twitter4j.User;
 

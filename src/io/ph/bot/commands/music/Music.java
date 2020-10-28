@@ -16,9 +16,9 @@ import io.ph.bot.model.GuildObject;
 import io.ph.bot.model.Permission;
 import io.ph.util.Util;
 import io.ph.util.MessageUtils;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.entities.VoiceChannel;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.VoiceChannel;
 
 /**
  * Play music in designated channel
@@ -54,7 +54,7 @@ public class Music extends Command {
         String contents = Util.getCommandContents(msg);
         String titleOverride = null;
         GuildObject g = GuildObject.guildMap.get(msg.getGuild().getId());
-        net.dv8tion.jda.core.managers.AudioManager audio = msg.getGuild().getAudioManager();
+        net.dv8tion.jda.api.managers.AudioManager audio = msg.getGuild().getAudioManager();
         boolean djSet = !g.getConfig().getDjRoleId().isEmpty();
         if ((djSet && !msg.getGuild().getMember(msg.getAuthor())
                 .getRoles().contains(msg.getGuild().getRoleById(g.getConfig().getDjRoleId())))
@@ -171,7 +171,7 @@ public class Music extends Command {
             return;
         }
         GuildObject g = GuildObject.guildMap.get(msg.getGuild().getId());
-        net.dv8tion.jda.core.managers.AudioManager audio = msg.getGuild().getAudioManager();
+        net.dv8tion.jda.api.managers.AudioManager audio = msg.getGuild().getAudioManager();
         GuildMusicManager m = g.getMusicManager();
         EmbedBuilder em = new EmbedBuilder();
         boolean djSet = bs.length > 0 ? bs[0] : false;

@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 import io.ph.bot.Bot;
 import io.ph.bot.exception.NoAPIKeyException;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.entities.Guild;
+import net.dv8tion.jda.api.entities.Guild;
 import twitter4j.FilterQuery;
 import twitter4j.StallWarning;
 import twitter4j.Status;

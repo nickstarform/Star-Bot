@@ -12,9 +12,9 @@ import io.ph.bot.commands.CommandData;
 import io.ph.bot.model.Permission;
 import io.ph.util.MessageUtils;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Message;
-import net.dv8tion.jda.core.utils.MiscUtil;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.utils.MiscUtil;
 
 /**
  * Special Snowflake converter

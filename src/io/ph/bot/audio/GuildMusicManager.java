@@ -17,10 +17,10 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import io.ph.bot.Bot;
 import io.ph.bot.model.GuildObject;
 import io.ph.util.Util;
-import net.dv8tion.jda.core.EmbedBuilder;
-import net.dv8tion.jda.core.entities.Guild;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.TextChannel;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.TextChannel;
 
 public class GuildMusicManager {
     private AudioPlayer audioPlayer;
